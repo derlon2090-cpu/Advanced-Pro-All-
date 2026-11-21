@@ -15,7 +15,7 @@ await cp(resolve(root, ".openai/hosting.json"), resolve(dist, ".openai/hosting.j
 // Vercel serves static files from public/. Keep this generated copy in sync with
 // the Worker page so both deployments show the same interface.
 const workerSource = await readFile(resolve(root, "worker/index.js"), "utf8");
-const page = workerSource.match(/const page = `([\s\S]*?)`;\r?\n\r?\nexport default/);
+const page = workerSource.match(/const page\s*=\s*`([\s\S]*?)`;\r?\nexport default/);
 if (!page) throw new Error("Could not extract the HTML page from worker/index.js");
 await mkdir(publicDir, { recursive: true });
 await writeFile(resolve(publicDir, "index.html"), page[1], "utf8");
