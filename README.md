@@ -1,4 +1,18 @@
-# Sites Worker ESM starter
+# Crunchyroll Code Hub
+
+## Supabase Auth for the admin area
+
+The admin form calls a server-side login endpoint. It exchanges the email and password with Supabase Auth, stores only the returned access token in a `HttpOnly`, `Secure`, `SameSite=Strict` cookie, and checks the user again before restoring the admin session.
+
+Configure these runtime secrets in Site settings; never put them in source code:
+
+- `SUPABASE_URL`
+- `SUPABASE_ANON_KEY`
+- `ADMIN_EMAILS` — comma-separated approved admin email addresses.
+
+The service-role key is not used for sign-in and must never be exposed to the browser.
+
+## Worker starter notes
 
 Use this starter for a static microsite, click counter, or simple internal UI whose state is browser-scoped. It has no dependencies and needs no install.
 
