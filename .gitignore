@@ -3,3 +3,4 @@ public/
 site.tar.gz
 .env.local
 .env
+node_modules/
