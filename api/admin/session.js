@@ -1,11 +1,12 @@
-import { allowedAdmin, configured, tokenFromRequest } from "./_auth.js";
+import { allowedAdmin, configured, tokenFromRequest, supabaseConfig } from "./_auth.js";
 
 export default async function handler(request, response) {
   if (request.method !== "GET") return response.status(405).json({ message: "الطريقة غير مسموحة." });
   if (!configured()) return response.status(503).json({ message: "Supabase غير مهيأ." });
   const token = tokenFromRequest(request);
   if (!token) return response.status(401).json({ message: "جلسة غير موجودة." });
-  const auth = await fetch(`${process.env.SUPABASE_URL}/auth/v1/user`, { headers: { apikey: process.env.SUPABASE_ANON_KEY, authorization: `Bearer ${decodeURIComponent(token)}` } });
+  const supabase = supabaseConfig();
+  const auth = await fetch(`${supabase.url}/auth/v1/user`, { headers: { apikey: supabase.key, authorization: `Bearer ${decodeURIComponent(token)}` } });
   const user = await auth.json().catch(() => ({}));
   if (!auth.ok || !user.email || !allowedAdmin(user.email)) return response.status(401).json({ message: "جلسة غير صالحة." });
   return response.status(200).json({ email: user.email });
