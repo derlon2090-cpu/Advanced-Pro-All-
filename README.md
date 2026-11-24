@@ -34,6 +34,20 @@ email contents. The client renewal action uses a WhatsApp compose link with an
 order number only—configure the support destination in your storefront before
 using it in production.
 
+## High-load controls
+
+Run `005_high_load_indexes.sql` after the earlier migrations. It adds lookup
+and receipt indexes plus a durable `webhook_receipts` idempotency table. The
+Worker applies a bounded per-isolate rate limit (20 public lookups/minute and
+60 authenticated email webhook calls/minute) and in-isolate five-minute email
+deduplication. For globally consistent rate limiting or deduplication across
+all Worker isolates, connect a durable store such as a Supabase RPC backed by
+`webhook_receipts`, Cloudflare KV, or a Durable Object.
+
+Lookup responses contain order- and phone-derived data, so they use private
+short-lived caching rather than shared `public` caching. This avoids exposing
+customer results through a shared edge cache.
+
 ## Worker starter notes
 
 Use this starter for a static microsite, click counter, or simple internal UI whose state is browser-scoped. It has no dependencies and needs no install.
