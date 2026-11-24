@@ -25,6 +25,15 @@ The inbound-email webhook classifies password or email-change notices as
 customers. Use the provider's official account settings for any sign-out,
 password change, or device management action.
 
+## Operations
+
+Migration `004_operational_capacity.sql` adds a server-only slot limit per
+service account and an `access_reviewed_at` timestamp. Calculate occupied
+seats from active `account_assignments`; do not infer account sharing from
+email contents. The client renewal action uses a WhatsApp compose link with an
+order number only—configure the support destination in your storefront before
+using it in production.
+
 ## Worker starter notes
 
 Use this starter for a static microsite, click counter, or simple internal UI whose state is browser-scoped. It has no dependencies and needs no install.
