@@ -12,6 +12,19 @@ Configure these runtime secrets in Site settings; never put them in source code:
 
 The service-role key is not used for sign-in and must never be exposed to the browser.
 
+## Email security and device-transfer review
+
+Migration `003_device_transfer_security.sql` adds server-only metadata for a
+single-device continuity signal and a one-time, admin-reviewed transfer
+request. It intentionally excludes screenshots, raw email bodies, passwords,
+OTP values, approval links, third-party session tokens, and remote device
+controls.
+
+The inbound-email webhook classifies password or email-change notices as
+`critical_blocked`. Webhook responses never expose message bodies or codes to
+customers. Use the provider's official account settings for any sign-out,
+password change, or device management action.
+
 ## Worker starter notes
 
 Use this starter for a static microsite, click counter, or simple internal UI whose state is browser-scoped. It has no dependencies and needs no install.
