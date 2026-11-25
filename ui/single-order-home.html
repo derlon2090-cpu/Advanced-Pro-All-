@@ -1,148 +1,140 @@
 <style>
-  .single-home {
+  body.split-home-ready { background: #050a18 !important; }
+  .split-home-ready .top, .split-home-ready > .footer, .split-home-ready .shell > .footer { display: none !important; }
+  .split-home-ready .shell { max-width: none; padding: 0; }
+  .single-home { min-height: 100vh; background: #050a18; color: #f8fafc; overflow: hidden; }
+  .split-top {
     position: relative;
-    min-height: calc(100vh - 158px);
-    display: grid;
-    place-items: center;
-    padding: 72px 0 62px;
-    isolation: isolate;
+    min-height: 45vh;
+    padding: clamp(58px, 8vh, 92px) 20px 155px;
+    display: flex;
+    justify-content: center;
+    text-align: center;
+    overflow: hidden;
+    background: linear-gradient(135deg, #9a3412 0%, #c2410c 55%, #ea580c 100%);
   }
-  .single-home::before {
+  .split-top::before {
     content: "";
-    position: fixed;
-    z-index: -2;
+    position: absolute;
     inset: 0;
-    background:
-      radial-gradient(ellipse at 82% 42%, #fb923c42 0, #c2410c2b 28%, transparent 57%),
-      radial-gradient(ellipse at 12% 20%, #1d4ed83b 0, transparent 48%),
-      linear-gradient(112deg, #050a18 0 48%, #331209 100%);
+    opacity: .16;
+    background-image: repeating-linear-gradient(135deg, #fff 0 1px, transparent 1px 28px);
   }
-  .single-home::after {
+  .split-top::after {
     content: "";
-    position: fixed;
-    z-index: -1;
-    inset: 0;
-    opacity: .34;
-    background-image:
-      linear-gradient(#ffffff0a 1px, transparent 1px),
-      linear-gradient(90deg, #ffffff0a 1px, transparent 1px);
-    background-size: 42px 42px;
-    mask-image: linear-gradient(to bottom, #000 0, transparent 88%);
+    position: absolute;
+    width: 390px;
+    height: 390px;
+    top: -205px;
+    left: -80px;
+    border: 1px solid #fff5;
+    border-radius: 50%;
+    box-shadow: 0 0 0 58px #ffffff0b, 0 0 0 116px #ffffff09;
   }
-  .single-wrap { width: min(720px, 100%); text-align: center; }
-  .single-kicker {
+  .split-copy { position: relative; z-index: 1; max-width: 760px; }
+  .brand-pill {
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    padding: 8px 13px;
-    color: #fed7aa;
-    border: 1px solid #fb923c66;
-    border-radius: 999px;
-    background: #7c2d122e;
+    padding: 7px 15px;
+    color: #fff;
     font-size: .78rem;
     font-weight: 800;
+    border: 1px solid #ffffff38;
+    border-radius: 999px;
+    background: #ffffff1f;
+    backdrop-filter: blur(12px);
+    box-shadow: inset 0 1px #ffffff24;
   }
-  .single-title {
-    margin: 22px 0 10px;
-    color: #f8fafc;
-    font-size: clamp(2.15rem, 6vw, 4rem);
+  .brand-pill i { font-style: normal; }
+  .split-title {
+    margin: 20px 0 10px;
+    color: #fff;
+    font-size: clamp(2.25rem, 5vw, 4.15rem);
     line-height: 1.16;
     letter-spacing: -.045em;
   }
-  .single-title span {
-    background: linear-gradient(90deg, #f8fafc, #fb923c);
-    -webkit-background-clip: text;
-    color: transparent;
-  }
-  .single-lead { margin: 0 auto 28px; color: #cbd5e1; line-height: 1.9; }
+  .split-lead { margin: 0; color: #fff; opacity: .9; font-size: clamp(.95rem, 2vw, 1.08rem); }
+  .split-bottom { min-height: 55vh; padding: 0 20px 36px; background: #050a18; }
+  .floating-wrap { width: min(570px, 100%); margin: 0 auto; transform: translateY(-112px); }
   .single-card {
-    position: relative;
-    padding: 1px;
+    padding: 27px;
+    border: 1px solid #1e293b;
     border-radius: 24px;
-    background: linear-gradient(120deg, #fb923c99, #334155 50%, #1e3a8a88);
-    box-shadow: 0 30px 100px #020617b3, 0 0 70px #c2410c24;
+    background: #0a1428;
+    box-shadow: 0 30px 85px #000a, 0 15px 35px #02061799;
   }
-  .single-card-inner {
-    padding: 25px;
-    border-radius: 23px;
-    background: linear-gradient(145deg, #0a1428ed, #050a18e8);
-    backdrop-filter: blur(28px);
+  .single-label {
+    display: block;
+    margin-bottom: 12px;
+    color: #f8fafc;
+    text-align: center;
+    font-size: 1rem;
+    font-weight: 900;
   }
-  .single-label { display: block; margin-bottom: 9px; color: #e2e8f0; font-size: .84rem; font-weight: 800; text-align: right; }
-  .single-input-wrap { position: relative; }
-  .single-input-wrap b {
-    position: absolute;
-    right: 16px;
-    top: 50%;
-    transform: translateY(-50%);
-    color: #fb923c;
-    font-size: 1.15rem;
-  }
+  .single-label b { margin-left: 6px; color: #fb923c; font-size: 1.16rem; }
   .single-input {
     width: 100%;
-    height: 60px;
-    padding: 0 46px 0 16px;
-    color: #f8fafc;
-    font-size: 1.06rem;
-    text-align: right;
-    border: 1px solid #334155;
-    border-radius: 14px;
+    height: 56px;
+    padding: 0 16px;
+    color: #fff;
+    text-align: center;
+    font-size: 1.05rem;
+    border: 1px solid #1e293b;
+    border-radius: 13px;
     outline: none;
-    background: #050a18cc;
-    transition: .2s ease;
+    background: #050a18;
+    transition: border-color .2s, box-shadow .2s;
   }
-  .single-input:focus { border-color: #fb923c; box-shadow: 0 0 0 4px #c2410c29; }
+  .single-input::placeholder { color: #64748b; }
+  .single-input:focus { border-color: #fb923c; box-shadow: 0 0 0 4px #fb923c20; }
   .single-action {
     width: 100%;
-    margin-top: 13px;
+    margin-top: 14px;
     padding: 16px;
     border: 0;
-    border-radius: 14px;
+    border-radius: 13px;
     color: #fff;
+    font-size: .98rem;
     font-weight: 900;
-    background: linear-gradient(105deg, #9a3412, #c2410c 56%, #ea580c);
-    box-shadow: 0 14px 32px #c2410c42;
+    background: #c2410c;
+    box-shadow: 0 12px 28px #c2410c35;
+    transition: background .2s, transform .2s;
   }
-  .single-action:disabled { cursor: wait; opacity: .7; }
-  .single-message { min-height: 20px; margin: 11px 0 0; color: #fda4af; font-size: .8rem; }
+  .single-action:hover { background: #ea580c; transform: translateY(-1px); }
+  .single-action:disabled { cursor: wait; opacity: .7; transform: none; }
+  .single-message { min-height: 18px; margin: 10px 0 0; color: #fda4af; text-align: center; font-size: .79rem; }
   .security-note {
     display: flex;
-    gap: 11px;
+    gap: 8px;
+    justify-content: center;
     align-items: flex-start;
-    margin-top: 15px;
-    padding: 13px 14px;
-    color: #cbd5e1;
-    text-align: right;
-    line-height: 1.7;
-    font-size: .73rem;
-    border: 1px solid #fb923c38;
-    border-radius: 13px;
-    background: #c2410c0e;
+    margin: 12px auto 0;
+    color: #94a3b8;
+    text-align: center;
+    line-height: 1.65;
+    font-size: .72rem;
   }
-  .security-note i { color: #fb923c; font-style: normal; font-size: 1rem; }
-  .single-footer { margin-top: 34px; color: #94a3b8; font-size: .75rem; }
-  .minimal-nav { display: flex; align-items: center; gap: 10px; }
-  .delivery-badge { color: #a7f3d0; font-size: .72rem; white-space: nowrap; }
-  .delivery-badge::before { content: ""; display: inline-block; width: 7px; height: 7px; margin-left: 6px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 12px #22c55e; }
+  .security-note i { color: #fb923c; font-style: normal; }
+  .clean-footer { margin-top: 26px; text-align: center; }
+  .support-line { display: inline-flex; align-items: center; gap: 7px; color: #fb923c; font-size: .82rem; font-weight: 800; }
+  .copyright { margin-top: 13px; color: #64748b; font-size: .72rem; }
   @media (max-width: 650px) {
-    .single-home { padding: 50px 0 42px; }
-    .single-card-inner { padding: 17px; }
-    .single-title { font-size: 2.3rem; }
-    .delivery-badge { display: none; }
-    .top .logo b, .top .logo .sub { display: none; }
+    .split-top { min-height: 43vh; padding: 52px 16px 132px; }
+    .split-title { font-size: 2.35rem; }
+    .split-bottom { min-height: 57vh; padding-inline: 14px; }
+    .floating-wrap { transform: translateY(-88px); }
+    .single-card { padding: 19px 16px; border-radius: 20px; }
+    .brand-pill { font-size: .68rem; }
   }
 </style>
 <script>
   document.addEventListener('DOMContentLoaded', () => {
     if (location.pathname !== '/') return;
-    const top = document.querySelector('.top');
     const portal = document.getElementById('portal');
-    const footer = document.querySelector('.footer');
-    if (!top || !portal) return;
-
-    top.innerHTML = '<a href="/" class="logo" aria-label="بوابة أدفانسد برو"><img class="logo-art" src="/assets/bawaba-logo.jpeg" alt="شعار بوابة أدفانسد برو"><span><strong>بوابة أدفانسد برو</strong> <b>| Advanced Pro Portal</b><div class="sub">بوابة الاشتراكات الرقمية</div></span></a><div class="minimal-nav"><span class="delivery-badge">تسليم آلي فوري</span><a class="store-link" target="_blank" rel="noopener" href="__STORE_URL__">المتجر ↗</a></div>';
-    portal.innerHTML = '<main class="single-home"><div class="single-wrap"><span class="single-kicker">✦ دخول سريع وآمن</span><h1 class="single-title">اشتراكك جاهز<br><span>برقم الطلب فقط</span></h1><p class="single-lead">أدخل رقم طلبك في سلة للوصول إلى بوابة اشتراكك وتفعيله فورًا.</p><div class="single-card"><div class="single-card-inner"><form id="singleOrderLookup"><label class="single-label" for="singleOrderNumber">رقم الطلب في سلة</label><div class="single-input-wrap"><b>#</b><input id="singleOrderNumber" class="single-input" name="orderNumber" required inputmode="numeric" autocomplete="off" placeholder="مثال: 194820194"></div><button class="single-action" type="submit">دخول وتفعيل الاشتراك ←</button><p id="singleLookupMessage" class="single-message" role="status"></p></form><div class="security-note"><i>🛡</i><span><strong>ملاحظة أمنية:</strong> تقوم البوابة بجمع بيانات تقنية أساسية (معرّف المتصفح والجهاز وعنوان الاتصال) تلقائيًا لربط اشتراكك بجهاز واحد وحماية حسابك من الوصول غير المصرح به.</span></div></div></div><div class="single-footer">© بوابة أدفانسد برو | Advanced Pro Portal</div></div></main>';
-    if (footer) footer.style.display = 'none';
+    if (!portal) return;
+    document.body.classList.add('split-home-ready');
+    portal.innerHTML = '<main class="single-home"><section class="split-top"><div class="split-copy"><span class="brand-pill"><i>♢</i> بوابة أدفانسد برو | Advanced Pro Portal</span><h1 class="split-title">بوابة استعلام عن طلبك</h1><p class="split-lead">أدخل رقم الطلب لعرض وتفعيل اشتراكك فورًا</p></div></section><section class="split-bottom"><div class="floating-wrap"><div class="single-card"><form id="singleOrderLookup"><label class="single-label" for="singleOrderNumber"><b>#</b> رقم الطلب</label><input id="singleOrderNumber" class="single-input" name="orderNumber" required inputmode="numeric" autocomplete="off" placeholder="مثال: 123456789"><button class="single-action" type="submit">⌕ &nbsp; عرض بيانات الاشتراك</button><p id="singleLookupMessage" class="single-message" role="status"></p></form><div class="security-note"><i>▣</i><span>ملاحظة أمنية: تقوم البوابة بجمع بيانات الجهاز والمتصفح تلقائيًا لربط اشتراكك بجهاز واحد وحمايته.</span></div></div><div class="clean-footer"><a class="support-line" target="_blank" rel="noopener" href="https://wa.me/?text='+encodeURIComponent('مرحبًا، لا أجد رقم طلبي في بوابة أدفانسد برو')+'">لا تجد رقم الطلب؟ تواصل مع الدعم</a><div class="copyright">© بوابة أدفانسد برو | Advanced Pro Portal</div></div></div></section></main>';
 
     document.getElementById('singleOrderLookup').addEventListener('submit', async event => {
       event.preventDefault();
@@ -165,7 +157,7 @@
         message.textContent = 'تعذر الاتصال بالخدمة. حاول بعد قليل.';
       } finally {
         button.disabled = false;
-        button.textContent = 'دخول وتفعيل الاشتراك ←';
+        button.textContent = '⌕  عرض بيانات الاشتراك';
       }
     });
   });
