@@ -1,0 +1,67 @@
+const buckets = new Map();
+const clientIp = request => String(request.headers['x-forwarded-for'] || request.headers['x-real-ip'] || 'unknown').split(',')[0].trim().slice(0, 128);
+const allowed = request => {
+  const now = Date.now(), key = clientIp(request), recent = (buckets.get(key) || []).filter(time => now - time < 60_000);
+  if (recent.length >= 30) { buckets.set(key, recent); return false; }
+  recent.push(now); buckets.set(key, recent); return true;
+};
+const database = (path, options = {}) => {
+  const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  return fetch(`${url}/rest/v1/${path}`, {
+    ...options,
+    headers: { apikey: key, authorization: `Bearer ${key}`, 'content-type': 'application/json', ...(options.headers || {}) },
+  });
+};
+const cleanToken = value => /^[a-zA-Z0-9_-]{16,128}$/.test(String(value || '')) ? String(value) : '';
+const publicUrl = value => {
+  try {
+    const url = new URL(String(value || ''));
+    return url.protocol === 'https:' ? url.toString() : null;
+  } catch { return null; }
+};
+
+export default async function handler(request, response) {
+  if (!['GET', 'POST'].includes(request.method)) return response.status(405).json({ message: 'الطريقة غير مسموحة.' });
+  if (!allowed(request)) return response.status(429).setHeader('Retry-After', '60').json({ message: 'طلبات كثيرة، حاول بعد دقيقة.' });
+  const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return response.status(503).json({ message: 'خدمة الطلبات غير متاحة مؤقتًا.' });
+  const token = cleanToken(request.query?.token || request.body?.token);
+  if (!token) return response.status(400).json({ message: 'رابط الطلب غير صالح.' });
+
+  const select = 'id,order_number,product_name,service_type,status,duration_days,starts_at,expires_at,has_warranty,warranty_days,warranty_expires_at,acknowledgment_text,acknowledged_at';
+  const params = new URLSearchParams({ select, tracking_token: `eq.${token}`, limit: '1' });
+  const foundResponse = await database(`orders?${params}`);
+  if (!foundResponse.ok) return response.status(502).json({ message: 'تعذر تحميل بيانات الطلب.' });
+  const [order] = await foundResponse.json();
+  if (!order) return response.status(404).json({ message: 'لم يتم العثور على الطلب.' });
+
+  if (request.method === 'POST' && !order.acknowledged_at) {
+    if (request.body?.accepted !== true) return response.status(400).json({ message: 'يجب الموافقة على سياسة المنتج أولًا.' });
+    const acknowledgedAt = new Date().toISOString();
+    const update = await database(`orders?id=eq.${encodeURIComponent(order.id)}&acknowledged_at=is.null`, {
+      method: 'PATCH',
+      headers: { Prefer: 'return=representation' },
+      body: JSON.stringify({
+        acknowledged_at: acknowledgedAt,
+        acknowledged_ip: clientIp(request),
+        acknowledged_user_agent: String(request.headers['user-agent'] || '').slice(0, 500) || null,
+        updated_at: acknowledgedAt,
+      }),
+    });
+    if (!update.ok) return response.status(502).json({ message: 'تعذر توثيق الإقرار. حاول مجددًا.' });
+    const [updated] = await update.json();
+    order.acknowledged_at = updated?.acknowledged_at || acknowledgedAt;
+  }
+
+  delete order.id;
+  return response.status(200).setHeader('Cache-Control', 'private, no-store').json({
+    order,
+    actions: {
+      crunchyrollPortalUrl: order.service_type === 'crunchyroll' ? publicUrl(process.env.PUBLIC_CRUNCHYROLL_PORTAL_URL) : null,
+      supportWhatsapp: String(process.env.PUBLIC_SUPPORT_WHATSAPP || '').replace(/\D/g, '').slice(0, 20) || null,
+    },
+  });
+}
+

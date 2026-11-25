@@ -1,0 +1,75 @@
+<style>
+  .product-policy-form { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 20px; padding: 17px; border: 1px solid #1e3a5f; border-radius: 15px; background: #071426; }
+  .product-policy-form label { display: grid; gap: 7px; color: #cbd5e1; font-size: .85rem; }
+  .product-policy-form input, .product-policy-form select, .product-policy-form textarea { width: 100%; padding: 11px; border: 1px solid #1e3a5f; border-radius: 10px; outline: none; color: #fff; background: #050a18; }
+  .product-policy-form textarea { min-height: 120px; resize: vertical; }
+  .product-policy-form .wide { grid-column: 1 / -1; }
+  .warranty-toggle { display: flex !important; align-items: center; grid-template-columns: auto 1fr; }
+  .warranty-toggle input { width: 18px; height: 18px; accent-color: #c2410c; }
+  .mapping-actions { display: flex; gap: 8px; align-items: center; }
+  .mapping-edit { padding: 7px 10px; border: 1px solid #c2410c; border-radius: 8px; color: #fdba74; background: #9a341220; }
+  @media (max-width: 700px) { .product-policy-form { grid-template-columns: 1fr; } .product-policy-form .wide { grid-column: auto; } }
+</style>
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    if (!location.pathname.startsWith('/admin')) return;
+    const warrantyTemplate = 'يشمل الضمان التوقف المفاجئ طوال المدة المحددة.\nيُلغى الضمان عند تغيير البريد أو كلمة المرور أو مشاركة الحساب.\nيتم التعويض بعد التحقق من الالتزام بشروط الاستخدام.';
+    const noWarrantyTemplate = 'يُسلّم المنتج بحالة سليمة وقت الشراء.\nهذا المنتج تسليم لمرة واحدة ولا يشمله التعويض بعد التسليم.\nيتحمل العميل مسؤولية حفظ بيانات المنتج بعد استلامه.';
+    const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
+    let data = null, attachedHost = null;
+    const renderProducts = async () => {
+      const panel = document.getElementById('workspacePanel');
+      if (!panel) return;
+      if (!data) {
+        const response = await fetch('/api/admin/operations');
+        if (!response.ok) return;
+        data = await response.json();
+      }
+      const rows = (data.mappings || []).map((item, index) => '<tr><td>' + escapeHtml(item.salla_product_id) + '<br><small>' + escapeHtml(item.product_title || '—') + '</small></td><td>' + escapeHtml(item.service_type) + '</td><td>' + item.duration_days + ' يوم</td><td><span class="pill">' + (item.has_warranty === false ? 'بدون ضمان' : 'ضمان ' + (item.warranty_days || 30) + ' يوم') + '</span></td><td><button class="mapping-edit" data-mapping-index="' + index + '">تعديل</button></td></tr>').join('');
+      panel.innerHTML = '<form id="productPolicyForm" class="product-policy-form"><label>رقم المنتج / SKU<input name="id" required placeholder="Salla Product ID"></label><label>العنوان للعرض<input name="title" placeholder="اسم الباقة"></label><label>الخدمة<select name="service"><option value="crunchyroll">Crunchyroll</option><option value="chatgpt">ChatGPT</option><option value="general_subscription">منتج رقمي عام</option></select></label><label>مدة الاشتراك بالأيام<input name="days" type="number" min="1" max="3660" value="30" required></label><label class="warranty-toggle"><input name="hasWarranty" type="checkbox" checked><span>مشمول بالضمان</span></label><label>مدة الضمان بالأيام<input name="warrantyDays" type="number" min="1" max="3660" value="30" required></label><label class="wide">نص إقرار المنتج<textarea name="acknowledgment" maxlength="4000" required>' + warrantyTemplate + '</textarea></label><button class="tab-action wide" type="submit">حفظ ربط المنتج وسياسة الضمان</button><p id="mappingResult" class="notice wide" role="status"></p></form><div class="workspace-scroll"><table class="workspace-table"><thead><tr><th>المنتج</th><th>الخدمة</th><th>المدة</th><th>الضمان</th><th>إجراء</th></tr></thead><tbody>' + (rows || '<tr><td colspan="5">لا توجد منتجات مربوطة بعد.</td></tr>') + '</tbody></table></div>';
+      const form = document.getElementById('productPolicyForm'), warranty = form.elements.hasWarranty, warrantyDays = form.elements.warrantyDays, acknowledgment = form.elements.acknowledgment;
+      warranty.onchange = () => {
+        warrantyDays.disabled = !warranty.checked;
+        warrantyDays.required = warranty.checked;
+        acknowledgment.value = warranty.checked ? warrantyTemplate : noWarrantyTemplate;
+      };
+      panel.querySelectorAll('[data-mapping-index]').forEach(button => button.onclick = () => {
+        const item = data.mappings[Number(button.dataset.mappingIndex)];
+        form.elements.id.value = item.salla_product_id || '';
+        form.elements.title.value = item.product_title || '';
+        form.elements.service.value = item.service_type || 'general_subscription';
+        form.elements.days.value = item.duration_days || 30;
+        warranty.checked = item.has_warranty !== false;
+        warrantyDays.value = item.warranty_days || 30;
+        warrantyDays.disabled = !warranty.checked;
+        warrantyDays.required = warranty.checked;
+        acknowledgment.value = item.acknowledgment_text || (warranty.checked ? warrantyTemplate : noWarrantyTemplate);
+        form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+      form.onsubmit = async event => {
+        event.preventDefault();
+        const result = document.getElementById('mappingResult'), submit = form.querySelector('button[type=submit]');
+        submit.disabled = true; result.textContent = 'جارِ الحفظ…';
+        const mapping = { salla_product_id: form.elements.id.value.trim(), product_title: form.elements.title.value.trim(), service_type: form.elements.service.value, duration_days: Number(form.elements.days.value), has_warranty: warranty.checked, warranty_days: warranty.checked ? Number(warrantyDays.value) : 0, acknowledgment_text: acknowledgment.value.trim() };
+        try {
+          const response = await fetch('/api/admin/operations', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'save_mapping', mapping }) });
+          const body = await response.json().catch(() => ({}));
+          if (!response.ok) throw new Error(body.message || 'تعذر حفظ المنتج.');
+          data = null; await renderProducts();
+        } catch (error) { result.textContent = error.message; submit.disabled = false; }
+      };
+    };
+    const attach = () => {
+      const host = document.querySelector('.workspace');
+      if (!host || host === attachedHost) return;
+      const tab = host.querySelector('[data-tab="products"]');
+      if (!tab) return;
+      attachedHost = host;
+      tab.addEventListener('click', () => setTimeout(renderProducts, 0));
+    };
+    const observer = new MutationObserver(attach);
+    observer.observe(document.body, { childList: true, subtree: true });
+    attach();
+  });
+</script>
+

@@ -2,13 +2,14 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
 
 const json = (response, status, body) => response.status(status).json(body);
 const serviceFromProduct = name => /crunchyroll/i.test(name || '') ? 'crunchyroll' : /chatgpt|openai/i.test(name || '') ? 'chatgpt' : 'general_subscription';
-const supabase = (path, options = {}) => fetch(`${process.env.SUPABASE_URL}/rest/v1/${path}`, {
+const supabaseUrl = () => process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabase = (path, options = {}) => fetch(`${supabaseUrl()}/rest/v1/${path}`, {
   ...options,
   headers: { apikey: process.env.SUPABASE_SERVICE_ROLE_KEY, authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`, 'content-type': 'application/json', ...(options.headers || {}) },
 });
 async function productMapping(productId) {
   if (!productId) return null;
-  const params = new URLSearchParams({ select: 'service_type,duration_days', salla_product_id: `eq.${productId}`, limit: '1' });
+  const params = new URLSearchParams({ select: 'service_type,duration_days,has_warranty,warranty_days,acknowledgment_text', salla_product_id: `eq.${productId}`, limit: '1' });
   const response = await supabase(`salla_product_mappings?${params}`);
   if (!response.ok) return null;
   return (await response.json())[0] || null;
@@ -37,7 +38,7 @@ function signatureValid(request) {
 
 export default async function handler(request, response) {
   if (request.method !== 'POST') return json(response, 405, { error: 'Method not allowed' });
-  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) return json(response, 503, { error: 'Server is not configured' });
+  if (!supabaseUrl() || !process.env.SUPABASE_SERVICE_ROLE_KEY) return json(response, 503, { error: 'Server is not configured' });
   if (!signatureValid(request)) return json(response, 401, { error: 'Invalid signature' });
   const payload = request.body || {}, event = request.headers['x-salla-event'] || payload.event || payload.type;
   if (!['order.created', 'order.updated'].includes(event)) return json(response, 202, { ignored: true });
@@ -56,6 +57,9 @@ export default async function handler(request, response) {
     p_customer_name: order.customer?.name || '', p_customer_phone: order.customer?.mobile || order.customer?.phone || '',
     p_product_name: productName, p_service_type: mapping?.service_type || serviceFromProduct(productName),
     p_duration_days: mapping?.duration_days || fallbackDuration,
+    p_has_warranty: mapping?.has_warranty !== false,
+    p_warranty_days: mapping?.has_warranty === false ? 0 : (mapping?.warranty_days || mapping?.duration_days || fallbackDuration),
+    p_acknowledgment_text: mapping?.acknowledgment_text || null,
   };
   if (!args.p_merchant_id || !args.p_order_id) return json(response, 400, { error: 'Missing merchant or order identifier' });
   const ingest = await supabase('rpc/ingest_salla_paid_order', { method: 'POST', body: JSON.stringify(args) });

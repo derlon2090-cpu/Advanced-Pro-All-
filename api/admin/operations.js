@@ -1,14 +1,15 @@
 import { allowedAdmin, tokenFromRequest } from './_auth.js';
 
 async function requireAdmin(request) {
-  const url = process.env.SUPABASE_URL, anon = process.env.SUPABASE_ANON_KEY, token = tokenFromRequest(request);
+  const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL, anon = process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY, token = tokenFromRequest(request);
   if (!url || !anon || !process.env.SUPABASE_SERVICE_ROLE_KEY || !token) return false;
   const result = await fetch(`${url}/auth/v1/user`, { headers: { apikey: anon, authorization: `Bearer ${decodeURIComponent(token)}` } });
   const user = await result.json().catch(() => ({}));
   return result.ok && user.email && allowedAdmin(user.email);
 }
 async function db(path, options = {}) {
-  return fetch(`${process.env.SUPABASE_URL}/rest/v1/${path}`, {
+  const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+  return fetch(`${url}/rest/v1/${path}`, {
     ...options,
     headers: { apikey: process.env.SUPABASE_SERVICE_ROLE_KEY, authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`, 'content-type': 'application/json', ...(options.headers || {}) },
   });
@@ -33,7 +34,12 @@ export default async function handler(request, response) {
     let result;
     if (action === 'save_mapping') {
       if (!mapping?.salla_product_id || !mapping?.service_type) return response.status(400).json({ message: 'رقم المنتج والخدمة مطلوبان.' });
-      result = await db('salla_product_mappings?on_conflict=salla_product_id', { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates' }, body: JSON.stringify({ salla_product_id: String(mapping.salla_product_id), product_title: mapping.product_title || null, service_type: mapping.service_type, duration_days: Number(mapping.duration_days) || 30, updated_at: new Date().toISOString() }) });
+      const hasWarranty = mapping.has_warranty !== false;
+      const warrantyDays = hasWarranty ? Math.min(Math.max(Number(mapping.warranty_days) || 30, 1), 3660) : 0;
+      const defaultAcknowledgment = hasWarranty
+        ? 'يشمل الضمان التوقف المفاجئ طوال المدة المحددة.\nيُلغى الضمان عند تغيير البريد أو كلمة المرور أو مشاركة الحساب.\nيتم التعويض بعد التحقق من الالتزام بشروط الاستخدام.'
+        : 'يُسلّم المنتج بحالة سليمة وقت الشراء.\nهذا المنتج تسليم لمرة واحدة ولا يشمله التعويض بعد التسليم.\nيتحمل العميل مسؤولية حفظ بيانات المنتج بعد استلامه.';
+      result = await db('salla_product_mappings?on_conflict=salla_product_id', { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates' }, body: JSON.stringify({ salla_product_id: String(mapping.salla_product_id), product_title: mapping.product_title || null, service_type: mapping.service_type, duration_days: Math.min(Math.max(Number(mapping.duration_days) || 30, 1), 3660), has_warranty: hasWarranty, warranty_days: warrantyDays, acknowledgment_text: String(mapping.acknowledgment_text || defaultAcknowledgment).trim().slice(0, 4000), updated_at: new Date().toISOString() }) });
     } else if (action === 'save_settings') {
       result = await db('system_settings?singleton=eq.true', { method: 'PATCH', body: JSON.stringify({ banner_active: Boolean(settings?.banner_active), banner_message: settings?.banner_message || null, auto_assignment_paused: Boolean(settings?.auto_assignment_paused), updated_at: new Date().toISOString() }) });
     } else if (action === 'bulk_import') {
