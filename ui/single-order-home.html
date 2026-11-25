@@ -32,28 +32,6 @@
     box-shadow: 0 0 0 58px #ffffff0b, 0 0 0 116px #ffffff09;
   }
   .split-copy { position: relative; z-index: 1; max-width: 760px; }
-  .corner-logo {
-    position: absolute;
-    z-index: 2;
-    top: 25px;
-    right: clamp(18px, 4vw, 58px);
-    width: 74px;
-    height: 74px;
-    overflow: hidden;
-    border: 1px solid #ffffff40;
-    border-radius: 18px;
-    background: #071a35;
-    box-shadow: 0 15px 35px #43140766, inset 0 1px #ffffff26;
-  }
-  .corner-logo img {
-    position: absolute;
-    width: 235px;
-    max-width: none;
-    height: auto;
-    left: -81px;
-    top: -48px;
-    display: block;
-  }
   .brand-pill {
     display: inline-flex;
     align-items: center;
@@ -148,8 +126,6 @@
     .floating-wrap { transform: translateY(-88px); }
     .single-card { padding: 19px 16px; border-radius: 20px; }
     .brand-pill { font-size: .68rem; }
-    .corner-logo { width: 62px; height: 62px; top: 17px; right: 16px; border-radius: 15px; }
-    .corner-logo img { width: 198px; left: -68px; top: -40px; }
   }
 </style>
 <script>
@@ -158,7 +134,7 @@
     const portal = document.getElementById('portal');
     if (!portal) return;
     document.body.classList.add('split-home-ready');
-    portal.innerHTML = '<main class="single-home"><section class="split-top"><span class="corner-logo" aria-label="شعار بوابة أدفانسد برو"><img src="/assets/bawaba-logo.jpeg" alt="شعار بوابة أدفانسد برو"></span><div class="split-copy"><h1 class="split-title">بوابة استعلام عن طلبك</h1><p class="split-lead">أدخل رقم الطلب لعرض وتفعيل اشتراكك فورًا</p></div></section><section class="split-bottom"><div class="floating-wrap"><div class="single-card"><form id="singleOrderLookup"><label class="single-label" for="singleOrderNumber"><b>#</b> رقم الطلب</label><input id="singleOrderNumber" class="single-input" name="orderNumber" required inputmode="numeric" autocomplete="off" placeholder="مثال: 123456789"><button class="single-action" type="submit">⌕ &nbsp; عرض بيانات الاشتراك</button><p id="singleLookupMessage" class="single-message" role="status"></p></form><div class="security-note"><i>▣</i><span>ملاحظة أمنية: تقوم البوابة بجمع بيانات الجهاز والمتصفح تلقائيًا لربط اشتراكك بجهاز واحد وحمايته.</span></div></div><div class="clean-footer"><a class="support-line" target="_blank" rel="noopener" href="https://wa.me/?text='+encodeURIComponent('مرحبًا، لا أجد رقم طلبي في بوابة أدفانسد برو')+'">لا تجد رقم الطلب؟ تواصل مع الدعم</a><div class="copyright">© بوابة أدفانسد برو | Advanced Pro Portal</div></div></div></section></main>';
+    portal.innerHTML = '<main class="single-home"><section class="split-top"><div class="split-copy"><h1 class="split-title">بوابة استعلام عن طلبك</h1><p class="split-lead">أدخل رقم الطلب لعرض وتفعيل اشتراكك فورًا</p></div></section><section class="split-bottom"><div class="floating-wrap"><div class="single-card"><form id="singleOrderLookup"><label class="single-label" for="singleOrderNumber"><b>#</b> رقم الطلب</label><input id="singleOrderNumber" class="single-input" name="orderNumber" required inputmode="numeric" autocomplete="off" placeholder="مثال: 123456789"><button class="single-action" type="submit">⌕ &nbsp; عرض بيانات الاشتراك</button><p id="singleLookupMessage" class="single-message" role="status"></p></form><div class="security-note"><i>▣</i><span>ملاحظة أمنية: تقوم البوابة بجمع بيانات الجهاز والمتصفح تلقائيًا لربط اشتراكك بجهاز واحد وحمايته.</span></div></div><div class="clean-footer"><a class="support-line" target="_blank" rel="noopener" href="https://wa.me/?text='+encodeURIComponent('مرحبًا، لا أجد رقم طلبي في بوابة أدفانسد برو')+'">لا تجد رقم الطلب؟ تواصل مع الدعم</a><div class="copyright">© بوابة أدفانسد برو | Advanced Pro Portal</div></div></div></section></main>';
     document.documentElement.classList.remove('split-boot');
 
     document.getElementById('singleOrderLookup').addEventListener('submit', async event => {
