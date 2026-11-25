@@ -1,8 +1,8 @@
 <style>
-  body.split-home-ready { background: #050a18 !important; }
+  body.split-home-ready { background: #071a35 !important; }
   .split-home-ready .top, .split-home-ready > .footer, .split-home-ready .shell > .footer { display: none !important; }
   .split-home-ready .shell { max-width: none; padding: 0; }
-  .single-home { min-height: 100vh; background: #050a18; color: #f8fafc; overflow: hidden; }
+  .single-home { min-height: 100vh; background: #071a35; color: #f8fafc; overflow: hidden; }
   .split-top {
     position: relative;
     min-height: 45vh;
@@ -32,6 +32,28 @@
     box-shadow: 0 0 0 58px #ffffff0b, 0 0 0 116px #ffffff09;
   }
   .split-copy { position: relative; z-index: 1; max-width: 760px; }
+  .corner-logo {
+    position: absolute;
+    z-index: 2;
+    top: 25px;
+    right: clamp(18px, 4vw, 58px);
+    width: 74px;
+    height: 74px;
+    overflow: hidden;
+    border: 1px solid #ffffff40;
+    border-radius: 18px;
+    background: #071a35;
+    box-shadow: 0 15px 35px #43140766, inset 0 1px #ffffff26;
+  }
+  .corner-logo img {
+    position: absolute;
+    width: 235px;
+    max-width: none;
+    height: auto;
+    left: -81px;
+    top: -48px;
+    display: block;
+  }
   .brand-pill {
     display: inline-flex;
     align-items: center;
@@ -55,13 +77,13 @@
     letter-spacing: -.045em;
   }
   .split-lead { margin: 0; color: #fff; opacity: .9; font-size: clamp(.95rem, 2vw, 1.08rem); }
-  .split-bottom { min-height: 55vh; padding: 0 20px 36px; background: #050a18; }
+  .split-bottom { min-height: 55vh; padding: 0 20px 36px; background: #071a35; }
   .floating-wrap { width: min(570px, 100%); margin: 0 auto; transform: translateY(-112px); }
   .single-card {
     padding: 27px;
     border: 1px solid #1e293b;
     border-radius: 24px;
-    background: #0a1428;
+    background: #0b2142;
     box-shadow: 0 30px 85px #000a, 0 15px 35px #02061799;
   }
   .single-label {
@@ -83,7 +105,7 @@
     border: 1px solid #1e293b;
     border-radius: 13px;
     outline: none;
-    background: #050a18;
+    background: #06152d;
     transition: border-color .2s, box-shadow .2s;
   }
   .single-input::placeholder { color: #64748b; }
@@ -126,6 +148,8 @@
     .floating-wrap { transform: translateY(-88px); }
     .single-card { padding: 19px 16px; border-radius: 20px; }
     .brand-pill { font-size: .68rem; }
+    .corner-logo { width: 62px; height: 62px; top: 17px; right: 16px; border-radius: 15px; }
+    .corner-logo img { width: 198px; left: -68px; top: -40px; }
   }
 </style>
 <script>
@@ -134,7 +158,8 @@
     const portal = document.getElementById('portal');
     if (!portal) return;
     document.body.classList.add('split-home-ready');
-    portal.innerHTML = '<main class="single-home"><section class="split-top"><div class="split-copy"><span class="brand-pill"><i>♢</i> بوابة أدفانسد برو | Advanced Pro Portal</span><h1 class="split-title">بوابة استعلام عن طلبك</h1><p class="split-lead">أدخل رقم الطلب لعرض وتفعيل اشتراكك فورًا</p></div></section><section class="split-bottom"><div class="floating-wrap"><div class="single-card"><form id="singleOrderLookup"><label class="single-label" for="singleOrderNumber"><b>#</b> رقم الطلب</label><input id="singleOrderNumber" class="single-input" name="orderNumber" required inputmode="numeric" autocomplete="off" placeholder="مثال: 123456789"><button class="single-action" type="submit">⌕ &nbsp; عرض بيانات الاشتراك</button><p id="singleLookupMessage" class="single-message" role="status"></p></form><div class="security-note"><i>▣</i><span>ملاحظة أمنية: تقوم البوابة بجمع بيانات الجهاز والمتصفح تلقائيًا لربط اشتراكك بجهاز واحد وحمايته.</span></div></div><div class="clean-footer"><a class="support-line" target="_blank" rel="noopener" href="https://wa.me/?text='+encodeURIComponent('مرحبًا، لا أجد رقم طلبي في بوابة أدفانسد برو')+'">لا تجد رقم الطلب؟ تواصل مع الدعم</a><div class="copyright">© بوابة أدفانسد برو | Advanced Pro Portal</div></div></div></section></main>';
+    portal.innerHTML = '<main class="single-home"><section class="split-top"><span class="corner-logo" aria-label="شعار بوابة أدفانسد برو"><img src="/assets/bawaba-logo.jpeg" alt="شعار بوابة أدفانسد برو"></span><div class="split-copy"><h1 class="split-title">بوابة استعلام عن طلبك</h1><p class="split-lead">أدخل رقم الطلب لعرض وتفعيل اشتراكك فورًا</p></div></section><section class="split-bottom"><div class="floating-wrap"><div class="single-card"><form id="singleOrderLookup"><label class="single-label" for="singleOrderNumber"><b>#</b> رقم الطلب</label><input id="singleOrderNumber" class="single-input" name="orderNumber" required inputmode="numeric" autocomplete="off" placeholder="مثال: 123456789"><button class="single-action" type="submit">⌕ &nbsp; عرض بيانات الاشتراك</button><p id="singleLookupMessage" class="single-message" role="status"></p></form><div class="security-note"><i>▣</i><span>ملاحظة أمنية: تقوم البوابة بجمع بيانات الجهاز والمتصفح تلقائيًا لربط اشتراكك بجهاز واحد وحمايته.</span></div></div><div class="clean-footer"><a class="support-line" target="_blank" rel="noopener" href="https://wa.me/?text='+encodeURIComponent('مرحبًا، لا أجد رقم طلبي في بوابة أدفانسد برو')+'">لا تجد رقم الطلب؟ تواصل مع الدعم</a><div class="copyright">© بوابة أدفانسد برو | Advanced Pro Portal</div></div></div></section></main>';
+    document.documentElement.classList.remove('split-boot');
 
     document.getElementById('singleOrderLookup').addEventListener('submit', async event => {
       event.preventDefault();
