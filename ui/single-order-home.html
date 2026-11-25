@@ -1,0 +1,172 @@
+<style>
+  .single-home {
+    position: relative;
+    min-height: calc(100vh - 158px);
+    display: grid;
+    place-items: center;
+    padding: 72px 0 62px;
+    isolation: isolate;
+  }
+  .single-home::before {
+    content: "";
+    position: fixed;
+    z-index: -2;
+    inset: 0;
+    background:
+      radial-gradient(ellipse at 82% 42%, #fb923c42 0, #c2410c2b 28%, transparent 57%),
+      radial-gradient(ellipse at 12% 20%, #1d4ed83b 0, transparent 48%),
+      linear-gradient(112deg, #050a18 0 48%, #331209 100%);
+  }
+  .single-home::after {
+    content: "";
+    position: fixed;
+    z-index: -1;
+    inset: 0;
+    opacity: .34;
+    background-image:
+      linear-gradient(#ffffff0a 1px, transparent 1px),
+      linear-gradient(90deg, #ffffff0a 1px, transparent 1px);
+    background-size: 42px 42px;
+    mask-image: linear-gradient(to bottom, #000 0, transparent 88%);
+  }
+  .single-wrap { width: min(720px, 100%); text-align: center; }
+  .single-kicker {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 13px;
+    color: #fed7aa;
+    border: 1px solid #fb923c66;
+    border-radius: 999px;
+    background: #7c2d122e;
+    font-size: .78rem;
+    font-weight: 800;
+  }
+  .single-title {
+    margin: 22px 0 10px;
+    color: #f8fafc;
+    font-size: clamp(2.15rem, 6vw, 4rem);
+    line-height: 1.16;
+    letter-spacing: -.045em;
+  }
+  .single-title span {
+    background: linear-gradient(90deg, #f8fafc, #fb923c);
+    -webkit-background-clip: text;
+    color: transparent;
+  }
+  .single-lead { margin: 0 auto 28px; color: #cbd5e1; line-height: 1.9; }
+  .single-card {
+    position: relative;
+    padding: 1px;
+    border-radius: 24px;
+    background: linear-gradient(120deg, #fb923c99, #334155 50%, #1e3a8a88);
+    box-shadow: 0 30px 100px #020617b3, 0 0 70px #c2410c24;
+  }
+  .single-card-inner {
+    padding: 25px;
+    border-radius: 23px;
+    background: linear-gradient(145deg, #0a1428ed, #050a18e8);
+    backdrop-filter: blur(28px);
+  }
+  .single-label { display: block; margin-bottom: 9px; color: #e2e8f0; font-size: .84rem; font-weight: 800; text-align: right; }
+  .single-input-wrap { position: relative; }
+  .single-input-wrap b {
+    position: absolute;
+    right: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #fb923c;
+    font-size: 1.15rem;
+  }
+  .single-input {
+    width: 100%;
+    height: 60px;
+    padding: 0 46px 0 16px;
+    color: #f8fafc;
+    font-size: 1.06rem;
+    text-align: right;
+    border: 1px solid #334155;
+    border-radius: 14px;
+    outline: none;
+    background: #050a18cc;
+    transition: .2s ease;
+  }
+  .single-input:focus { border-color: #fb923c; box-shadow: 0 0 0 4px #c2410c29; }
+  .single-action {
+    width: 100%;
+    margin-top: 13px;
+    padding: 16px;
+    border: 0;
+    border-radius: 14px;
+    color: #fff;
+    font-weight: 900;
+    background: linear-gradient(105deg, #9a3412, #c2410c 56%, #ea580c);
+    box-shadow: 0 14px 32px #c2410c42;
+  }
+  .single-action:disabled { cursor: wait; opacity: .7; }
+  .single-message { min-height: 20px; margin: 11px 0 0; color: #fda4af; font-size: .8rem; }
+  .security-note {
+    display: flex;
+    gap: 11px;
+    align-items: flex-start;
+    margin-top: 15px;
+    padding: 13px 14px;
+    color: #cbd5e1;
+    text-align: right;
+    line-height: 1.7;
+    font-size: .73rem;
+    border: 1px solid #fb923c38;
+    border-radius: 13px;
+    background: #c2410c0e;
+  }
+  .security-note i { color: #fb923c; font-style: normal; font-size: 1rem; }
+  .single-footer { margin-top: 34px; color: #94a3b8; font-size: .75rem; }
+  .minimal-nav { display: flex; align-items: center; gap: 10px; }
+  .delivery-badge { color: #a7f3d0; font-size: .72rem; white-space: nowrap; }
+  .delivery-badge::before { content: ""; display: inline-block; width: 7px; height: 7px; margin-left: 6px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 12px #22c55e; }
+  @media (max-width: 650px) {
+    .single-home { padding: 50px 0 42px; }
+    .single-card-inner { padding: 17px; }
+    .single-title { font-size: 2.3rem; }
+    .delivery-badge { display: none; }
+    .top .logo b, .top .logo .sub { display: none; }
+  }
+</style>
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    if (location.pathname !== '/') return;
+    const top = document.querySelector('.top');
+    const portal = document.getElementById('portal');
+    const footer = document.querySelector('.footer');
+    if (!top || !portal) return;
+
+    top.innerHTML = '<a href="/" class="logo" aria-label="بوابة أدفانسد برو"><img class="logo-art" src="/assets/bawaba-logo.jpeg" alt="شعار بوابة أدفانسد برو"><span><strong>بوابة أدفانسد برو</strong> <b>| Advanced Pro Portal</b><div class="sub">بوابة الاشتراكات الرقمية</div></span></a><div class="minimal-nav"><span class="delivery-badge">تسليم آلي فوري</span><a class="store-link" target="_blank" rel="noopener" href="__STORE_URL__">المتجر ↗</a></div>';
+    portal.innerHTML = '<main class="single-home"><div class="single-wrap"><span class="single-kicker">✦ دخول سريع وآمن</span><h1 class="single-title">اشتراكك جاهز<br><span>برقم الطلب فقط</span></h1><p class="single-lead">أدخل رقم طلبك في سلة للوصول إلى بوابة اشتراكك وتفعيله فورًا.</p><div class="single-card"><div class="single-card-inner"><form id="singleOrderLookup"><label class="single-label" for="singleOrderNumber">رقم الطلب في سلة</label><div class="single-input-wrap"><b>#</b><input id="singleOrderNumber" class="single-input" name="orderNumber" required inputmode="numeric" autocomplete="off" placeholder="مثال: 194820194"></div><button class="single-action" type="submit">دخول وتفعيل الاشتراك ←</button><p id="singleLookupMessage" class="single-message" role="status"></p></form><div class="security-note"><i>🛡</i><span><strong>ملاحظة أمنية:</strong> تقوم البوابة بجمع بيانات تقنية أساسية (معرّف المتصفح والجهاز وعنوان الاتصال) تلقائيًا لربط اشتراكك بجهاز واحد وحماية حسابك من الوصول غير المصرح به.</span></div></div></div><div class="single-footer">© بوابة أدفانسد برو | Advanced Pro Portal</div></div></main>';
+    if (footer) footer.style.display = 'none';
+
+    document.getElementById('singleOrderLookup').addEventListener('submit', async event => {
+      event.preventDefault();
+      const form = event.currentTarget;
+      const button = form.querySelector('button');
+      const message = document.getElementById('singleLookupMessage');
+      button.disabled = true;
+      button.textContent = 'جارِ التحقق…';
+      message.textContent = '';
+      try {
+        const result = await fetch('/api/public/lookup', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ orderNumber: form.elements.orderNumber.value })
+        });
+        const data = await result.json().catch(() => ({}));
+        if (result.ok && data.redirectTo) return location.assign(data.redirectTo);
+        message.textContent = data.message || 'لم يتم العثور على الطلب. تحقق من الرقم وحاول مجددًا.';
+      } catch {
+        message.textContent = 'تعذر الاتصال بالخدمة. حاول بعد قليل.';
+      } finally {
+        button.disabled = false;
+        button.textContent = 'دخول وتفعيل الاشتراك ←';
+      }
+    });
+  });
+</script>
