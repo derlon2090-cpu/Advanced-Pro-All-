@@ -20,7 +20,7 @@ if (!page) throw new Error("Could not extract the HTML page from worker/index.js
 // The Vercel target serves public/index.html, while the Cloudflare target
 // renders the Worker response. Keep customer-facing enhancements identical
 // in both targets by extracting the same HTML fragments at build time.
-const fragments = ["premiumHomeUi", "settingsUi"]
+const fragments = ["premiumHomeUi", "settingsUi", "adminWorkspaceUi"]
   .map((name) => {
     const match = workerSource.match(new RegExp("const " + name + "=`([\\s\\S]*?)`;"));
     if (!match) throw new Error(`Could not extract ${name} from worker/index.js`);
