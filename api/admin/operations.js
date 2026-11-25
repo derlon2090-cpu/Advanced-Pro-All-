@@ -17,21 +17,31 @@ async function db(path, options = {}) {
 export default async function handler(request, response) {
   if (!(await requireAdmin(request))) return response.status(401).json({ message: 'جلسة غير صالحة.' });
   if (request.method === 'GET') {
-    const [capacity, rotations, mappings, settings] = await Promise.all([
+    const [capacity, rotations, mappings, settings, mailLogs, stores] = await Promise.all([
       db('admin_capacity_radar?select=*'), db('admin_password_rotation_queue?select=*'),
       db('salla_product_mappings?select=*&order=created_at.desc'), db('system_settings?select=*&singleton=eq.true'),
+      db('mail_delivery_logs?select=recipient_address,category,received_at,email_accounts(mailbox_alias)&order=received_at.desc&limit=5'),
+      db('stores?select=id&order=created_at.asc&limit=1'),
     ]);
-    if (!capacity.ok || !rotations.ok || !mappings.ok || !settings.ok) return response.status(502).json({ message: 'تعذر تحميل بيانات التشغيل.' });
-    return response.status(200).json({ capacity: await capacity.json(), rotations: await rotations.json(), mappings: await mappings.json(), settings: (await settings.json())[0] || {} });
+    if (!capacity.ok || !rotations.ok || !mappings.ok || !settings.ok || !mailLogs.ok || !stores.ok) return response.status(502).json({ message: 'تعذر تحميل بيانات التشغيل.' });
+    return response.status(200).json({ capacity: await capacity.json(), rotations: await rotations.json(), mappings: await mappings.json(), settings: (await settings.json())[0] || {}, mailLogs: await mailLogs.json(), storeId: (await stores.json())[0]?.id || null });
   }
   if (request.method === 'POST') {
-    const { action, emailAccountId, mapping, settings } = request.body || {};
+    const { action, emailAccountId, mapping, settings, bulk } = request.body || {};
     let result;
     if (action === 'save_mapping') {
       if (!mapping?.salla_product_id || !mapping?.service_type) return response.status(400).json({ message: 'رقم المنتج والخدمة مطلوبان.' });
       result = await db('salla_product_mappings?on_conflict=salla_product_id', { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates' }, body: JSON.stringify({ salla_product_id: String(mapping.salla_product_id), product_title: mapping.product_title || null, service_type: mapping.service_type, duration_days: Number(mapping.duration_days) || 30, updated_at: new Date().toISOString() }) });
     } else if (action === 'save_settings') {
       result = await db('system_settings?singleton=eq.true', { method: 'PATCH', body: JSON.stringify({ banner_active: Boolean(settings?.banner_active), banner_message: settings?.banner_message || null, auto_assignment_paused: Boolean(settings?.auto_assignment_paused), updated_at: new Date().toISOString() }) });
+    } else if (action === 'bulk_import') {
+      const aliases = String(bulk?.entries || '').split(/\r?\n/).map(line => line.trim().split(/[,:]/)[0].trim().toLowerCase()).filter(value => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(value));
+      if (!bulk?.storeId || !aliases.length) return response.status(400).json({ message: 'أدخل بريدًا صالحًا واحدًا على الأقل.' });
+      result = await db('rpc/bulk_import_email_accounts', { method: 'POST', body: JSON.stringify({ p_store_id: bulk.storeId, p_service_type: bulk.serviceType, p_max_slots: Number(bulk.maxSlots) || 1, p_aliases: aliases }) });
+      if (result.ok) return response.status(200).json({ report: (await result.json())[0], ignoredCredentials: true });
+    } else if (action === 'archive_expired') {
+      result = await db('rpc/archive_expired_email_accounts', { method: 'POST', body: '{}' });
+      if (result.ok) return response.status(200).json({ archived: await result.json() });
     } else {
       if (!emailAccountId) return response.status(400).json({ message: 'معرّف الحساب مطلوب.' });
       result = await db('rpc/confirm_password_rotation', { method: 'POST', body: JSON.stringify({ p_email_account_id: emailAccountId }) });

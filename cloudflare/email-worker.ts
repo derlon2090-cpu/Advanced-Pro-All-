@@ -15,6 +15,8 @@ export default {
       body: JSON.stringify({
         messageId: message.headers.get("message-id") || crypto.randomUUID(),
         to: message.to.toLowerCase(),
+        envelopeTo: message.to.toLowerCase(),
+        forwardedTo: [message.headers.get("x-forwarded-to"), message.headers.get("delivered-to")].filter(Boolean),
         from: message.from,
         subject: message.headers.get("subject") || "",
         textBody: raw.slice(0, 4000),
