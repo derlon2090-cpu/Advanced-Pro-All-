@@ -1,4 +1,5 @@
 import { allowedAdmin, tokenFromRequest } from './_auth.js';
+import disputeReportHandler from '../../lib/dispute-report-api.js';
 
 async function requireAdmin(request) {
   const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL, anon = process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY, token = tokenFromRequest(request);
@@ -16,6 +17,7 @@ async function db(path, options = {}) {
 }
 
 export default async function handler(request, response) {
+  if (request.query?._route === 'dispute-report') return disputeReportHandler(request, response);
   if (!(await requireAdmin(request))) return response.status(401).json({ message: 'جلسة غير صالحة.' });
   if (request.method === 'GET') {
     const [capacity, rotations, mappings, settings, mailLogs, stores, orders, accounts, mailSecurityEvents] = await Promise.all([

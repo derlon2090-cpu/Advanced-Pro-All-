@@ -1,4 +1,6 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
+import activityHandler from '../../lib/activity-api.js';
+import verifyDeviceHandler from '../../lib/verify-device-api.js';
 
 const buckets = new Map();
 const clientIp = request => String(request.headers['x-forwarded-for'] || request.headers['x-real-ip'] || 'unknown').split(',')[0].trim().slice(0, 128);
@@ -35,6 +37,8 @@ const publicUrl = value => {
 };
 
 export default async function handler(request, response) {
+  if (request.query?._route === 'activity') return activityHandler(request, response);
+  if (request.query?._route === 'verify-device') return verifyDeviceHandler(request, response);
   if (!['GET', 'POST'].includes(request.method)) return response.status(405).json({ message: 'الطريقة غير مسموحة.' });
   if (!allowed(request)) return response.status(429).setHeader('Retry-After', '60').json({ message: 'طلبات كثيرة، حاول بعد دقيقة.' });
   const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;

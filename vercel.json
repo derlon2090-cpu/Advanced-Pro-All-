@@ -2,6 +2,9 @@
   "buildCommand": "npm run build",
   "outputDirectory": "public",
   "rewrites": [
+    { "source": "/api/public/activity", "destination": "/api/public/track?_route=activity" },
+    { "source": "/api/public/verify-device", "destination": "/api/public/track?_route=verify-device" },
+    { "source": "/api/admin/dispute-report", "destination": "/api/admin/operations?_route=dispute-report" },
     { "source": "/admin/:path*", "destination": "/index.html" },
     { "source": "/track/:path*", "destination": "/index.html" }
   ],
