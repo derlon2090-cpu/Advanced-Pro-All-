@@ -31,6 +31,8 @@ password change, or device management action.
 
 Apply Supabase migration `009_order_warranty_acknowledgment.sql` before deploying the matching application version. Configure `PUBLIC_CRUNCHYROLL_PORTAL_URL` for the separate Crunchyroll login portal and `PUBLIC_SUPPORT_WHATSAPP` as the international WhatsApp number without a leading `+`.
 
+Apply migration `010_renewal_offer.sql` to configure a product-specific Salla renewal URL and optional discount code from the Products tab. Configure `PUBLIC_SALLA_REVIEW_URL` with the store's rating page; customers who request help are routed to `PUBLIC_SUPPORT_WHATSAPP` instead.
+
 The public tracking API exposes only order, warranty, and acknowledgment status. It never returns stored IP, user-agent, account credentials, OTPs, or approval links.
 
 Migration `004_operational_capacity.sql` adds a server-only slot limit per

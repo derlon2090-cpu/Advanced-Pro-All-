@@ -14,6 +14,10 @@
   .ticket-head > * { position: relative; z-index: 1; }
   .ticket-head h1 { margin: 8px 0 5px; font-size: clamp(1.45rem, 4vw, 2.25rem); }
   .order-number { color: #ffedd5; font-weight: 800; }
+  .copy-inline { display: inline-flex; align-items: center; gap: 7px; }
+  .copy-button { padding: 5px 8px; border: 1px solid #ffffff45; border-radius: 8px; color: #fff7ed; background: #43140766; font: inherit; font-size: .72rem; cursor: pointer; transition: .2s; }
+  .copy-button:hover { background: #7c2d1266; }
+  .copy-button.copied { border-color: #22c55e88; color: #86efac; background: #052e2b; }
   .state-badge { flex: 0 0 auto; padding: 8px 13px; border: 1px solid #ffffff45; border-radius: 999px; background: #052e2bd9; color: #86efac; font-weight: 900; }
   .state-badge.expired { background: #334155d9; color: #e2e8f0; }
   .state-badge.pending { background: #78350fd9; color: #fde68a; }
@@ -45,13 +49,28 @@
   .order-actions a { padding: 14px; border-radius: 12px; text-align: center; font-weight: 900; }
   .crunchy-action { color: #fff; background: #c2410c; }
   .support-action { color: #bbf7d0; border: 1px solid #166534; background: #052e2040; }
+  .post-ack { display: grid; gap: 14px; margin-top: 15px; }
+  .account-card, .renewal-card, .feedback-card { padding: 17px; border: 1px solid #1e3a5f; border-radius: 17px; background: #071426; }
+  .account-card h2, .renewal-card h2, .feedback-card h2 { margin: 0 0 10px; font-size: 1rem; }
+  .account-line { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 11px 12px; border-radius: 11px; background: #050f20; }
+  .account-line span { color: #94a3b8; font-size: .8rem; }
+  .account-line strong { direction: ltr; text-align: left; overflow-wrap: anywhere; }
+  .renewal-card { border-color: #c2410c; background: linear-gradient(135deg, #7c2d122e, #071426); }
+  .renewal-card p, .feedback-card p { margin: 0 0 13px; color: #cbd5e1; font-size: .88rem; }
+  .discount-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; padding: 10px 12px; border: 1px dashed #fb923c88; border-radius: 11px; color: #fed7aa; }
+  .renewal-button { display: block; padding: 14px; border-radius: 12px; color: #fff; background: linear-gradient(110deg, #c2410c, #f97316); text-align: center; font-weight: 900; }
+  .feedback-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .feedback-actions a, .feedback-actions button { padding: 12px; border: 1px solid #1e3a5f; border-radius: 11px; color: #e2e8f0; background: #050f20; text-align: center; font: inherit; font-weight: 800; cursor: pointer; }
+  .feedback-actions .positive { border-color: #166534; color: #bbf7d0; background: #052e2040; }
+  .feedback-thanks { margin: 10px 0 0 !important; color: #86efac !important; text-align: center; }
   .track-loading, .track-error { padding: 60px 20px; color: #94a3b8; text-align: center; }
   .track-error strong { display: block; margin-bottom: 8px; color: #fda4af; }
   @media (max-width: 700px) {
     .order-portal { padding: 20px 12px 38px; }
     .ticket-head { padding: 21px 18px; }
     .ticket-body { padding: 16px; }
-    .time-grid, .order-actions { grid-template-columns: 1fr; }
+    .time-grid, .order-actions, .feedback-actions { grid-template-columns: 1fr; }
+    .account-line { align-items: flex-start; flex-direction: column; }
     .time-cell { min-height: auto; }
   }
 </style>
@@ -65,6 +84,18 @@
     const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
     const date = value => value ? new Intl.DateTimeFormat('ar-SA', { dateStyle: 'medium' }).format(new Date(value)) : '—';
     const daysLeft = value => value ? Math.max(0, Math.ceil((new Date(value) - Date.now()) / 86400000)) : 0;
+    const copyButton = (value, label = 'نسخ') => '<button class="copy-button" type="button" data-copy="' + escapeHtml(value) + '" data-copy-label="' + escapeHtml(label) + '" aria-label="نسخ ' + escapeHtml(label) + '">⧉ ' + escapeHtml(label) + '</button>';
+    const bindCopyButtons = () => document.querySelectorAll('[data-copy]').forEach(button => {
+      button.onclick = async () => {
+        const value = button.dataset.copy || '';
+        try {
+          if (navigator.clipboard && window.isSecureContext) await navigator.clipboard.writeText(value);
+          else { const field = document.createElement('textarea'); field.value = value; field.style.position = 'fixed'; field.style.opacity = '0'; document.body.append(field); field.select(); document.execCommand('copy'); field.remove(); }
+          const original = button.innerHTML; button.classList.add('copied'); button.textContent = '✓ تم النسخ';
+          setTimeout(() => { button.classList.remove('copied'); button.innerHTML = original; }, 1800);
+        } catch { button.textContent = 'تعذر النسخ'; }
+      };
+    });
     const statusInfo = order => {
       if (order.expires_at && new Date(order.expires_at) <= new Date()) return ['منتهي', 'expired'];
       if (order.status === 'delivered' || order.status === 'follow_up_complete') return ['نشط', ''];
@@ -88,7 +119,14 @@
       const crunchyUrl = actions.crunchyrollPortalUrl || '/crunchyroll';
       const supportText = encodeURIComponent('مرحبًا، أطلب دعم الضمان للطلب #' + order.order_number + ' — المنتج: ' + (order.product_name || 'اشتراك رقمي'));
       const supportUrl = 'https://wa.me/' + (actions.supportWhatsapp || '') + '?text=' + supportText;
-      portal.innerHTML = '<main class="order-portal"><div class="order-wrap"><header class="order-brand"><div><strong>بوابة أدفانسد برو</strong><small>استعلام الطلبات والضمان</small></div><a href="/">استعلام عن طلب آخر</a></header><article class="digital-order"><header class="ticket-head"><div><span class="order-number">طلب #' + escapeHtml(order.order_number) + '</span><h1>' + escapeHtml(order.product_name || 'اشتراك رقمي') + '</h1><small>' + escapeHtml(order.service_type === 'crunchyroll' ? 'Crunchyroll' : order.service_type === 'chatgpt' ? 'ChatGPT' : 'منتج رقمي') + '</small></div><span class="state-badge ' + statusClass + '">' + statusLabel + '</span></header><div class="ticket-body"><section class="time-grid"><div class="time-cell"><span>تاريخ البداية</span><strong>' + date(order.starts_at) + '</strong></div><div class="time-cell"><span>تاريخ الانتهاء</span><strong>' + date(order.expires_at) + '</strong></div><div class="time-cell"><span>المدة المتبقية</span><strong>' + remaining + ' يوم من ' + escapeHtml(order.duration_days || 30) + '</strong><div class="progress" aria-label="نسبة المدة المنقضية"><i style="width:' + progress.toFixed(1) + '%"></i></div></div></section><section class="warranty-card ' + warranty.cls + '"><h2>' + warranty.title + '</h2><p>' + warranty.text + '</p></section><section class="ack-box"><h2>إقرار وسياسة المنتج</h2><ul class="ack-list">' + points.map(point => '<li>' + escapeHtml(point) + '</li>').join('') + '</ul><div id="ackArea">' + (acknowledged ? '<div class="ack-stamp">✓ تم توثيق الإقرار بتاريخ ' + date(order.acknowledged_at) + '</div>' : '<div class="ack-control"><label class="ack-check"><input id="ackCheckbox" type="checkbox"> <span>أقرّ بقراءة وموافقة شروط وسياسة المنتج أعلاه</span></label><button id="ackButton" class="ack-button" type="button" disabled>تأكيد الإقرار وعرض تفاصيل الاشتراك</button><p id="ackMessage" class="ack-message" role="status"></p></div>') + '</div></section><section id="orderActions" class="order-actions"' + (acknowledged ? '' : ' hidden') + '>' + (order.service_type === 'crunchyroll' ? '<a class="crunchy-action" href="' + escapeHtml(crunchyUrl) + '">الانتقال لبوابة دخول كرانشي رول واستلام رمز الموافقة</a>' : '') + (warrantyActive ? '<a class="support-action" target="_blank" rel="noopener" href="' + supportUrl + '">طلب دعم / تعويض الضمان (واتساب)</a>' : '') + '</section></div></article></div></main>';
+      const accountCard = order.account_email ? '<section class="account-card"><h2>بيانات الاشتراك</h2><div class="account-line"><div><span>البريد الإلكتروني</span><strong>' + escapeHtml(order.account_email) + '</strong></div>' + copyButton(order.account_email, 'نسخ البريد') + '</div></section>' : '';
+      const renewalCard = order.renewal_url && remaining <= 5 ? '<section class="renewal-card"><h2>' + (remaining > 0 ? 'اشتراكك ينتهي خلال ' + remaining + ' أيام' : 'انتهى اشتراكك') + '</h2><p>جدّد الآن لتفادي انقطاع الخدمة.</p>' + (order.renewal_discount_code ? '<div class="discount-row"><span>كود خصم خاص: <strong>' + escapeHtml(order.renewal_discount_code) + '</strong></span>' + copyButton(order.renewal_discount_code, 'نسخ الكود') + '</div>' : '') + '<a class="renewal-button" target="_blank" rel="noopener" href="' + escapeHtml(order.renewal_url) + '">جدّد اشتراكك الآن بضغطة زر ↗</a></section>' : '';
+      const positiveAction = actions.sallaReviewUrl ? '<a class="positive" target="_blank" rel="noopener" href="' + escapeHtml(actions.sallaReviewUrl) + '">نعم، كانت رائعة ⭐</a>' : '<button class="positive" type="button" data-feedback-positive>نعم، كانت رائعة ⭐</button>';
+      const feedbackCard = '<section class="feedback-card"><h2>هل كانت تجربة استلام طلبك سريعة؟</h2><p>رأيك يساعدنا على تحسين الخدمة.</p><div class="feedback-actions">' + positiveAction + '<a target="_blank" rel="noopener" href="' + supportUrl + '">واجهت مشكلة — تواصل معنا</a></div><p id="feedbackThanks" class="feedback-thanks" hidden>شكرًا لك، سعداء بخدمتك ✓</p></section>';
+      portal.innerHTML = '<main class="order-portal"><div class="order-wrap"><header class="order-brand"><div><strong>بوابة أدفانسد برو</strong><small>استعلام الطلبات والضمان</small></div><a href="/">استعلام عن طلب آخر</a></header><article class="digital-order"><header class="ticket-head"><div><span class="order-number copy-inline">طلب #' + escapeHtml(order.order_number) + ' ' + copyButton(order.order_number, 'نسخ الرقم') + '</span><h1>' + escapeHtml(order.product_name || 'اشتراك رقمي') + '</h1><small>' + escapeHtml(order.service_type === 'crunchyroll' ? 'Crunchyroll' : order.service_type === 'chatgpt' ? 'ChatGPT' : 'منتج رقمي') + '</small></div><span class="state-badge ' + statusClass + '">' + statusLabel + '</span></header><div class="ticket-body"><section class="time-grid"><div class="time-cell"><span>تاريخ البداية</span><strong>' + date(order.starts_at) + '</strong></div><div class="time-cell"><span>تاريخ الانتهاء</span><strong>' + date(order.expires_at) + '</strong></div><div class="time-cell"><span>المدة المتبقية</span><strong>' + remaining + ' يوم من ' + escapeHtml(order.duration_days || 30) + '</strong><div class="progress" aria-label="نسبة المدة المنقضية"><i style="width:' + progress.toFixed(1) + '%"></i></div></div></section><section class="warranty-card ' + warranty.cls + '"><h2>' + warranty.title + '</h2><p>' + warranty.text + '</p></section><section class="ack-box"><h2>إقرار وسياسة المنتج</h2><ul class="ack-list">' + points.map(point => '<li>' + escapeHtml(point) + '</li>').join('') + '</ul><div id="ackArea">' + (acknowledged ? '<div class="ack-stamp">✓ تم توثيق الإقرار بتاريخ ' + date(order.acknowledged_at) + '</div>' : '<div class="ack-control"><label class="ack-check"><input id="ackCheckbox" type="checkbox"> <span>أقرّ بقراءة وموافقة شروط وسياسة المنتج أعلاه</span></label><button id="ackButton" class="ack-button" type="button" disabled>تأكيد الإقرار وعرض تفاصيل الاشتراك</button><p id="ackMessage" class="ack-message" role="status"></p></div>') + '</div></section><section id="orderActions" class="order-actions"' + (acknowledged ? '' : ' hidden') + '>' + (order.service_type === 'crunchyroll' ? '<a class="crunchy-action" href="' + escapeHtml(crunchyUrl) + '">الانتقال لبوابة دخول كرانشي رول واستلام رمز الموافقة</a>' : '') + (warrantyActive ? '<a class="support-action" target="_blank" rel="noopener" href="' + supportUrl + '">طلب دعم / تعويض الضمان (واتساب)</a>' : '') + '</section>' + (acknowledged ? '<div class="post-ack">' + accountCard + renewalCard + feedbackCard + '</div>' : '') + '</div></article></div></main>';
+      bindCopyButtons();
+      const positiveFeedback = document.querySelector('[data-feedback-positive]');
+      if (positiveFeedback) positiveFeedback.onclick = () => { positiveFeedback.hidden = true; document.getElementById('feedbackThanks').hidden = false; };
       if (!acknowledged) {
         const checkbox = document.getElementById('ackCheckbox'), button = document.getElementById('ackButton'), message = document.getElementById('ackMessage');
         checkbox.onchange = () => { button.disabled = !checkbox.checked; message.textContent = ''; };
@@ -99,8 +137,7 @@
             const response = await fetch('/api/public/track?token=' + encodeURIComponent(token), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ token, accepted: true }) });
             const result = await response.json().catch(() => ({}));
             if (!response.ok) throw new Error(result.message || 'تعذر توثيق الإقرار.');
-            document.getElementById('ackArea').innerHTML = '<div class="ack-stamp">✓ تم توثيق الإقرار بتاريخ ' + date(result.order.acknowledged_at) + '</div>';
-            document.getElementById('orderActions').hidden = false;
+            render(result);
           } catch (error) {
             message.textContent = error.message; button.disabled = false; button.textContent = 'تأكيد الإقرار وعرض تفاصيل الاشتراك';
           }

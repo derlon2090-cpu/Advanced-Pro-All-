@@ -9,7 +9,7 @@ const supabase = (path, options = {}) => fetch(`${supabaseUrl()}/rest/v1/${path}
 });
 async function productMapping(productId) {
   if (!productId) return null;
-  const params = new URLSearchParams({ select: 'service_type,duration_days,has_warranty,warranty_days,acknowledgment_text', salla_product_id: `eq.${productId}`, limit: '1' });
+  const params = new URLSearchParams({ select: 'service_type,duration_days,has_warranty,warranty_days,acknowledgment_text,renewal_url,renewal_discount_code', salla_product_id: `eq.${productId}`, limit: '1' });
   const response = await supabase(`salla_product_mappings?${params}`);
   if (!response.ok) return null;
   return (await response.json())[0] || null;
@@ -66,6 +66,16 @@ export default async function handler(request, response) {
   if (!ingest.ok) return json(response, 502, { error: 'Order ingestion failed' });
   const orderId = await ingest.json();
   if (!orderId) return json(response, 200, { accepted: true, duplicate: true });
+  if (mapping?.renewal_url || mapping?.renewal_discount_code) {
+    await supabase(`orders?id=eq.${encodeURIComponent(orderId)}`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        renewal_url: mapping.renewal_url || null,
+        renewal_discount_code: String(mapping.renewal_discount_code || '').trim().slice(0, 80) || null,
+        updated_at: new Date().toISOString(),
+      }),
+    });
+  }
   if (await assignmentPaused()) return json(response, 200, { accepted: true, assigned: false, pendingAssignment: true, paused: true });
   const assigned = await supabase('rpc/assign_order_to_available_account', { method: 'POST', body: JSON.stringify({ p_order_id: orderId }) });
   if (!assigned.ok) return json(response, 502, { error: 'Assignment failed' });

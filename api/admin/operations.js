@@ -39,7 +39,12 @@ export default async function handler(request, response) {
       const defaultAcknowledgment = hasWarranty
         ? 'يشمل الضمان التوقف المفاجئ طوال المدة المحددة.\nيُلغى الضمان عند تغيير البريد أو كلمة المرور أو مشاركة الحساب.\nيتم التعويض بعد التحقق من الالتزام بشروط الاستخدام.'
         : 'يُسلّم المنتج بحالة سليمة وقت الشراء.\nهذا المنتج تسليم لمرة واحدة ولا يشمله التعويض بعد التسليم.\nيتحمل العميل مسؤولية حفظ بيانات المنتج بعد استلامه.';
-      result = await db('salla_product_mappings?on_conflict=salla_product_id', { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates' }, body: JSON.stringify({ salla_product_id: String(mapping.salla_product_id), product_title: mapping.product_title || null, service_type: mapping.service_type, duration_days: Math.min(Math.max(Number(mapping.duration_days) || 30, 1), 3660), has_warranty: hasWarranty, warranty_days: warrantyDays, acknowledgment_text: String(mapping.acknowledgment_text || defaultAcknowledgment).trim().slice(0, 4000), updated_at: new Date().toISOString() }) });
+      let renewalUrl = null;
+      if (mapping.renewal_url) {
+        try { const parsed = new URL(String(mapping.renewal_url)); renewalUrl = parsed.protocol === 'https:' ? parsed.toString() : null; } catch {}
+        if (!renewalUrl) return response.status(400).json({ message: 'رابط التجديد يجب أن يكون رابط HTTPS صالحًا.' });
+      }
+      result = await db('salla_product_mappings?on_conflict=salla_product_id', { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates' }, body: JSON.stringify({ salla_product_id: String(mapping.salla_product_id), product_title: mapping.product_title || null, service_type: mapping.service_type, duration_days: Math.min(Math.max(Number(mapping.duration_days) || 30, 1), 3660), has_warranty: hasWarranty, warranty_days: warrantyDays, acknowledgment_text: String(mapping.acknowledgment_text || defaultAcknowledgment).trim().slice(0, 4000), renewal_url: renewalUrl, renewal_discount_code: String(mapping.renewal_discount_code || '').trim().slice(0, 80) || null, updated_at: new Date().toISOString() }) });
     } else if (action === 'save_settings') {
       result = await db('system_settings?singleton=eq.true', { method: 'PATCH', body: JSON.stringify({ banner_active: Boolean(settings?.banner_active), banner_message: settings?.banner_message || null, auto_assignment_paused: Boolean(settings?.auto_assignment_paused), updated_at: new Date().toISOString() }) });
     } else if (action === 'bulk_import') {

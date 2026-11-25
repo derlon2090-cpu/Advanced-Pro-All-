@@ -30,7 +30,7 @@ export default async function handler(request, response) {
   const token = cleanToken(request.query?.token || request.body?.token);
   if (!token) return response.status(400).json({ message: 'رابط الطلب غير صالح.' });
 
-  const select = 'id,order_number,product_name,service_type,status,duration_days,starts_at,expires_at,has_warranty,warranty_days,warranty_expires_at,acknowledgment_text,acknowledged_at';
+  const select = 'id,order_number,product_name,service_type,status,duration_days,starts_at,expires_at,has_warranty,warranty_days,warranty_expires_at,acknowledgment_text,acknowledged_at,renewal_url,renewal_discount_code,account_assignments(email_accounts(mailbox_alias))';
   const params = new URLSearchParams({ select, tracking_token: `eq.${token}`, limit: '1' });
   const foundResponse = await database(`orders?${params}`);
   if (!foundResponse.ok) return response.status(502).json({ message: 'تعذر تحميل بيانات الطلب.' });
@@ -55,12 +55,16 @@ export default async function handler(request, response) {
     order.acknowledged_at = updated?.acknowledged_at || acknowledgedAt;
   }
 
+  const accountEmail = order.acknowledged_at ? order.account_assignments?.[0]?.email_accounts?.mailbox_alias || null : null;
   delete order.id;
+  delete order.account_assignments;
+  order.account_email = accountEmail;
   return response.status(200).setHeader('Cache-Control', 'private, no-store').json({
     order,
     actions: {
       crunchyrollPortalUrl: order.service_type === 'crunchyroll' ? publicUrl(process.env.PUBLIC_CRUNCHYROLL_PORTAL_URL) : null,
       supportWhatsapp: String(process.env.PUBLIC_SUPPORT_WHATSAPP || '').replace(/\D/g, '').slice(0, 20) || null,
+      sallaReviewUrl: publicUrl(process.env.PUBLIC_SALLA_REVIEW_URL),
     },
   });
 }
