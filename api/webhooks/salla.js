@@ -6,6 +6,27 @@ const supabase = (path, options = {}) => fetch(`${process.env.SUPABASE_URL}/rest
   ...options,
   headers: { apikey: process.env.SUPABASE_SERVICE_ROLE_KEY, authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`, 'content-type': 'application/json', ...(options.headers || {}) },
 });
+async function productMapping(productId) {
+  if (!productId) return null;
+  const params = new URLSearchParams({ select: 'service_type,duration_days', salla_product_id: `eq.${productId}`, limit: '1' });
+  const response = await supabase(`salla_product_mappings?${params}`);
+  if (!response.ok) return null;
+  return (await response.json())[0] || null;
+}
+async function assignmentPaused() {
+  const response = await supabase('system_settings?select=auto_assignment_paused&singleton=eq.true&limit=1');
+  if (!response.ok) return false;
+  return Boolean((await response.json())[0]?.auto_assignment_paused);
+}
+async function sendWhatsApp({ phone, orderNumber, trackingToken }) {
+  if (!process.env.WHATSAPP_API_URL || !process.env.WHATSAPP_API_TOKEN || !phone || !trackingToken) return false;
+  const message = `أهلاً بك في بوابة أدفانسد برو ✨\nرقم طلبك: ${orderNumber}\nرابط المتابعة: https://advsub.store/track/${trackingToken}\nتنبيه: الاشتراك مخصص لجهاز واحد.`;
+  const response = await fetch(process.env.WHATSAPP_API_URL, {
+    method: 'POST', headers: { authorization: `Bearer ${process.env.WHATSAPP_API_TOKEN}`, 'content-type': 'application/json' },
+    body: JSON.stringify({ to: phone, message }),
+  });
+  return response.ok;
+}
 function signatureValid(request) {
   const secret = process.env.SALLA_WEBHOOK_SECRET;
   if (!secret) return false;
@@ -22,22 +43,30 @@ export default async function handler(request, response) {
   if (!['order.created', 'order.updated'].includes(event)) return json(response, 202, { ignored: true });
   const order = payload.data || payload.order || payload;
   if (!['paid', 'completed'].includes(String(order.payment_status || order.status || '').toLowerCase())) return json(response, 202, { ignored: true, reason: 'order_not_paid' });
-  const productName = order.items?.[0]?.name || order.product_name || order.product?.name || '';
+  const item = order.items?.[0] || order.product || {};
+  const productName = item.name || order.product_name || '';
+  const productId = String(item.id || item.product_id || item.sku || order.product_id || order.sku || '');
+  const mapping = await productMapping(productId);
+  const fallbackDuration = /(?:2\s*month|شهرين|60\s*يوم)/i.test(productName) ? 60 : /(?:3\s*month|3\s*أشهر|90\s*يوم)/i.test(productName) ? 90 : 30;
   const args = {
     p_event_id: String(request.headers['x-salla-event-id'] || payload.event_id || payload.id || `${event}:${order.id}`),
     p_merchant_id: String(payload.merchant?.id || order.merchant_id || process.env.SALLA_MERCHANT_ID || ''),
     p_store_name: payload.merchant?.name || payload.store?.name || 'Salla', p_order_id: String(order.id),
     p_order_number: String(order.reference_id || order.number || order.id), p_customer_id: String(order.customer?.id || order.customer_id || 'unknown'),
     p_customer_name: order.customer?.name || '', p_customer_phone: order.customer?.mobile || order.customer?.phone || '',
-    p_product_name: productName, p_service_type: serviceFromProduct(productName),
+    p_product_name: productName, p_service_type: mapping?.service_type || serviceFromProduct(productName),
+    p_duration_days: mapping?.duration_days || fallbackDuration,
   };
   if (!args.p_merchant_id || !args.p_order_id) return json(response, 400, { error: 'Missing merchant or order identifier' });
   const ingest = await supabase('rpc/ingest_salla_paid_order', { method: 'POST', body: JSON.stringify(args) });
   if (!ingest.ok) return json(response, 502, { error: 'Order ingestion failed' });
   const orderId = await ingest.json();
   if (!orderId) return json(response, 200, { accepted: true, duplicate: true });
+  if (await assignmentPaused()) return json(response, 200, { accepted: true, assigned: false, pendingAssignment: true, paused: true });
   const assigned = await supabase('rpc/assign_order_to_available_account', { method: 'POST', body: JSON.stringify({ p_order_id: orderId }) });
   if (!assigned.ok) return json(response, 502, { error: 'Assignment failed' });
   const [result] = await assigned.json();
-  return json(response, 200, { accepted: true, assigned: Boolean(result?.assigned), pendingAssignment: !result?.assigned });
+  const wasAssigned = Boolean(result?.assigned);
+  const whatsappSent = wasAssigned ? await sendWhatsApp({ phone: args.p_customer_phone, orderNumber: args.p_order_number, trackingToken: result?.tracking_token }) : false;
+  return json(response, 200, { accepted: true, assigned: wasAssigned, pendingAssignment: !wasAssigned, productMappingUsed: Boolean(mapping), whatsappSent });
 }
