@@ -39,6 +39,8 @@ Migration `011_fair_device_confidence.sql` adds confidence-based device continui
 
 Migration `012_dispute_integrity_audit.sql` adds metadata-only account-integrity events and an admin dispute report. Password/email/logout alerts mark the shared account for rotation or review. A recent verified portal visit is shown only as a review candidate; it is never presented as proof that a specific customer changed an external account. Reports omit passwords, OTPs, raw mail, IP addresses, and raw city names.
 
+Migration `013_device_challenge_and_admin_reset.sql` adds single-use, 60-second device challenges, changes automatic suspension to two confirmed device mismatches, and provides the authenticated admin device-reset operation. Apply it before deploying this version; older schemas cannot complete device verification after this release.
+
 Migration `004_operational_capacity.sql` adds a server-only slot limit per
 service account and an `access_reviewed_at` timestamp. Calculate occupied
 seats from active `account_assignments`; do not infer account sharing from

@@ -8,7 +8,10 @@
   .order-brand a { color: #94a3b8; font-size: .9rem; }
   .order-brand strong { display: block; font-size: 1.05rem; }
   .order-brand small { color: #94a3b8; }
-  .digital-order { overflow: hidden; border: 1px solid #1e3a5f; border-radius: 26px; background: linear-gradient(145deg, #0a1d38, #071426); box-shadow: 0 28px 90px #0009; }
+  .digital-order { position: relative; overflow: hidden; border: 1px solid #1e3a5f; border-radius: 26px; background: linear-gradient(145deg, #0a1d38, #071426); box-shadow: 0 28px 90px #0009; }
+  .order-watermark { position: absolute; inset: 0; z-index: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 38px; overflow: hidden; padding: 34px; pointer-events: none; opacity: .045; transform: rotate(-12deg) scale(1.15); }
+  .order-watermark span { color: #fff; font-weight: 900; font-size: .72rem; white-space: nowrap; letter-spacing: .08em; }
+  .digital-order > :not(.order-watermark) { position: relative; z-index: 1; }
   .ticket-head { position: relative; display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; padding: 26px; background: linear-gradient(120deg, #9a3412, #c2410c 65%, #ea580c); }
   .ticket-head::after { content: ''; position: absolute; inset: 0; opacity: .1; background: repeating-linear-gradient(135deg, #fff 0 1px, transparent 1px 28px); pointer-events: none; }
   .ticket-head > * { position: relative; z-index: 1; }
@@ -127,7 +130,7 @@
           : { cls: 'expired', title: 'انتهت فترة الضمان', text: 'انتهت مدة التغطية المحددة لهذا الطلب.' };
       const points = String(order.acknowledgment_text || 'يرجى الالتزام بشروط استخدام المنتج وعدم مشاركة بياناته.').split(/\r?\n/).map(x => x.trim()).filter(Boolean);
       const acknowledged = Boolean(order.acknowledged_at);
-      const crunchyUrl = actions.crunchyrollPortalUrl || '/crunchyroll';
+      const crunchyUrl = actions.crunchyrollPortalUrl || '';
       const supportText = encodeURIComponent('مرحبًا، أطلب دعم الضمان للطلب #' + order.order_number + ' — المنتج: ' + (order.product_name || 'اشتراك رقمي'));
       const supportUrl = 'https://wa.me/' + (actions.supportWhatsapp || '') + '?text=' + supportText;
       const accountCard = order.account_email ? '<section class="account-card"><h2>بيانات الاشتراك</h2><div class="account-line"><div><span>البريد الإلكتروني</span><strong>' + escapeHtml(order.account_email) + '</strong></div>' + copyButton(order.account_email, 'نسخ البريد', 'account_email_copied') + '</div></section>' : '';
@@ -135,6 +138,12 @@
       const positiveAction = actions.sallaReviewUrl ? '<a class="positive" target="_blank" rel="noopener" href="' + escapeHtml(actions.sallaReviewUrl) + '">نعم، كانت رائعة ⭐</a>' : '<button class="positive" type="button" data-feedback-positive>نعم، كانت رائعة ⭐</button>';
       const feedbackCard = '<section class="feedback-card"><h2>هل كانت تجربة استلام طلبك سريعة؟</h2><p>رأيك يساعدنا على تحسين الخدمة.</p><div class="feedback-actions">' + positiveAction + '<a target="_blank" rel="noopener" href="' + supportUrl + '">واجهت مشكلة — تواصل معنا</a></div><p id="feedbackThanks" class="feedback-thanks" hidden>شكرًا لك، سعداء بخدمتك ✓</p></section>';
       portal.innerHTML = '<main class="order-portal"><div class="order-wrap"><header class="order-brand"><div><strong>بوابة أدفانسد برو</strong><small>استعلام الطلبات والضمان</small></div><a href="/">استعلام عن طلب آخر</a></header><article class="digital-order"><header class="ticket-head"><div><span class="order-number copy-inline">طلب #' + escapeHtml(order.order_number) + ' ' + copyButton(order.order_number, 'نسخ الرقم') + '</span><h1>' + escapeHtml(order.product_name || 'اشتراك رقمي') + '</h1><small>' + escapeHtml(order.service_type === 'crunchyroll' ? 'Crunchyroll' : order.service_type === 'chatgpt' ? 'ChatGPT' : 'منتج رقمي') + '</small></div><span class="state-badge ' + statusClass + '">' + statusLabel + '</span></header><div class="ticket-body"><section class="time-grid"><div class="time-cell"><span>تاريخ البداية</span><strong>' + date(order.starts_at) + '</strong></div><div class="time-cell"><span>تاريخ الانتهاء</span><strong>' + date(order.expires_at) + '</strong></div><div class="time-cell"><span>المدة المتبقية</span><strong>' + remaining + ' يوم من ' + escapeHtml(order.duration_days || 30) + '</strong><div class="progress" aria-label="نسبة المدة المنقضية"><i style="width:' + progress.toFixed(1) + '%"></i></div></div></section><section class="warranty-card ' + warranty.cls + '"><h2>' + warranty.title + '</h2><p>' + warranty.text + '</p></section><section class="ack-box"><h2>إقرار وسياسة المنتج</h2><ul class="ack-list">' + points.map(point => '<li>' + escapeHtml(point) + '</li>').join('') + '</ul><div id="ackArea">' + (acknowledged ? '<div class="ack-stamp">✓ تم توثيق الإقرار بتاريخ ' + date(order.acknowledged_at) + '</div>' : '<div class="ack-control"><label class="ack-check"><input id="ackCheckbox" type="checkbox"> <span>أقرّ بقراءة وموافقة شروط وسياسة المنتج أعلاه</span></label><button id="ackButton" class="ack-button" type="button" disabled>تأكيد الإقرار وعرض تفاصيل الاشتراك</button><p id="ackMessage" class="ack-message" role="status"></p></div>') + '</div></section><section id="orderActions" class="order-actions"' + (acknowledged ? '' : ' hidden') + '>' + (order.service_type === 'crunchyroll' ? '<a class="crunchy-action" href="' + escapeHtml(crunchyUrl) + '">الانتقال لبوابة دخول كرانشي رول واستلام رمز الموافقة</a>' : '') + (warrantyActive ? '<a class="support-action" target="_blank" rel="noopener" href="' + supportUrl + '">طلب دعم / تعويض الضمان (واتساب)</a>' : '') + '</section>' + (acknowledged ? '<div class="post-ack">' + accountCard + renewalCard + feedbackCard + '</div>' : '') + '</div></article></div></main>';
+      const card = portal.querySelector('.digital-order');
+      if (card) card.insertAdjacentHTML('afterbegin', '<div class="order-watermark" aria-hidden="true">' + Array.from({ length: 15 }, () => '<span>ORDER #' + escapeHtml(order.order_number) + '</span>').join('') + '</div>');
+      if (order.service_type === 'crunchyroll' && !crunchyUrl) {
+        const action = portal.querySelector('.crunchy-action');
+        if (action) action.outerHTML = '<p class="ack-message">بوابة Crunchyroll غير مهيأة حاليًا. تواصل مع الدعم لإكمال التفعيل.</p>';
+      }
       bindCopyButtons();
       const positiveFeedback = document.querySelector('[data-feedback-positive]');
       if (positiveFeedback) positiveFeedback.onclick = () => { positiveFeedback.hidden = true; document.getElementById('feedbackThanks').hidden = false; };
@@ -159,33 +168,40 @@
     const loadOrder = () => fetch('/api/public/track?token=' + encodeURIComponent(token), { headers: { accept: 'application/json' } })
       .then(async response => { const data = await response.json().catch(() => ({})); if (!response.ok) throw new Error(data.message || 'تعذر تحميل الطلب.'); return data; })
       .then(render);
+    const verifyDevice = async (action, dna) => {
+      const challengeResponse = await fetch('/api/public/verify-device', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ token, action: 'challenge' }) });
+      const challengePayload = await challengeResponse.json().catch(() => ({}));
+      if (!challengeResponse.ok || !challengePayload.challenge) throw new Error(challengePayload.message || 'تعذر إنشاء التحدي الأمني.');
+      const response = await fetch('/api/public/verify-device', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ token, action, challenge: challengePayload.challenge, ...dna }) });
+      return { response, result: await response.json().catch(() => ({})) };
+    };
     const showTransfer = (security, dna) => {
       portal.innerHTML = shell('<article class="digital-order device-card"><div class="device-icon">↻</div><h1>يبدو أنك تستخدم جهازًا جديدًا</h1><p>نرحب بك! لاحظنا أن هذا الجهاز مختلف عن جهازك السابق (<strong>' + escapeHtml(security.oldDeviceName || 'جهازك السابق') + '</strong>). إذا قمت بتغيير جهازك، يمكنك اعتماد هذا الجهاز الجديد مجانًا لمرة واحدة.</p><p class="device-note">لن نسجل أي مخالفة عند النقل. بعد اعتماده يصبح الجهاز السابق غير معتمد، ويتبقى لك ' + Math.max(0, Number(security.freeResetsRemaining) || 0) + ' فرصة نقل.</p><button id="deviceTransfer" class="device-transfer" type="button">اعتماد هذا الجهاز كجهازي الأساسي</button><p id="deviceTransferMessage" class="ack-message" role="status"></p></article>');
       const button = document.getElementById('deviceTransfer'), message = document.getElementById('deviceTransferMessage');
       button.onclick = async () => {
         button.disabled = true; button.textContent = 'جارِ اعتماد الجهاز…'; message.textContent = '';
         try {
-          const response = await fetch('/api/public/verify-device', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ token, action: 'transfer', ...dna }) });
-          const result = await response.json().catch(() => ({}));
+          const { response, result } = await verifyDevice('transfer', dna);
           if (!response.ok || !result.allowed) throw new Error(result.message || 'تعذر نقل الجهاز.');
           await loadOrder();
         } catch (error) { message.textContent = error.message; button.disabled = false; button.textContent = 'اعتماد هذا الجهاز كجهازي الأساسي'; }
       };
     };
     const showLocked = security => {
-      const reason = security.state === 'concurrent_different_city' ? 'رصدنا استخدامًا متزامنًا من جهازين وموقعين مختلفين خلال فترة قصيرة.' : 'تم استخدام فرصة نقل الجهاز المجانية سابقًا، وهذا الجهاز لا يطابق الجهاز المعتمد.';
+      const reason = security.message || 'تم رصد مخالفتين مؤكدتين لبصمة الجهاز.';
       portal.innerHTML = shell('<article class="digital-order device-card device-lock"><div class="device-icon">!</div><h1>تم إيقاف الوصول لحماية الاشتراك</h1><p>' + reason + '</p><p class="device-note">إذا كنت صاحب الطلب وتعتقد أن هذا الإجراء غير صحيح، تواصل مع الدعم لمراجعة الحالة يدويًا.</p></article>');
     };
+    const showStrike = security => portal.innerHTML = shell('<article class="digital-order device-card"><div class="device-icon">!</div><h1>تم رفض هذا الجهاز</h1><p>' + escapeHtml(security.message || 'الجهاز لا يطابق الجهاز المعتمد.') + '</p><p class="device-note">لم يتم قفل الطلب بعد. يتم القفل بعد مخالفتين مؤكدتين.</p></article>');
     portal.innerHTML = '<main class="order-portal"><div class="order-wrap"><div class="digital-order track-loading">جارِ تحميل بيانات الطلب…</div></div></main>';
     (async () => {
       try {
         const { collectDeviceDna } = await import('/lib/device-dna.js');
         const dna = await collectDeviceDna();
-        const response = await fetch('/api/public/verify-device', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ token, action: 'verify', ...dna }) });
-        const security = await response.json().catch(() => ({}));
+        const { response, result: security } = await verifyDevice('verify', dna);
         if (response.ok && security.allowed) return loadOrder();
         if (security.transferRequired) return showTransfer(security, dna);
         if (security.locked) return showLocked(security);
+        if (security.state === 'device_mismatch_strike') return showStrike(security);
         throw new Error(security.message || 'تعذر التحقق من الجهاز.');
       } catch (error) {
         portal.innerHTML = '<main class="order-portal"><div class="order-wrap"><div class="digital-order track-error"><strong>تعذر عرض الطلب</strong>' + escapeHtml(error.message) + '<br><br><a href="/">العودة إلى الاستعلام</a></div></div></main>';

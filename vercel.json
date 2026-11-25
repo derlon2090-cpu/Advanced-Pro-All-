@@ -1,10 +1,22 @@
 {
   "buildCommand": "npm run build",
   "outputDirectory": "public",
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "X-Frame-Options", "value": "DENY" },
+        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
+        { "key": "Strict-Transport-Security", "value": "max-age=63072000; includeSubDomains; preload" }
+      ]
+    }
+  ],
   "rewrites": [
     { "source": "/api/public/activity", "destination": "/api/public/track?_route=activity" },
     { "source": "/api/public/verify-device", "destination": "/api/public/track?_route=verify-device" },
     { "source": "/api/admin/dispute-report", "destination": "/api/admin/operations?_route=dispute-report" },
+    { "source": "/api/admin/orders/:id/reset-device", "destination": "/api/admin/operations?_route=reset-device&orderId=:id" },
     { "source": "/admin/:path*", "destination": "/index.html" },
     { "source": "/track/:path*", "destination": "/index.html" }
   ],

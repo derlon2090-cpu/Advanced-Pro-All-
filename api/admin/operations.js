@@ -19,6 +19,15 @@ async function db(path, options = {}) {
 export default async function handler(request, response) {
   if (request.query?._route === 'dispute-report') return disputeReportHandler(request, response);
   if (!(await requireAdmin(request))) return response.status(401).json({ message: 'جلسة غير صالحة.' });
+  if (request.query?._route === 'reset-device') {
+    if (request.method !== 'POST') return response.status(405).json({ message: 'الطريقة غير مسموحة.' });
+    const orderId = /^[0-9a-f-]{36}$/i.test(String(request.query?.orderId || '')) ? String(request.query.orderId) : null;
+    if (!orderId) return response.status(400).json({ message: 'معرّف الطلب غير صالح.' });
+    const reset = await db('rpc/admin_reset_order_device', { method: 'POST', body: JSON.stringify({ p_order_id: orderId, p_restore_free_reset: request.body?.restoreFreeReset !== false }) });
+    if (!reset.ok) return response.status(502).json({ message: 'تعذر تصفير الجهاز.' });
+    const [result] = await reset.json();
+    return result?.success ? response.status(200).json({ ok: true, freeResetsRemaining: result.free_resets_remaining }) : response.status(404).json({ message: 'الطلب غير موجود.' });
+  }
   if (request.method === 'GET') {
     const [capacity, rotations, mappings, settings, mailLogs, stores, orders, accounts, mailSecurityEvents] = await Promise.all([
       db('admin_capacity_radar?select=*'), db('admin_password_rotation_queue?select=*'),

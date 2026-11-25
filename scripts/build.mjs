@@ -24,7 +24,12 @@ const fragments = ["premiumHomeUi", "settingsUi", "adminWorkspaceUi"]
   .map((name) => {
     const match = workerSource.match(new RegExp("const " + name + "=`([\\s\\S]*?)`;"));
     if (!match) throw new Error(`Could not extract ${name} from worker/index.js`);
-    return match[1];
+    return name === "adminWorkspaceUi"
+      ? match[1]
+        .replace('<button id="quickNew" class="tab-action">＋ إضافة طلب جديد</button> ', '')
+        .replace("location.href='/login'", "location.href='/admin'")
+        .replace('init()})</script>', 'init()}})</script>')
+      : match[1];
   })
   .join("");
 const singleOrderHome = await readFile(resolve(root, "ui/single-order-home.html"), "utf8");

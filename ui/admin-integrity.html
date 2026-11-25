@@ -21,6 +21,23 @@
       if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(text);
       const field = document.createElement('textarea'); field.value = text; field.style.position = 'fixed'; field.style.opacity = '0'; document.body.append(field); field.select(); document.execCommand('copy'); field.remove();
     };
+    const paintOrderBadges = async () => {
+      const body = document.getElementById('ordersBody');
+      if (!body) return;
+      if (!cache) {
+        const response = await fetch('/api/admin/operations');
+        if (!response.ok) return;
+        cache = await response.json();
+      }
+      const byNumber = new Map((cache.orders || []).map(order => [String(order.order_number), Number(order.security_strikes || 0)]));
+      body.querySelectorAll('tr').forEach(row => {
+        const cell = row.cells?.[0];
+        if (!cell || cell.querySelector('[data-strike-badge]')) return;
+        const number = cell.textContent.replace(/\D/g, ''), strikes = byNumber.get(number);
+        if (strikes === undefined) return;
+        cell.insertAdjacentHTML('beforeend', '<br><span data-strike-badge class="integrity-badge ' + (strikes ? 'risk' : '') + '">' + strikes + ' مخالفات</span>');
+      });
+    };
     const renderIntegrity = async () => {
       const panel = document.getElementById('workspacePanel');
       if (!panel) return;
@@ -36,7 +53,7 @@
         const strikes = Number(order.security_strikes || 0), account = accountFor(order), review = account?.integrity_status && account.integrity_status !== 'healthy';
         const badge = strikes ? '<span class="integrity-badge risk">تعدد أجهزة · ' + strikes + '</span>' : '<span class="integrity-badge">عميل ملتزم · 0</span>';
         const accountBadge = review ? '<span class="integrity-badge review">' + (account.integrity_status === 'rotation_required' ? 'يحتاج تدوير / تعويض' : 'يتطلب مراجعة') + '</span>' : '<span class="integrity-badge">سليم</span>';
-        return '<tr><td>#' + escapeHtml(order.order_number) + '</td><td>' + escapeHtml(order.locked_device_name || 'لم يسجل بعد') + '</td><td>' + badge + '</td><td>' + accountBadge + '</td><td>' + (order.acknowledged_at ? new Date(order.acknowledged_at).toLocaleString('ar-SA') : 'لم يقر بعد') + '</td><td><button class="evidence-button" data-report-order="' + escapeHtml(order.id) + '">نسخ تقرير إثبات لشكوى سلة</button></td></tr>';
+        return '<tr><td>#' + escapeHtml(order.order_number) + '</td><td>' + escapeHtml(order.locked_device_name || 'لم يسجل بعد') + '</td><td>' + badge + '</td><td>' + accountBadge + '</td><td>' + (order.acknowledged_at ? new Date(order.acknowledged_at).toLocaleString('ar-SA') : 'لم يقر بعد') + '</td><td><button class="evidence-button" data-report-order="' + escapeHtml(order.id) + '">نسخ تقرير إثبات لشكوى سلة</button> <button class="evidence-button" data-reset-order="' + escapeHtml(order.id) + '">تصفير الجهاز</button></td></tr>';
       }).join('');
       panel.innerHTML = '<div class="integrity-summary"><article><span>عملاء بلا مخالفات</span><strong>' + clean + '</strong></article><article><span>طلبات متعددة الأجهزة</span><strong>' + risk + '</strong></article><article><span>حسابات تحتاج مراجعة/تدوير</span><strong>' + accountAlerts + '</strong></article></div><p class="audit-note">تنبيه مهني: ارتباط رسالة تغيير كلمة المرور بآخر نشاط خلال 30 دقيقة هو مرشح للمراجعة، وليس إثباتًا قطعيًا على هوية المتسبب. التقرير يفرّق بوضوح بين الوقائع الموثقة والاستنتاج الزمني.</p><div class="workspace-scroll"><table class="workspace-table integrity-table"><thead><tr><th>الطلب</th><th>الجهاز الأساسي</th><th>نزاهة العميل</th><th>سلامة الحساب</th><th>الإقرار</th><th>التقرير</th></tr></thead><tbody>' + (rows || '<tr><td colspan="6">لا توجد طلبات.</td></tr>') + '</tbody></table></div>';
       panel.querySelectorAll('[data-report-order]').forEach(button => button.onclick = async () => {
@@ -49,11 +66,28 @@
           setTimeout(() => { button.classList.remove('copied'); button.textContent = original; button.disabled = false; }, 2200);
         } catch (error) { button.textContent = error.message; setTimeout(() => { button.textContent = original; button.disabled = false; }, 2500); }
       });
+      panel.querySelectorAll('[data-reset-order]').forEach(button => button.onclick = async () => {
+        if (!confirm('سيتم فك القفل وحذف بصمة الجهاز المسجلة. هل تريد المتابعة؟')) return;
+        const restoreFreeReset = confirm('هل تريد إعادة منح فرصة نقل مجانية؟\nموافق = نعم، إلغاء = الإبقاء على الرصيد الحالي.');
+        const original = button.textContent; button.disabled = true; button.textContent = 'جارِ التصفير…';
+        try {
+          const response = await fetch('/api/admin/orders/' + encodeURIComponent(button.dataset.resetOrder) + '/reset-device', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ restoreFreeReset }) });
+          const body = await response.json().catch(() => ({}));
+          if (!response.ok) throw new Error(body.message || 'تعذر تصفير الجهاز.');
+          cache = null; await renderIntegrity();
+        } catch (error) { button.textContent = error.message; setTimeout(() => { button.textContent = original; button.disabled = false; }, 2500); }
+      });
     };
     const attach = () => {
       const host = document.querySelector('.workspace'), nav = host?.querySelector('.workspace-tabs');
       if (!host || !nav || host === attachedHost) return;
       attachedHost = host;
+      host.querySelector('#quickNew')?.remove();
+      const signOut = host.querySelector('#signOut');
+      if (signOut) signOut.onclick = async () => { await fetch('/api/admin/logout', { method: 'POST' }); location.href = '/admin'; };
+      const ordersTab = host.querySelector('[data-tab="orders"]');
+      if (ordersTab) ordersTab.addEventListener('click', () => setTimeout(paintOrderBadges, 0));
+      paintOrderBadges();
       const tab = document.createElement('button'); tab.type = 'button'; tab.dataset.integrityTab = 'true'; tab.textContent = 'النزاهة والنزاعات'; nav.append(tab);
       tab.onclick = () => { nav.querySelectorAll('button').forEach(button => button.classList.remove('on')); tab.classList.add('on'); renderIntegrity(); };
     };
