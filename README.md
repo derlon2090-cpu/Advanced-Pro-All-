@@ -35,6 +35,10 @@ Apply migration `010_renewal_offer.sql` to configure a product-specific Salla re
 
 The public tracking API exposes only order, warranty, and acknowledgment status. It never returns stored IP, user-agent, account credentials, OTPs, or approval links.
 
+Migration `011_fair_device_confidence.sql` adds confidence-based device continuity and one free self-service transfer. The browser hashes individual physical signals before transmission; the server stores neither raw GPU/canvas/audio values nor raw IP. It retains only the coarse city label supplied by the hosting edge for the authenticated audit report. Set a dedicated `DEVICE_DNA_SECRET` in production when possible; the server falls back to the existing `ENCRYPTION_KEY`. Browser-only fingerprinting is a continuity signal, not proof of a physical person, so enforcement requires a low physical match score or a concurrent different-city event.
+
+Migration `012_dispute_integrity_audit.sql` adds metadata-only account-integrity events and an admin dispute report. Password/email/logout alerts mark the shared account for rotation or review. A recent verified portal visit is shown only as a review candidate; it is never presented as proof that a specific customer changed an external account. Reports omit passwords, OTPs, raw mail, IP addresses, and raw city names.
+
 Migration `004_operational_capacity.sql` adds a server-only slot limit per
 service account and an `access_reviewed_at` timestamp. Calculate occupied
 seats from active `account_assignments`; do not infer account sharing from

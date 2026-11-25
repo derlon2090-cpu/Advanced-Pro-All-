@@ -29,7 +29,11 @@ export default async function handler(request, response) {
   // Intentionally retain classification metadata only. Raw bodies, OTPs,
   // approval URLs, reset links, and credentials are never stored or returned.
   const inspected = `${subject || ""}\n${textBody || ""}`.slice(0, 4000).toLowerCase();
-  const blocked = /password|reset|forgot|change email|email changed|كلمة المرور|إعادة تعيين|تغيير البريد/.test(inspected);
+  const passwordChanged = /password (?:was )?changed|your password has been changed|تم تغيير كلمة المرور|تغيّرت كلمة المرور/.test(inspected);
+  const emailChanged = /email (?:was )?changed|email address changed|تم تغيير البريد|تغيير عنوان البريد/.test(inspected);
+  const logoutAll = /logged out of all|signed out of all|all devices.*signed out|تسجيل الخروج من جميع|الخروج من جميع الأجهزة/.test(inspected);
+  const unusualSignin = /unusual (?:login|sign.in)|new (?:login|device)|دخول غير معتاد|جهاز جديد/.test(inspected);
+  const blocked = passwordChanged || emailChanged || logoutAll;
   const serviceType = /crunchyroll/.test(inspected) ? "crunchyroll" : /chatgpt|openai/.test(inspected) ? "chatgpt" : "general_subscription";
   const isVerification = /verification code|security code|one.time code|رمز التحقق|رمز التأكيد/.test(inspected);
   const isLogin = /new (login|device)|login verification|verify|sign-in|تأكيد دخول|جهاز جديد/.test(inspected);
@@ -39,25 +43,25 @@ export default async function handler(request, response) {
   const recipient = account?.mailbox_alias || candidates[0] || normalizeAddress(to);
   const senderDomain = String(from).split("@").pop()?.toLowerCase() || null;
   await logDelivery({ messageId, recipient, accountId: account?.id, senderDomain, category });
-  let strike = null;
-  if (blocked && process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
-    // Send only a normalized mailbox and irreversible subject fingerprint to
-    // the database. Raw content stays out of the application database.
-    const mailbox = account?.mailbox_alias;
+  let securityEvent = null;
+  const eventType = passwordChanged ? 'password_changed' : emailChanged ? 'email_changed' : logoutAll ? 'logout_all' : unusualSignin ? 'unusual_signin' : null;
+  if (eventType && account?.id && process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    // Correlate only metadata and timing. A recent portal visit is a review
+    // lead, not proof that the customer caused the external account change.
     const subjectHash = createHash("sha256").update(String(subject || "")).digest("hex");
-    const result = mailbox && await fetch(`${process.env.SUPABASE_URL}/rest/v1/rpc/record_critical_blocked`, {
+    const result = await fetch(`${process.env.SUPABASE_URL}/rest/v1/rpc/record_mail_security_event`, {
       method: "POST",
       headers: { apikey: process.env.SUPABASE_SERVICE_ROLE_KEY, authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`, "content-type": "application/json" },
-      body: JSON.stringify({ p_provider_message_id: messageId, p_mailbox_alias: mailbox, p_sender_domain: senderDomain, p_subject_hash: subjectHash }),
+      body: JSON.stringify({ p_provider_message_id: messageId, p_email_account_id: account.id, p_event_type: eventType, p_sender_domain: senderDomain, p_subject_hash: subjectHash }),
     });
-    if (result?.ok) strike = (await result.json())[0] || null;
+    if (result.ok) securityEvent = (await result.json())[0] || null;
   }
   const payload = {
     accepted: true,
     messageId,
     serviceType,
     category,
-    securityStrike: strike ? { count: strike.security_strikes, suspended: strike.suspended } : null,
+    securityEvent: securityEvent ? { recorded: true, reviewCandidateFound: Boolean(securityEvent.suspected_order_id) } : null,
     customerVisible: false,
     bodyInspectedChars: Math.min(String(textBody || "").length, 4000)
   };

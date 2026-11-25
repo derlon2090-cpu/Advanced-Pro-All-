@@ -1,0 +1,63 @@
+<style>
+  .integrity-badge { display: inline-block; padding: 5px 8px; border: 1px solid #166534; border-radius: 999px; color: #86efac; background: #052e2040; font-size: .72rem; font-weight: 800; }
+  .integrity-badge.risk { border-color: #991b1b; color: #fca5a5; background: #7f1d1d30; }
+  .integrity-badge.review { border-color: #92400e; color: #fde68a; background: #78350f30; }
+  .evidence-button { padding: 8px 10px; border: 1px solid #c2410c; border-radius: 9px; color: #fdba74; background: #9a341220; font-weight: 800; cursor: pointer; }
+  .evidence-button.copied { border-color: #166534; color: #86efac; background: #052e2040; }
+  .integrity-summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px; }
+  .integrity-summary article { padding: 14px; border: 1px solid #1e3a5f; border-radius: 13px; background: #071426; }
+  .integrity-summary span { display: block; color: #94a3b8; font-size: .75rem; }
+  .integrity-summary strong { display: block; margin-top: 7px; font-size: 1.25rem; }
+  .audit-note { margin: 0 0 15px; padding: 11px 13px; border: 1px solid #92400e; border-radius: 11px; color: #fde68a; background: #78350f20; font-size: .8rem; line-height: 1.7; }
+  @media(max-width:700px){.integrity-summary{grid-template-columns:1fr}.integrity-table{min-width:900px}}
+</style>
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    if (!location.pathname.startsWith('/admin')) return;
+    const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
+    let attachedHost = null, cache = null;
+    const accountFor = order => order.account_assignments?.[0]?.email_accounts || null;
+    const copyText = async text => {
+      if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(text);
+      const field = document.createElement('textarea'); field.value = text; field.style.position = 'fixed'; field.style.opacity = '0'; document.body.append(field); field.select(); document.execCommand('copy'); field.remove();
+    };
+    const renderIntegrity = async () => {
+      const panel = document.getElementById('workspacePanel');
+      if (!panel) return;
+      panel.innerHTML = '<p class="notice">جارِ تحميل سجل النزاهة…</p>';
+      if (!cache) {
+        const response = await fetch('/api/admin/operations');
+        if (!response.ok) { panel.innerHTML = '<p class="notice">تعذر تحميل سجل النزاهة.</p>'; return; }
+        cache = await response.json();
+      }
+      const orders = cache.orders || [], clean = orders.filter(order => !Number(order.security_strikes || 0)).length, risk = orders.length - clean;
+      const accountAlerts = (cache.accounts || []).filter(account => account.integrity_status && account.integrity_status !== 'healthy').length;
+      const rows = orders.map(order => {
+        const strikes = Number(order.security_strikes || 0), account = accountFor(order), review = account?.integrity_status && account.integrity_status !== 'healthy';
+        const badge = strikes ? '<span class="integrity-badge risk">تعدد أجهزة · ' + strikes + '</span>' : '<span class="integrity-badge">عميل ملتزم · 0</span>';
+        const accountBadge = review ? '<span class="integrity-badge review">' + (account.integrity_status === 'rotation_required' ? 'يحتاج تدوير / تعويض' : 'يتطلب مراجعة') + '</span>' : '<span class="integrity-badge">سليم</span>';
+        return '<tr><td>#' + escapeHtml(order.order_number) + '</td><td>' + escapeHtml(order.locked_device_name || 'لم يسجل بعد') + '</td><td>' + badge + '</td><td>' + accountBadge + '</td><td>' + (order.acknowledged_at ? new Date(order.acknowledged_at).toLocaleString('ar-SA') : 'لم يقر بعد') + '</td><td><button class="evidence-button" data-report-order="' + escapeHtml(order.id) + '">نسخ تقرير إثبات لشكوى سلة</button></td></tr>';
+      }).join('');
+      panel.innerHTML = '<div class="integrity-summary"><article><span>عملاء بلا مخالفات</span><strong>' + clean + '</strong></article><article><span>طلبات متعددة الأجهزة</span><strong>' + risk + '</strong></article><article><span>حسابات تحتاج مراجعة/تدوير</span><strong>' + accountAlerts + '</strong></article></div><p class="audit-note">تنبيه مهني: ارتباط رسالة تغيير كلمة المرور بآخر نشاط خلال 30 دقيقة هو مرشح للمراجعة، وليس إثباتًا قطعيًا على هوية المتسبب. التقرير يفرّق بوضوح بين الوقائع الموثقة والاستنتاج الزمني.</p><div class="workspace-scroll"><table class="workspace-table integrity-table"><thead><tr><th>الطلب</th><th>الجهاز الأساسي</th><th>نزاهة العميل</th><th>سلامة الحساب</th><th>الإقرار</th><th>التقرير</th></tr></thead><tbody>' + (rows || '<tr><td colspan="6">لا توجد طلبات.</td></tr>') + '</tbody></table></div>';
+      panel.querySelectorAll('[data-report-order]').forEach(button => button.onclick = async () => {
+        const original = button.textContent; button.disabled = true; button.textContent = 'جارِ إنشاء التقرير…';
+        try {
+          const response = await fetch('/api/admin/dispute-report?orderId=' + encodeURIComponent(button.dataset.reportOrder));
+          const body = await response.json().catch(() => ({}));
+          if (!response.ok) throw new Error(body.message || 'تعذر إنشاء التقرير.');
+          await copyText(body.report); button.classList.add('copied'); button.textContent = '✓ تم نسخ التقرير';
+          setTimeout(() => { button.classList.remove('copied'); button.textContent = original; button.disabled = false; }, 2200);
+        } catch (error) { button.textContent = error.message; setTimeout(() => { button.textContent = original; button.disabled = false; }, 2500); }
+      });
+    };
+    const attach = () => {
+      const host = document.querySelector('.workspace'), nav = host?.querySelector('.workspace-tabs');
+      if (!host || !nav || host === attachedHost) return;
+      attachedHost = host;
+      const tab = document.createElement('button'); tab.type = 'button'; tab.dataset.integrityTab = 'true'; tab.textContent = 'النزاهة والنزاعات'; nav.append(tab);
+      tab.onclick = () => { nav.querySelectorAll('button').forEach(button => button.classList.remove('on')); tab.classList.add('on'); renderIntegrity(); };
+    };
+    const observer = new MutationObserver(attach); observer.observe(document.body, { childList: true, subtree: true }); attach();
+  });
+</script>
+

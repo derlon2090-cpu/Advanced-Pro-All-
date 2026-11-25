@@ -18,16 +18,17 @@ async function db(path, options = {}) {
 export default async function handler(request, response) {
   if (!(await requireAdmin(request))) return response.status(401).json({ message: 'جلسة غير صالحة.' });
   if (request.method === 'GET') {
-    const [capacity, rotations, mappings, settings, mailLogs, stores, orders, accounts] = await Promise.all([
+    const [capacity, rotations, mappings, settings, mailLogs, stores, orders, accounts, mailSecurityEvents] = await Promise.all([
       db('admin_capacity_radar?select=*'), db('admin_password_rotation_queue?select=*'),
       db('salla_product_mappings?select=*&order=created_at.desc'), db('system_settings?select=*&singleton=eq.true'),
       db('mail_delivery_logs?select=recipient_address,category,received_at,email_accounts(mailbox_alias)&order=received_at.desc&limit=5'),
       db('stores?select=id&order=created_at.asc&limit=1'),
-      db('orders?select=id,order_number,service_type,customer_phone,status,expires_at,tracking_token,security_strikes,account_assignments(email_accounts(mailbox_alias))&order=created_at.desc&limit=100'),
-      db('email_accounts?select=id,mailbox_alias,service_type,max_slots,is_active,archived_at,password_updated_at&order=created_at.desc&limit=200'),
+      db('orders?select=id,order_number,service_type,customer_phone,status,created_at,starts_at,expires_at,acknowledged_at,tracking_token,security_strikes,locked_device_name,registered_city_name,registered_country_code,free_resets_remaining,account_assignments(email_accounts(id,mailbox_alias,integrity_status,integrity_alerted_at))&order=created_at.desc&limit=100'),
+      db('email_accounts?select=id,mailbox_alias,service_type,max_slots,is_active,archived_at,password_updated_at,integrity_status,integrity_alerted_at&order=created_at.desc&limit=200'),
+      db('mail_security_events?select=id,event_type,received_at,suspected_order_id,attribution_basis,email_accounts(mailbox_alias)&order=received_at.desc&limit=100'),
     ]);
-    if (!capacity.ok || !rotations.ok || !mappings.ok || !settings.ok || !mailLogs.ok || !stores.ok || !orders.ok || !accounts.ok) return response.status(502).json({ message: 'تعذر تحميل بيانات التشغيل.' });
-    return response.status(200).json({ capacity: await capacity.json(), rotations: await rotations.json(), mappings: await mappings.json(), settings: (await settings.json())[0] || {}, mailLogs: await mailLogs.json(), storeId: (await stores.json())[0]?.id || null, orders: await orders.json(), accounts: await accounts.json() });
+    if (!capacity.ok || !rotations.ok || !mappings.ok || !settings.ok || !mailLogs.ok || !stores.ok || !orders.ok || !accounts.ok || !mailSecurityEvents.ok) return response.status(502).json({ message: 'تعذر تحميل بيانات التشغيل.' });
+    return response.status(200).json({ capacity: await capacity.json(), rotations: await rotations.json(), mappings: await mappings.json(), settings: (await settings.json())[0] || {}, mailLogs: await mailLogs.json(), storeId: (await stores.json())[0]?.id || null, orders: await orders.json(), accounts: await accounts.json(), mailSecurityEvents: await mailSecurityEvents.json() });
   }
   if (request.method === 'POST') {
     const { action, emailAccountId, mapping, settings, bulk } = request.body || {};

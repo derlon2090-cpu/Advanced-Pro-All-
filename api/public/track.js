@@ -1,3 +1,5 @@
+import { createHmac, timingSafeEqual } from 'node:crypto';
+
 const buckets = new Map();
 const clientIp = request => String(request.headers['x-forwarded-for'] || request.headers['x-real-ip'] || 'unknown').split(',')[0].trim().slice(0, 128);
 const allowed = request => {
@@ -14,6 +16,17 @@ const database = (path, options = {}) => {
   });
 };
 const cleanToken = value => /^[a-zA-Z0-9_-]{16,128}$/.test(String(value || '')) ? String(value) : '';
+const deviceSecret = () => process.env.DEVICE_DNA_SECRET || process.env.ENCRYPTION_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+const deviceSession = (request, orderId) => {
+  const cookie = String(request.headers.cookie || '').split(';').map(part => part.trim()).find(part => part.startsWith('ap_device='));
+  if (!cookie || !deviceSecret()) return false;
+  const value = decodeURIComponent(cookie.slice('ap_device='.length)), parts = value.split('.');
+  if (parts.length !== 4) return false;
+  const [sessionOrderId, physicalHash, expires, supplied] = parts;
+  if (sessionOrderId !== orderId || !/^[a-f0-9]{64}$/.test(physicalHash) || Number(expires) <= Math.floor(Date.now() / 1000)) return false;
+  const expected = createHmac('sha256', deviceSecret()).update(`${sessionOrderId}.${physicalHash}.${expires}`).digest('hex');
+  return supplied.length === expected.length && timingSafeEqual(Buffer.from(supplied), Buffer.from(expected)) ? { physicalHash } : null;
+};
 const publicUrl = value => {
   try {
     const url = new URL(String(value || ''));
@@ -36,6 +49,9 @@ export default async function handler(request, response) {
   if (!foundResponse.ok) return response.status(502).json({ message: 'تعذر تحميل بيانات الطلب.' });
   const [order] = await foundResponse.json();
   if (!order) return response.status(404).json({ message: 'لم يتم العثور على الطلب.' });
+  const verifiedSession = deviceSession(request, order.id), deviceVerified = Boolean(verifiedSession);
+
+  if (request.method === 'POST' && !deviceVerified) return response.status(403).json({ message: 'يجب التحقق من الجهاز قبل توثيق الإقرار.' });
 
   if (request.method === 'POST' && !order.acknowledged_at) {
     if (request.body?.accepted !== true) return response.status(400).json({ message: 'يجب الموافقة على سياسة المنتج أولًا.' });
@@ -55,16 +71,18 @@ export default async function handler(request, response) {
     order.acknowledged_at = updated?.acknowledged_at || acknowledgedAt;
   }
 
-  const accountEmail = order.acknowledged_at ? order.account_assignments?.[0]?.email_accounts?.mailbox_alias || null : null;
+  const accountEmail = order.acknowledged_at && deviceVerified ? order.account_assignments?.[0]?.email_accounts?.mailbox_alias || null : null;
+  if (accountEmail) await database('portal_activity_events', { method: 'POST', body: JSON.stringify({ order_id: order.id, activity_type: 'account_details_viewed', physical_core_hash: verifiedSession.physicalHash }) });
   delete order.id;
   delete order.account_assignments;
   order.account_email = accountEmail;
+  order.device_verified = deviceVerified;
   return response.status(200).setHeader('Cache-Control', 'private, no-store').json({
     order,
     actions: {
-      crunchyrollPortalUrl: order.service_type === 'crunchyroll' ? publicUrl(process.env.PUBLIC_CRUNCHYROLL_PORTAL_URL) : null,
-      supportWhatsapp: String(process.env.PUBLIC_SUPPORT_WHATSAPP || '').replace(/\D/g, '').slice(0, 20) || null,
-      sallaReviewUrl: publicUrl(process.env.PUBLIC_SALLA_REVIEW_URL),
+      crunchyrollPortalUrl: deviceVerified && order.service_type === 'crunchyroll' ? publicUrl(process.env.PUBLIC_CRUNCHYROLL_PORTAL_URL) : null,
+      supportWhatsapp: deviceVerified ? String(process.env.PUBLIC_SUPPORT_WHATSAPP || '').replace(/\D/g, '').slice(0, 20) || null : null,
+      sallaReviewUrl: deviceVerified ? publicUrl(process.env.PUBLIC_SALLA_REVIEW_URL) : null,
     },
   });
 }

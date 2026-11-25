@@ -63,6 +63,15 @@
   .feedback-actions a, .feedback-actions button { padding: 12px; border: 1px solid #1e3a5f; border-radius: 11px; color: #e2e8f0; background: #050f20; text-align: center; font: inherit; font-weight: 800; cursor: pointer; }
   .feedback-actions .positive { border-color: #166534; color: #bbf7d0; background: #052e2040; }
   .feedback-thanks { margin: 10px 0 0 !important; color: #86efac !important; text-align: center; }
+  .device-card { padding: 28px; }
+  .device-card .device-icon { display: grid; place-items: center; width: 52px; height: 52px; margin-bottom: 16px; border: 1px solid #fb923c55; border-radius: 15px; color: #fdba74; background: #9a34122b; font-size: 1.45rem; }
+  .device-card h1 { margin: 0 0 11px; font-size: 1.35rem; }
+  .device-card p { margin: 0; color: #cbd5e1; line-height: 1.85; }
+  .device-note { margin-top: 15px !important; padding: 12px 14px; border: 1px solid #1e3a5f; border-radius: 12px; background: #050f20; font-size: .85rem; }
+  .device-transfer { width: 100%; margin-top: 18px; padding: 14px; border: 0; border-radius: 12px; color: #fff; background: linear-gradient(110deg, #9a3412, #ea580c); font-weight: 900; cursor: pointer; }
+  .device-transfer:disabled { opacity: .6; cursor: wait; }
+  .device-lock { border-color: #7f1d1d; }
+  .device-lock .device-icon { border-color: #ef444455; color: #fca5a5; background: #7f1d1d33; }
   .track-loading, .track-error { padding: 60px 20px; color: #94a3b8; text-align: center; }
   .track-error strong { display: block; margin-bottom: 8px; color: #fda4af; }
   @media (max-width: 700px) {
@@ -84,13 +93,14 @@
     const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
     const date = value => value ? new Intl.DateTimeFormat('ar-SA', { dateStyle: 'medium' }).format(new Date(value)) : '—';
     const daysLeft = value => value ? Math.max(0, Math.ceil((new Date(value) - Date.now()) / 86400000)) : 0;
-    const copyButton = (value, label = 'نسخ') => '<button class="copy-button" type="button" data-copy="' + escapeHtml(value) + '" data-copy-label="' + escapeHtml(label) + '" aria-label="نسخ ' + escapeHtml(label) + '">⧉ ' + escapeHtml(label) + '</button>';
+    const copyButton = (value, label = 'نسخ', activity = '') => '<button class="copy-button" type="button" data-copy="' + escapeHtml(value) + '" data-copy-label="' + escapeHtml(label) + '"' + (activity ? ' data-copy-activity="' + escapeHtml(activity) + '"' : '') + ' aria-label="نسخ ' + escapeHtml(label) + '">⧉ ' + escapeHtml(label) + '</button>';
     const bindCopyButtons = () => document.querySelectorAll('[data-copy]').forEach(button => {
       button.onclick = async () => {
         const value = button.dataset.copy || '';
         try {
           if (navigator.clipboard && window.isSecureContext) await navigator.clipboard.writeText(value);
           else { const field = document.createElement('textarea'); field.value = value; field.style.position = 'fixed'; field.style.opacity = '0'; document.body.append(field); field.select(); document.execCommand('copy'); field.remove(); }
+          if (button.dataset.copyActivity) fetch('/api/public/activity', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ token, activity: button.dataset.copyActivity }), keepalive: true }).catch(() => {});
           const original = button.innerHTML; button.classList.add('copied'); button.textContent = '✓ تم النسخ';
           setTimeout(() => { button.classList.remove('copied'); button.innerHTML = original; }, 1800);
         } catch { button.textContent = 'تعذر النسخ'; }
@@ -103,6 +113,7 @@
     };
     const render = payload => {
       const order = payload.order, actions = payload.actions || {};
+      if (!order.device_verified) throw new Error('تعذر توثيق الجهاز لهذا الطلب.');
       const [statusLabel, statusClass] = statusInfo(order);
       const remaining = daysLeft(order.expires_at), warrantyRemaining = daysLeft(order.warranty_expires_at);
       const started = order.starts_at ? new Date(order.starts_at).getTime() : Date.now();
@@ -119,7 +130,7 @@
       const crunchyUrl = actions.crunchyrollPortalUrl || '/crunchyroll';
       const supportText = encodeURIComponent('مرحبًا، أطلب دعم الضمان للطلب #' + order.order_number + ' — المنتج: ' + (order.product_name || 'اشتراك رقمي'));
       const supportUrl = 'https://wa.me/' + (actions.supportWhatsapp || '') + '?text=' + supportText;
-      const accountCard = order.account_email ? '<section class="account-card"><h2>بيانات الاشتراك</h2><div class="account-line"><div><span>البريد الإلكتروني</span><strong>' + escapeHtml(order.account_email) + '</strong></div>' + copyButton(order.account_email, 'نسخ البريد') + '</div></section>' : '';
+      const accountCard = order.account_email ? '<section class="account-card"><h2>بيانات الاشتراك</h2><div class="account-line"><div><span>البريد الإلكتروني</span><strong>' + escapeHtml(order.account_email) + '</strong></div>' + copyButton(order.account_email, 'نسخ البريد', 'account_email_copied') + '</div></section>' : '';
       const renewalCard = order.renewal_url && remaining <= 5 ? '<section class="renewal-card"><h2>' + (remaining > 0 ? 'اشتراكك ينتهي خلال ' + remaining + ' أيام' : 'انتهى اشتراكك') + '</h2><p>جدّد الآن لتفادي انقطاع الخدمة.</p>' + (order.renewal_discount_code ? '<div class="discount-row"><span>كود خصم خاص: <strong>' + escapeHtml(order.renewal_discount_code) + '</strong></span>' + copyButton(order.renewal_discount_code, 'نسخ الكود') + '</div>' : '') + '<a class="renewal-button" target="_blank" rel="noopener" href="' + escapeHtml(order.renewal_url) + '">جدّد اشتراكك الآن بضغطة زر ↗</a></section>' : '';
       const positiveAction = actions.sallaReviewUrl ? '<a class="positive" target="_blank" rel="noopener" href="' + escapeHtml(actions.sallaReviewUrl) + '">نعم، كانت رائعة ⭐</a>' : '<button class="positive" type="button" data-feedback-positive>نعم، كانت رائعة ⭐</button>';
       const feedbackCard = '<section class="feedback-card"><h2>هل كانت تجربة استلام طلبك سريعة؟</h2><p>رأيك يساعدنا على تحسين الخدمة.</p><div class="feedback-actions">' + positiveAction + '<a target="_blank" rel="noopener" href="' + supportUrl + '">واجهت مشكلة — تواصل معنا</a></div><p id="feedbackThanks" class="feedback-thanks" hidden>شكرًا لك، سعداء بخدمتك ✓</p></section>';
@@ -144,11 +155,42 @@
         };
       }
     };
-    portal.innerHTML = '<main class="order-portal"><div class="order-wrap"><div class="digital-order track-loading">جارِ تحميل بيانات الطلب…</div></div></main>';
-    fetch('/api/public/track?token=' + encodeURIComponent(token), { headers: { accept: 'application/json' } })
+    const shell = content => '<main class="order-portal"><div class="order-wrap"><header class="order-brand"><div><strong>بوابة أدفانسد برو</strong><small>حماية الاشتراك بجهاز واحد</small></div><a href="/">العودة للاستعلام</a></header>' + content + '</div></main>';
+    const loadOrder = () => fetch('/api/public/track?token=' + encodeURIComponent(token), { headers: { accept: 'application/json' } })
       .then(async response => { const data = await response.json().catch(() => ({})); if (!response.ok) throw new Error(data.message || 'تعذر تحميل الطلب.'); return data; })
-      .then(render)
-      .catch(error => { portal.innerHTML = '<main class="order-portal"><div class="order-wrap"><div class="digital-order track-error"><strong>تعذر عرض الطلب</strong>' + escapeHtml(error.message) + '<br><br><a href="/">العودة إلى الاستعلام</a></div></div></main>'; });
+      .then(render);
+    const showTransfer = (security, dna) => {
+      portal.innerHTML = shell('<article class="digital-order device-card"><div class="device-icon">↻</div><h1>يبدو أنك تستخدم جهازًا جديدًا</h1><p>نرحب بك! لاحظنا أن هذا الجهاز مختلف عن جهازك السابق (<strong>' + escapeHtml(security.oldDeviceName || 'جهازك السابق') + '</strong>). إذا قمت بتغيير جهازك، يمكنك اعتماد هذا الجهاز الجديد مجانًا لمرة واحدة.</p><p class="device-note">لن نسجل أي مخالفة عند النقل. بعد اعتماده يصبح الجهاز السابق غير معتمد، ويتبقى لك ' + Math.max(0, Number(security.freeResetsRemaining) || 0) + ' فرصة نقل.</p><button id="deviceTransfer" class="device-transfer" type="button">اعتماد هذا الجهاز كجهازي الأساسي</button><p id="deviceTransferMessage" class="ack-message" role="status"></p></article>');
+      const button = document.getElementById('deviceTransfer'), message = document.getElementById('deviceTransferMessage');
+      button.onclick = async () => {
+        button.disabled = true; button.textContent = 'جارِ اعتماد الجهاز…'; message.textContent = '';
+        try {
+          const response = await fetch('/api/public/verify-device', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ token, action: 'transfer', ...dna }) });
+          const result = await response.json().catch(() => ({}));
+          if (!response.ok || !result.allowed) throw new Error(result.message || 'تعذر نقل الجهاز.');
+          await loadOrder();
+        } catch (error) { message.textContent = error.message; button.disabled = false; button.textContent = 'اعتماد هذا الجهاز كجهازي الأساسي'; }
+      };
+    };
+    const showLocked = security => {
+      const reason = security.state === 'concurrent_different_city' ? 'رصدنا استخدامًا متزامنًا من جهازين وموقعين مختلفين خلال فترة قصيرة.' : 'تم استخدام فرصة نقل الجهاز المجانية سابقًا، وهذا الجهاز لا يطابق الجهاز المعتمد.';
+      portal.innerHTML = shell('<article class="digital-order device-card device-lock"><div class="device-icon">!</div><h1>تم إيقاف الوصول لحماية الاشتراك</h1><p>' + reason + '</p><p class="device-note">إذا كنت صاحب الطلب وتعتقد أن هذا الإجراء غير صحيح، تواصل مع الدعم لمراجعة الحالة يدويًا.</p></article>');
+    };
+    portal.innerHTML = '<main class="order-portal"><div class="order-wrap"><div class="digital-order track-loading">جارِ تحميل بيانات الطلب…</div></div></main>';
+    (async () => {
+      try {
+        const { collectDeviceDna } = await import('/lib/device-dna.js');
+        const dna = await collectDeviceDna();
+        const response = await fetch('/api/public/verify-device', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ token, action: 'verify', ...dna }) });
+        const security = await response.json().catch(() => ({}));
+        if (response.ok && security.allowed) return loadOrder();
+        if (security.transferRequired) return showTransfer(security, dna);
+        if (security.locked) return showLocked(security);
+        throw new Error(security.message || 'تعذر التحقق من الجهاز.');
+      } catch (error) {
+        portal.innerHTML = '<main class="order-portal"><div class="order-wrap"><div class="digital-order track-error"><strong>تعذر عرض الطلب</strong>' + escapeHtml(error.message) + '<br><br><a href="/">العودة إلى الاستعلام</a></div></div></main>';
+      }
+    })();
   });
 </script>
 
