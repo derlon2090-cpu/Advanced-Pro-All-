@@ -88,6 +88,7 @@
   }
   .single-input::placeholder { color: #64748b; }
   .single-input:focus { border-color: #fb923c; box-shadow: 0 0 0 4px #fb923c20; }
+  .single-input[aria-invalid="true"] { border-color: #fb7185; box-shadow: 0 0 0 4px #fb718520; }
   .single-action {
     width: 100%;
     margin-top: 14px;
@@ -155,14 +156,35 @@
     const portal = document.getElementById('portal');
     if (!portal) return;
     document.body.classList.add('split-home-ready');
-    portal.innerHTML = '<main class="single-home"><section class="split-top"><div class="split-copy"><h1 class="split-title">بوابة استعلام عن طلبك</h1><p class="split-lead">أدخل رقم الطلب لعرض وتفعيل اشتراكك فورًا</p></div></section><section class="split-bottom"><div class="floating-wrap"><div class="single-card"><form id="singleOrderLookup"><label class="single-label" for="singleOrderNumber"><b>#</b> رقم الطلب</label><input id="singleOrderNumber" class="single-input" name="orderNumber" required inputmode="numeric" autocomplete="off" placeholder="مثال: 123456789"><button class="single-action" type="submit">⌕ &nbsp; عرض بيانات الاشتراك</button><p id="singleLookupMessage" class="single-message" role="status"></p></form><div class="security-note"><i>▣</i><span>ملاحظة أمنية: تقوم البوابة بجمع بيانات الجهاز والمتصفح تلقائيًا لربط اشتراكك بجهاز واحد وحمايته.</span></div></div><div class="clean-footer"><a class="support-line" target="_blank" rel="noopener" href="https://wa.me/?text='+encodeURIComponent('مرحبًا، لا أجد رقم طلبي في بوابة أدفانسد برو')+'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M20 11.5a8 8 0 0 1-11.8 7L4 20l1.5-4.1A8 8 0 1 1 20 11.5Z"/></svg><span>لا تجد رقم الطلب؟</span><strong>تواصل مع الدعم</strong></a><span class="footer-mark" aria-hidden="true"><img src="/assets/bawaba-favicon.png" alt=""></span><div class="copyright">© بوابة أدفانسد برو | Advanced Pro Portal</div></div></div></section></main>';
+    portal.innerHTML = '<main class="single-home"><section class="split-top"><div class="split-copy"><h1 class="split-title">بوابة استعلام عن طلبك</h1><p class="split-lead">أدخل رقم الطلب لعرض وتفعيل اشتراكك فورًا</p></div></section><section class="split-bottom"><div class="floating-wrap"><div class="single-card"><form id="singleOrderLookup" novalidate><label class="single-label" for="singleOrderNumber"><b>#</b> رقم الطلب</label><input id="singleOrderNumber" class="single-input" name="orderNumber" type="text" required inputmode="numeric" pattern="[0-9]*" maxlength="30" enterkeyhint="search" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="أدخل رقم الطلب" aria-describedby="singleLookupMessage"><button class="single-action" type="submit">⌕ &nbsp; عرض بيانات الاشتراك</button><p id="singleLookupMessage" class="single-message" role="status" aria-live="polite"></p></form><div class="security-note"><i>▣</i><span>ملاحظة أمنية: تقوم البوابة بجمع بيانات الجهاز والمتصفح تلقائيًا لربط اشتراكك بجهاز واحد وحمايته.</span></div></div><div class="clean-footer"><a class="support-line" target="_blank" rel="noopener" href="https://wa.me/?text='+encodeURIComponent('مرحبًا، لا أجد رقم طلبي في بوابة أدفانسد برو')+'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M20 11.5a8 8 0 0 1-11.8 7L4 20l1.5-4.1A8 8 0 1 1 20 11.5Z"/></svg><span>لا تجد رقم الطلب؟</span><strong>تواصل مع الدعم</strong></a><span class="footer-mark" aria-hidden="true"><img src="/assets/bawaba-favicon.png" alt=""></span><div class="copyright">© بوابة أدفانسد برو | Advanced Pro Portal</div></div></div></section></main>';
     document.documentElement.classList.remove('split-boot');
+
+    const orderInput = document.getElementById('singleOrderNumber');
+    const message = document.getElementById('singleLookupMessage');
+    const normalizeDigits = value => String(value)
+      .replace(/[٠-٩]/g, digit => String(digit.charCodeAt(0) - 1632))
+      .replace(/[۰-۹]/g, digit => String(digit.charCodeAt(0) - 1776))
+      .replace(/\D/g, '')
+      .slice(0, 30);
+    orderInput.addEventListener('input', () => {
+      const digits = normalizeDigits(orderInput.value);
+      if (orderInput.value !== digits) orderInput.value = digits;
+      orderInput.removeAttribute('aria-invalid');
+      message.textContent = '';
+    });
 
     document.getElementById('singleOrderLookup').addEventListener('submit', async event => {
       event.preventDefault();
       const form = event.currentTarget;
       const button = form.querySelector('button');
-      const message = document.getElementById('singleLookupMessage');
+      const orderNumber = normalizeDigits(orderInput.value);
+      orderInput.value = orderNumber;
+      if (!orderNumber) {
+        orderInput.setAttribute('aria-invalid', 'true');
+        message.textContent = 'أدخل رقم الطلب بالأرقام فقط.';
+        orderInput.focus();
+        return;
+      }
       button.disabled = true;
       button.textContent = 'جارِ التحقق…';
       message.textContent = '';
@@ -170,11 +192,13 @@
         const result = await fetch('/api/public/lookup', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ orderNumber: form.elements.orderNumber.value })
+          body: JSON.stringify({ orderNumber })
         });
         const data = await result.json().catch(() => ({}));
         if (result.ok && data.redirectTo) return location.assign(data.redirectTo);
-        message.textContent = data.message || 'لم يتم العثور على الطلب. تحقق من الرقم وحاول مجددًا.';
+        message.textContent = result.status === 503
+          ? 'خدمة الاستعلام غير متاحة مؤقتًا. يرجى المحاولة بعد قليل.'
+          : data.message || 'لم يتم العثور على الطلب. تحقق من الرقم وحاول مجددًا.';
       } catch {
         message.textContent = 'تعذر الاتصال بالخدمة. حاول بعد قليل.';
       } finally {

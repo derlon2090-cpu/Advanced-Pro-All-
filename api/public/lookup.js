@@ -9,10 +9,14 @@ export default async function handler(request, response) {
   if (request.method !== 'POST') return response.status(405).json({ message: 'الطريقة غير مسموحة.' });
   if (!allowed(request)) return response.status(429).setHeader('Retry-After', '60').json({ message: 'تم تجاوز حد الاستعلامات. حاول بعد دقيقة.' });
   const { orderNumber, order_number, salla_reference_id } = request.body || {};
-  const order = String(orderNumber || order_number || salla_reference_id || '').trim();
-  if (!order) return response.status(400).json({ message: 'أدخل رقم الطلب في سلة.' });
-  const url = process.env.SUPABASE_URL, key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) return response.status(503).json({ message: 'خدمة الاستعلام قيد التهيئة.' });
+  const order = String(orderNumber || order_number || salla_reference_id || '')
+    .trim()
+    .replace(/[٠-٩]/g, digit => String(digit.charCodeAt(0) - 1632))
+    .replace(/[۰-۹]/g, digit => String(digit.charCodeAt(0) - 1776));
+  if (!/^\d{1,30}$/.test(order)) return response.status(400).json({ message: 'أدخل رقم الطلب بالأرقام فقط.' });
+  const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return response.status(503).json({ message: 'خدمة الاستعلام غير متاحة مؤقتًا. يرجى المحاولة بعد قليل.' });
   const query = new URLSearchParams({ select: 'tracking_token,status,security_strikes', order_number: `eq.${order}`, limit: '1' });
   const result = await fetch(`${url}/rest/v1/orders?${query}`, { headers: { apikey: key, authorization: `Bearer ${key}` } });
   if (!result.ok) return response.status(502).json({ message: 'تعذر تنفيذ الاستعلام.' });
