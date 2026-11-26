@@ -34,7 +34,7 @@ export default async function handler(request, response) {
       db('salla_product_mappings?select=*&order=created_at.desc'), db('system_settings?select=*&singleton=eq.true'),
       db('mail_delivery_logs?select=recipient_address,category,received_at,email_accounts(mailbox_alias)&order=received_at.desc&limit=5'),
       db('stores?select=id&order=created_at.asc&limit=1'),
-      db('orders?select=id,order_number,service_type,customer_phone,status,created_at,starts_at,expires_at,acknowledged_at,tracking_token,security_strikes,locked_device_name,registered_city_name,registered_country_code,free_resets_remaining,account_assignments(email_accounts(id,mailbox_alias,integrity_status,integrity_alerted_at))&order=created_at.desc&limit=100'),
+      db('orders?select=id,order_number,product_name,service_type,customer_phone,status,created_at,starts_at,expires_at,has_warranty,warranty_days,warranty_expires_at,acknowledgment_text,acknowledged_at,tracking_token,security_strikes,locked_device_name,registered_city_name,registered_country_code,free_resets_remaining,customers(name),account_assignments(email_accounts(id,mailbox_alias,integrity_status,integrity_alerted_at))&order=created_at.desc&limit=100'),
       db('email_accounts?select=id,mailbox_alias,service_type,max_slots,is_active,archived_at,password_updated_at,integrity_status,integrity_alerted_at&order=created_at.desc&limit=200'),
       db('mail_security_events?select=id,event_type,received_at,suspected_order_id,attribution_basis,email_accounts(mailbox_alias)&order=received_at.desc&limit=100'),
     ]);
@@ -58,7 +58,20 @@ export default async function handler(request, response) {
       }
       result = await db('salla_product_mappings?on_conflict=salla_product_id', { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates' }, body: JSON.stringify({ salla_product_id: String(mapping.salla_product_id), product_title: mapping.product_title || null, service_type: mapping.service_type, duration_days: Math.min(Math.max(Number(mapping.duration_days) || 30, 1), 3660), has_warranty: hasWarranty, warranty_days: warrantyDays, acknowledgment_text: String(mapping.acknowledgment_text || defaultAcknowledgment).trim().slice(0, 4000), renewal_url: renewalUrl, renewal_discount_code: String(mapping.renewal_discount_code || '').trim().slice(0, 80) || null, updated_at: new Date().toISOString() }) });
     } else if (action === 'save_settings') {
-      result = await db('system_settings?singleton=eq.true', { method: 'PATCH', body: JSON.stringify({ banner_active: Boolean(settings?.banner_active), banner_message: settings?.banner_message || null, auto_assignment_paused: Boolean(settings?.auto_assignment_paused), updated_at: new Date().toISOString() }) });
+      const optionalHttps = (value, label) => {
+        const clean = String(value || '').trim();
+        if (!clean) return null;
+        try { const parsed = new URL(clean); if (parsed.protocol === 'https:') return parsed.toString(); } catch {}
+        throw new Error(`${label} يجب أن يكون رابط HTTPS صالحًا.`);
+      };
+      let supportWhatsapp, sallaReviewUrl, renewalStoreUrl, crunchyrollPortalUrl;
+      try {
+        supportWhatsapp = String(settings?.support_whatsapp || '').replace(/[^0-9+]/g, '').slice(0, 20) || null;
+        sallaReviewUrl = optionalHttps(settings?.salla_review_url, 'رابط تقييم سلة');
+        renewalStoreUrl = optionalHttps(settings?.renewal_store_url, 'رابط المتجر');
+        crunchyrollPortalUrl = optionalHttps(settings?.crunchyroll_portal_url, 'رابط بوابة كرانشي رول');
+      } catch (error) { return response.status(400).json({ message: error.message }); }
+      result = await db('system_settings?singleton=eq.true', { method: 'PATCH', body: JSON.stringify({ banner_active: Boolean(settings?.banner_active), banner_message: String(settings?.banner_message || '').trim().slice(0, 500) || null, auto_assignment_paused: Boolean(settings?.auto_assignment_paused), support_whatsapp: supportWhatsapp, salla_review_url: sallaReviewUrl, renewal_store_url: renewalStoreUrl, crunchyroll_portal_url: crunchyrollPortalUrl, updated_at: new Date().toISOString() }) });
     } else if (action === 'bulk_import') {
       const aliases = String(bulk?.entries || '').split(/\r?\n/).map(line => line.trim().split(/[,:]/)[0].trim().toLowerCase()).filter(value => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(value));
       if (!bulk?.storeId || !aliases.length) return response.status(400).json({ message: 'أدخل بريدًا صالحًا واحدًا على الأقل.' });
