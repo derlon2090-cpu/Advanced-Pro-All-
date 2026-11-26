@@ -1,6 +1,7 @@
 import { allowedAdmin, tokenFromRequest } from './_auth.js';
 import disputeReportHandler from '../../lib/dispute-report-api.js';
 import { sendRenewalEmail } from '../../lib/renewal-email.js';
+import { createHash, randomBytes } from 'node:crypto';
 
 async function requireAdmin(request) {
   const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL, anon = process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY, token = tokenFromRequest(request);
@@ -43,9 +44,58 @@ export default async function handler(request, response) {
     return response.status(200).json({ capacity: await capacity.json(), rotations: await rotations.json(), mappings: await mappings.json(), settings: (await settings.json())[0] || {}, mailLogs: await mailLogs.json(), storeId: (await stores.json())[0]?.id || null, orders: await orders.json(), accounts: await accounts.json(), mailSecurityEvents: await mailSecurityEvents.json() });
   }
   if (request.method === 'POST') {
-    const { action, emailAccountId, orderId, mapping, settings, bulk } = request.body || {};
+    const { action, emailAccountId, orderId, mapping, settings, bulk, manualOrder } = request.body || {};
     let result;
-    if (action === 'send_renewal_reminder') {
+    if (action === 'create_manual_order') {
+      const clean = {
+        orderNumber: String(manualOrder?.order_number || '').trim().slice(0, 80),
+        customerName: String(manualOrder?.customer_name || '').trim().slice(0, 120),
+        customerPhone: String(manualOrder?.customer_phone || '').replace(/[^0-9+]/g, '').slice(0, 20),
+        customerEmail: String(manualOrder?.customer_email || '').trim().toLowerCase().slice(0, 254),
+        productName: String(manualOrder?.product_name || '').trim().slice(0, 180),
+        serviceType: String(manualOrder?.service_type || ''),
+        durationDays: Math.min(Math.max(Number(manualOrder?.duration_days) || 30, 1), 3660),
+        hasWarranty: manualOrder?.has_warranty !== false,
+        warrantyDays: Math.min(Math.max(Number(manualOrder?.warranty_days) || 30, 1), 3660),
+      };
+      if (!clean.orderNumber || !clean.customerName || clean.customerPhone.length < 4 || !clean.productName || !['crunchyroll', 'chatgpt', 'general_subscription'].includes(clean.serviceType)) {
+        return response.status(400).json({ message: 'أكمل رقم الطلب واسم العميل والجوال والمنتج والخدمة.' });
+      }
+      if (clean.customerEmail && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(clean.customerEmail)) return response.status(400).json({ message: 'البريد الإلكتروني غير صالح.' });
+      const storesResult = await db('stores?select=id&order=created_at.asc&limit=1');
+      if (!storesResult.ok) return response.status(502).json({ message: 'تعذر تحديد المتجر.' });
+      const [store] = await storesResult.json();
+      if (!store?.id) return response.status(409).json({ message: 'أضف متجرًا أولًا قبل إنشاء طلب يدوي.' });
+      const duplicate = await db(`orders?select=id&store_id=eq.${encodeURIComponent(store.id)}&order_number=eq.${encodeURIComponent(clean.orderNumber)}&limit=1`);
+      if (!duplicate.ok) return response.status(502).json({ message: 'تعذر التحقق من رقم الطلب.' });
+      if ((await duplicate.json()).length) return response.status(409).json({ message: 'رقم الطلب موجود مسبقًا.' });
+      const customerKey = `manual:${clean.customerPhone.replace(/\D/g, '') || clean.orderNumber}`;
+      const customerResult = await db('customers?on_conflict=store_id,salla_customer_id', {
+        method: 'POST',
+        headers: { Prefer: 'resolution=merge-duplicates,return=representation' },
+        body: JSON.stringify({ store_id: store.id, salla_customer_id: customerKey, name: clean.customerName, email: clean.customerEmail || null }),
+      });
+      if (!customerResult.ok) return response.status(502).json({ message: 'تعذر حفظ بيانات العميل.' });
+      const [customer] = await customerResult.json();
+      const start = manualOrder?.starts_at && !Number.isNaN(Date.parse(manualOrder.starts_at)) ? new Date(manualOrder.starts_at) : new Date();
+      const expires = new Date(start.getTime() + clean.durationDays * 86400000);
+      const warrantyExpires = clean.hasWarranty ? new Date(start.getTime() + clean.warrantyDays * 86400000) : null;
+      const trackingToken = randomBytes(24).toString('hex');
+      const accessTokenHash = createHash('sha256').update(randomBytes(32)).digest('hex');
+      const acknowledgment = clean.hasWarranty
+        ? 'يشمل الضمان التوقف المفاجئ طوال المدة المحددة.\nيُلغى الضمان عند تغيير البريد أو كلمة المرور أو مشاركة الحساب.\nيتم التعويض بعد التحقق من الالتزام بشروط الاستخدام.'
+        : 'يُسلّم المنتج بحالة سليمة وقت الشراء.\nهذا المنتج تسليم لمرة واحدة ولا يشمله التعويض بعد التسليم.\nيتحمل العميل مسؤولية حفظ بيانات المنتج بعد استلامه.';
+      const orderResult = await db('orders', {
+        method: 'POST',
+        headers: { Prefer: 'return=representation' },
+        body: JSON.stringify({ store_id: store.id, customer_id: customer.id, salla_order_id: `manual:${clean.orderNumber}`, order_number: clean.orderNumber, product_name: clean.productName, service_type: clean.serviceType, customer_phone: clean.customerPhone, customer_email: clean.customerEmail || null, payment_status: 'paid', status: 'received', access_token_hash: accessTokenHash, access_token_expires_at: new Date(Date.now() + 30 * 86400000).toISOString(), tracking_token: trackingToken, duration_days: clean.durationDays, starts_at: start.toISOString(), expires_at: expires.toISOString(), has_warranty: clean.hasWarranty, warranty_days: clean.hasWarranty ? clean.warrantyDays : 0, warranty_expires_at: warrantyExpires?.toISOString() || null, acknowledgment_text: acknowledgment }),
+      });
+      if (!orderResult.ok) return response.status(502).json({ message: 'تعذر إنشاء الطلب اليدوي.' });
+      const [created] = await orderResult.json();
+      const assignment = await db('rpc/assign_order_to_available_account', { method: 'POST', body: JSON.stringify({ p_order_id: created.id }) });
+      const assignmentData = assignment.ok ? (await assignment.json())[0] : null;
+      return response.status(201).json({ ok: true, orderId: created.id, trackingToken: assignmentData?.tracking_token || trackingToken, assigned: Boolean(assignmentData?.assigned) });
+    } else if (action === 'send_renewal_reminder') {
       if (!/^[0-9a-f-]{36}$/i.test(String(orderId || ''))) return response.status(400).json({ message: 'معرّف الطلب غير صالح.' });
       const orderResult = await db(`orders?select=id,order_number,product_name,customer_email,reminder_email,expires_at,tracking_token,renewal_url,renewal_discount_code,customers(name)&id=eq.${encodeURIComponent(orderId)}&limit=1`);
       const settingsResult = await db('system_settings?select=renewal_store_url&singleton=eq.true&limit=1');
