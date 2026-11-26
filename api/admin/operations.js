@@ -1,5 +1,6 @@
 import { allowedAdmin, tokenFromRequest } from './_auth.js';
 import disputeReportHandler from '../../lib/dispute-report-api.js';
+import { sendRenewalEmail } from '../../lib/renewal-email.js';
 
 async function requireAdmin(request) {
   const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL, anon = process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY, token = tokenFromRequest(request);
@@ -34,7 +35,7 @@ export default async function handler(request, response) {
       db('salla_product_mappings?select=*&order=created_at.desc'), db('system_settings?select=*&singleton=eq.true'),
       db('mail_delivery_logs?select=recipient_address,category,received_at,email_accounts(mailbox_alias)&order=received_at.desc&limit=5'),
       db('stores?select=id&order=created_at.asc&limit=1'),
-      db('orders?select=id,order_number,product_name,service_type,customer_phone,status,created_at,starts_at,expires_at,has_warranty,warranty_days,warranty_expires_at,acknowledgment_text,acknowledged_at,tracking_token,security_strikes,locked_device_name,registered_city_name,registered_country_code,free_resets_remaining,customers(name),account_assignments(email_accounts(id,mailbox_alias,integrity_status,integrity_alerted_at))&order=created_at.desc&limit=100'),
+      db('orders?select=id,order_number,product_name,service_type,customer_phone,customer_email,status,created_at,starts_at,expires_at,has_warranty,warranty_days,warranty_expires_at,acknowledgment_text,acknowledged_at,tracking_token,renewal_url,renewal_discount_code,renewal_reminder_3d_sent_at,renewal_reminder_1d_sent_at,renewal_reminder_manual_sent_at,security_strikes,locked_device_name,registered_city_name,registered_country_code,free_resets_remaining,customers(name),account_assignments(email_accounts(id,mailbox_alias,integrity_status,integrity_alerted_at))&order=created_at.desc&limit=100'),
       db('email_accounts?select=id,mailbox_alias,service_type,max_slots,is_active,archived_at,password_updated_at,integrity_status,integrity_alerted_at&order=created_at.desc&limit=200'),
       db('mail_security_events?select=id,event_type,received_at,suspected_order_id,attribution_basis,email_accounts(mailbox_alias)&order=received_at.desc&limit=100'),
     ]);
@@ -42,9 +43,26 @@ export default async function handler(request, response) {
     return response.status(200).json({ capacity: await capacity.json(), rotations: await rotations.json(), mappings: await mappings.json(), settings: (await settings.json())[0] || {}, mailLogs: await mailLogs.json(), storeId: (await stores.json())[0]?.id || null, orders: await orders.json(), accounts: await accounts.json(), mailSecurityEvents: await mailSecurityEvents.json() });
   }
   if (request.method === 'POST') {
-    const { action, emailAccountId, mapping, settings, bulk } = request.body || {};
+    const { action, emailAccountId, orderId, mapping, settings, bulk } = request.body || {};
     let result;
-    if (action === 'save_mapping') {
+    if (action === 'send_renewal_reminder') {
+      if (!/^[0-9a-f-]{36}$/i.test(String(orderId || ''))) return response.status(400).json({ message: 'معرّف الطلب غير صالح.' });
+      const orderResult = await db(`orders?select=id,order_number,product_name,customer_email,expires_at,tracking_token,renewal_url,renewal_discount_code,customers(name)&id=eq.${encodeURIComponent(orderId)}&limit=1`);
+      const settingsResult = await db('system_settings?select=renewal_store_url&singleton=eq.true&limit=1');
+      if (!orderResult.ok || !settingsResult.ok) return response.status(502).json({ message: 'تعذر تحميل بيانات التجديد.' });
+      const [order] = await orderResult.json(), [portalSettings] = await settingsResult.json();
+      if (!order) return response.status(404).json({ message: 'الطلب غير موجود.' });
+      order.customer_name = Array.isArray(order.customers) ? order.customers[0]?.name : order.customers?.name;
+      order.renewal_store_url = portalSettings?.renewal_store_url || null;
+      const remaining = order.expires_at ? Math.ceil((new Date(order.expires_at) - Date.now()) / 86400000) : 0;
+      await sendRenewalEmail({ order, daysRemaining: remaining, baseUrl: process.env.APP_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://ok-phi-ten.vercel.app' });
+      const sentAt = new Date().toISOString();
+      const saved = await db(`orders?id=eq.${encodeURIComponent(order.id)}`, { method: 'PATCH', body: JSON.stringify({ renewal_reminder_manual_sent_at: sentAt, updated_at: sentAt }) });
+      return saved.ok ? response.status(200).json({ ok: true, sentAt }) : response.status(502).json({ message: 'أُرسل البريد لكن تعذر تسجيل حالته.' });
+    } else if (action === 'save_renewal_settings') {
+      const days = [...new Set((Array.isArray(settings?.renewal_reminder_days) ? settings.renewal_reminder_days : [3, 1]).map(Number).filter(day => day === 3 || day === 1))].sort((a, b) => b - a);
+      result = await db('system_settings?singleton=eq.true', { method: 'PATCH', body: JSON.stringify({ renewal_reminders_enabled: Boolean(settings?.renewal_reminders_enabled), renewal_reminder_days: days.length ? days : [3, 1], updated_at: new Date().toISOString() }) });
+    } else if (action === 'save_mapping') {
       if (!mapping?.salla_product_id || !mapping?.service_type) return response.status(400).json({ message: 'رقم المنتج والخدمة مطلوبان.' });
       const hasWarranty = mapping.has_warranty !== false;
       const warrantyDays = hasWarranty ? Math.min(Math.max(Number(mapping.warranty_days) || 30, 1), 3660) : 0;
@@ -71,7 +89,10 @@ export default async function handler(request, response) {
         renewalStoreUrl = optionalHttps(settings?.renewal_store_url, 'رابط المتجر');
         crunchyrollPortalUrl = optionalHttps(settings?.crunchyroll_portal_url, 'رابط بوابة كرانشي رول');
       } catch (error) { return response.status(400).json({ message: error.message }); }
-      result = await db('system_settings?singleton=eq.true', { method: 'PATCH', body: JSON.stringify({ banner_active: Boolean(settings?.banner_active), banner_message: String(settings?.banner_message || '').trim().slice(0, 500) || null, auto_assignment_paused: Boolean(settings?.auto_assignment_paused), support_whatsapp: supportWhatsapp, salla_review_url: sallaReviewUrl, renewal_store_url: renewalStoreUrl, crunchyroll_portal_url: crunchyrollPortalUrl, updated_at: new Date().toISOString() }) });
+      const settingsUpdate = { banner_active: Boolean(settings?.banner_active), banner_message: String(settings?.banner_message || '').trim().slice(0, 500) || null, auto_assignment_paused: Boolean(settings?.auto_assignment_paused), support_whatsapp: supportWhatsapp, salla_review_url: sallaReviewUrl, renewal_store_url: renewalStoreUrl, crunchyroll_portal_url: crunchyrollPortalUrl, updated_at: new Date().toISOString() };
+      if (typeof settings?.renewal_reminders_enabled === 'boolean') settingsUpdate.renewal_reminders_enabled = settings.renewal_reminders_enabled;
+      if (Array.isArray(settings?.renewal_reminder_days)) settingsUpdate.renewal_reminder_days = [...new Set(settings.renewal_reminder_days.map(Number).filter(day => day >= 1 && day <= 30))].sort((a, b) => b - a).slice(0, 5);
+      result = await db('system_settings?singleton=eq.true', { method: 'PATCH', body: JSON.stringify(settingsUpdate) });
     } else if (action === 'bulk_import') {
       const aliases = String(bulk?.entries || '').split(/\r?\n/).map(line => line.trim().split(/[,:]/)[0].trim().toLowerCase()).filter(value => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(value));
       if (!bulk?.storeId || !aliases.length) return response.status(400).json({ message: 'أدخل بريدًا صالحًا واحدًا على الأقل.' });

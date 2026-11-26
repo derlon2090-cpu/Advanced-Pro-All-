@@ -68,12 +68,14 @@ export default async function handler(request, response) {
   if (!ingest.ok) return json(response, 502, { error: 'Order ingestion failed' });
   const orderId = await ingest.json();
   if (!orderId) return json(response, 200, { accepted: true, duplicate: true });
-  if (mapping?.renewal_url || mapping?.renewal_discount_code) {
+  const customerEmail = String(order.customer?.email || order.customer_email || '').trim().toLowerCase();
+  if (mapping?.renewal_url || mapping?.renewal_discount_code || customerEmail) {
     await supabase(`orders?id=eq.${encodeURIComponent(orderId)}`, {
       method: 'PATCH',
       body: JSON.stringify({
-        renewal_url: mapping.renewal_url || null,
-        renewal_discount_code: String(mapping.renewal_discount_code || '').trim().slice(0, 80) || null,
+        renewal_url: mapping?.renewal_url || null,
+        renewal_discount_code: String(mapping?.renewal_discount_code || '').trim().slice(0, 80) || null,
+        customer_email: /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(customerEmail) ? customerEmail : null,
         updated_at: new Date().toISOString(),
       }),
     });

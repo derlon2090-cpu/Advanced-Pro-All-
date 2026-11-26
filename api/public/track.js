@@ -53,6 +53,8 @@ export default async function handler(request, response) {
   if (!foundResponse.ok) return response.status(502).json({ message: 'تعذر تحميل بيانات الطلب.' });
   const [order] = await foundResponse.json();
   if (!order) return response.status(404).json({ message: 'لم يتم العثور على الطلب.' });
+  const portalSettingsResponse = await database('system_settings?select=renewal_store_url&singleton=eq.true&limit=1');
+  const portalSettings = portalSettingsResponse.ok ? (await portalSettingsResponse.json())[0] || {} : {};
   const verifiedSession = deviceSession(request, order.id), deviceVerified = Boolean(verifiedSession);
 
   if (request.method === 'POST' && !deviceVerified) return response.status(403).json({ message: 'يجب التحقق من الجهاز قبل توثيق الإقرار.' });
@@ -87,6 +89,7 @@ export default async function handler(request, response) {
       crunchyrollPortalUrl: deviceVerified && order.service_type === 'crunchyroll' ? publicUrl(process.env.PUBLIC_CRUNCHYROLL_PORTAL_URL) : null,
       supportWhatsapp: deviceVerified ? String(process.env.PUBLIC_SUPPORT_WHATSAPP || '').replace(/\D/g, '').slice(0, 20) || null : null,
       sallaReviewUrl: deviceVerified ? publicUrl(process.env.PUBLIC_SALLA_REVIEW_URL) : null,
+      renewalStoreUrl: deviceVerified ? publicUrl(portalSettings.renewal_store_url) : null,
     },
   });
 }
