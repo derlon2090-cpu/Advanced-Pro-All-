@@ -28,7 +28,8 @@ const fragments = ["premiumHomeUi", "settingsUi", "adminWorkspaceUi"]
       ? match[1]
         .replace('<button id="quickNew" class="tab-action">＋ إضافة طلب جديد</button> ', '')
         .replace("location.href='/login'", "location.href='/admin'")
-        .replace('init()})</script>', 'init()}})</script>')
+        .replace("let o=new MutationObserver(()=>{if(init())o.disconnect()});o.observe(document.body,{childList:true,subtree:true});init()", "let o=new MutationObserver(async()=>{if(await init())o.disconnect()});o.observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['class']});init().then(ok=>{if(ok)o.disconnect()})")
+        .replace("init().then(ok=>{if(ok)o.disconnect()})})</script>", "init().then(ok=>{if(ok)o.disconnect()})}})</script>")
       : match[1];
   })
   .join("");
