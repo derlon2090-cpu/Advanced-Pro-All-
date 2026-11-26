@@ -64,8 +64,17 @@ export default async function handler(request, response) {
       if (clean.customerEmail && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(clean.customerEmail)) return response.status(400).json({ message: 'البريد الإلكتروني غير صالح.' });
       const storesResult = await db('stores?select=id&order=created_at.asc&limit=1');
       if (!storesResult.ok) return response.status(502).json({ message: 'تعذر تحديد المتجر.' });
-      const [store] = await storesResult.json();
-      if (!store?.id) return response.status(409).json({ message: 'أضف متجرًا أولًا قبل إنشاء طلب يدوي.' });
+      let [store] = await storesResult.json();
+      if (!store?.id) {
+        const createdStore = await db('stores?on_conflict=salla_merchant_id', {
+          method: 'POST',
+          headers: { Prefer: 'resolution=merge-duplicates,return=representation' },
+          body: JSON.stringify({ salla_merchant_id: 'manual-admin-store', name: 'Advanced Pro Portal' }),
+        });
+        if (!createdStore.ok) return response.status(502).json({ message: 'تعذر تهيئة متجر الطلبات اليدوية.' });
+        [store] = await createdStore.json();
+      }
+      if (!store?.id) return response.status(502).json({ message: 'تعذر تهيئة متجر الطلبات اليدوية.' });
       const duplicate = await db(`orders?select=id&store_id=eq.${encodeURIComponent(store.id)}&order_number=eq.${encodeURIComponent(clean.orderNumber)}&limit=1`);
       if (!duplicate.ok) return response.status(502).json({ message: 'تعذر التحقق من رقم الطلب.' });
       if ((await duplicate.json()).length) return response.status(409).json({ message: 'رقم الطلب موجود مسبقًا.' });
