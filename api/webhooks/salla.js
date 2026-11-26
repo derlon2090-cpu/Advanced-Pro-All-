@@ -1,7 +1,7 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
+import { insertUnknownSallaProduct, serviceFromProduct } from '../../lib/salla-products.js';
 
 const json = (response, status, body) => response.status(status).json(body);
-const serviceFromProduct = name => /crunchyroll/i.test(name || '') ? 'crunchyroll' : /chatgpt|openai/i.test(name || '') ? 'chatgpt' : 'general_subscription';
 const supabaseUrl = () => process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabase = (path, options = {}) => fetch(`${supabaseUrl()}/rest/v1/${path}`, {
   ...options,
@@ -46,10 +46,16 @@ export default async function handler(request, response) {
   if (!['order.created', 'order.updated'].includes(event)) return json(response, 202, { ignored: true });
   const order = payload.data || payload.order || payload;
   if (!['paid', 'completed'].includes(String(order.payment_status || order.status || '').toLowerCase())) return json(response, 202, { ignored: true, reason: 'order_not_paid' });
-  const item = order.items?.[0] || order.product || {};
-  const productName = item.name || order.product_name || '';
-  const productId = String(item.id || item.product_id || item.sku || order.product_id || order.sku || '');
-  const mapping = await productMapping(productId);
+  const items = Array.isArray(order.items) && order.items.length ? order.items : [order.product || {}];
+  const item = items[0] || {};
+  const productName = item.product?.name || item.name || order.product_name || '';
+  const productId = String(item.product?.id || item.id || item.product_id || item.sku || order.product_id || order.sku || '');
+  let mapping = await productMapping(productId), productAutoAdded = false;
+  for (const orderItem of items) {
+    const synced = await insertUnknownSallaProduct(supabase, orderItem).catch(() => null);
+    productAutoAdded = Boolean(synced?.inserted) || productAutoAdded;
+  }
+  if (!mapping && productId) mapping = await productMapping(productId);
   const fallbackDuration = /(?:2\s*month|شهرين|60\s*يوم)/i.test(productName) ? 60 : /(?:3\s*month|3\s*أشهر|90\s*يوم)/i.test(productName) ? 90 : 30;
   const args = {
     p_event_id: String(request.headers['x-salla-event-id'] || payload.event_id || payload.id || `${event}:${order.id}`),
@@ -86,5 +92,5 @@ export default async function handler(request, response) {
   const [result] = await assigned.json();
   const wasAssigned = Boolean(result?.assigned);
   const whatsappSent = wasAssigned ? await sendWhatsApp({ phone: args.p_customer_phone, orderNumber: args.p_order_number, trackingToken: result?.tracking_token }) : false;
-  return json(response, 200, { accepted: true, assigned: wasAssigned, pendingAssignment: !wasAssigned, productMappingUsed: Boolean(mapping), whatsappSent });
+  return json(response, 200, { accepted: true, assigned: wasAssigned, pendingAssignment: !wasAssigned, productMappingUsed: Boolean(mapping), productAutoAdded, whatsappSent });
 }

@@ -2,6 +2,7 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
 import activityHandler from '../../lib/activity-api.js';
 import verifyDeviceHandler from '../../lib/verify-device-api.js';
 import { sendReminderConfirmation } from '../../lib/renewal-email.js';
+import { blockForMaintenance } from '../../lib/maintenance-mode.js';
 
 const buckets = new Map();
 const clientIp = request => String(request.headers['x-forwarded-for'] || request.headers['x-real-ip'] || 'unknown').split(',')[0].trim().slice(0, 128);
@@ -39,6 +40,7 @@ const publicUrl = value => {
 const maskEmail = value => { const [name, domain] = String(value || '').split('@'); return name && domain ? `${name.slice(0, 1)}***@${domain}` : null; };
 
 export default async function handler(request, response) {
+  if (await blockForMaintenance(response)) return;
   if (request.query?._route === 'activity') return activityHandler(request, response);
   if (request.query?._route === 'verify-device') return verifyDeviceHandler(request, response);
   if (!['GET', 'POST'].includes(request.method)) return response.status(405).json({ message: 'الطريقة غير مسموحة.' });

@@ -98,8 +98,9 @@
   }
 </style>
 <script>
-  document.addEventListener('DOMContentLoaded', () => {
+  document.addEventListener('DOMContentLoaded', async () => {
     if (!location.pathname.startsWith('/track/')) return;
+    if (await window.apMaintenanceGate?.()) return;
     const portal = document.getElementById('portal');
     if (!portal) return;
     document.body.classList.add('order-track-ready');

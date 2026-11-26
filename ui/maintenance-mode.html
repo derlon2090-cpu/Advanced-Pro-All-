@@ -1,0 +1,35 @@
+<style>
+  body.ap-maintenance-active { margin: 0; background: #050a18 !important; color: #f8fafc; }
+  .ap-maintenance-active .top, .ap-maintenance-active .footer { display: none !important; }
+  .ap-maintenance-active .shell { max-width: none !important; padding: 0 !important; }
+  .maintenance-screen { min-height: 100vh; display: grid; place-items: center; padding: 24px; overflow: hidden; background: radial-gradient(circle at 15% 15%, #ea580c26, transparent 30rem), #050a18; }
+  .maintenance-box { position: relative; width: min(610px,100%); padding: 42px; overflow: hidden; text-align: center; border: 1px solid #334155; border-radius: 26px; background: linear-gradient(145deg,#0b1428,#07101f); box-shadow: 0 35px 100px #0009; }
+  .maintenance-box:before { content:""; position:absolute; inset:0 0 auto; height:4px; background:linear-gradient(90deg,#9a3412,#ea580c,#fb923c); }
+  .maintenance-mark { width: 58px; height: 58px; margin: 0 auto 20px; display: grid; place-items:center; border-radius: 17px; color:#fff; background:#ea580c; box-shadow:0 15px 35px #ea580c40; font-weight:900; }
+  .maintenance-box small { color:#fb923c; font-weight:900; }
+  .maintenance-box h1 { margin: 10px 0 12px; font-size: clamp(1.7rem,5vw,2.5rem); }
+  .maintenance-box p { margin:0 auto; max-width:490px; color:#cbd5e1; line-height:1.9; font-size:.9rem; }
+  .maintenance-support { display:inline-flex; margin-top:24px; padding:12px 17px; border:1px solid #ea580c66; border-radius:11px; color:#fed7aa; background:#ea580c18; font-weight:900; font-size:.8rem; }
+  .maintenance-foot { display:block; margin-top:22px; color:#64748b !important; font-size:.66rem; }
+  @media(max-width:600px){.maintenance-screen{padding:14px}.maintenance-box{padding:32px 20px;border-radius:21px}}
+</style>
+<script>
+  window.apMaintenanceGate = async function () {
+    if (location.pathname.startsWith('/admin')) return false;
+    if (!window.apMaintenanceState) {
+      window.apMaintenanceState = fetch('/api/public/system-settings', { headers: { accept: 'application/json' }, cache: 'no-store' })
+        .then(response => response.ok ? response.json() : {})
+        .catch(() => ({}));
+    }
+    const settings = await window.apMaintenanceState;
+    if (!settings.maintenanceEnabled) return false;
+    const escapeHtml = value => String(value || '').replace(/[&<>"']/g, character => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[character]));
+    const portal = document.getElementById('portal');
+    if (!portal) return true;
+    document.body.classList.add('ap-maintenance-active');
+    const support = String(settings.supportWhatsapp || '').replace(/\D/g,'').slice(0,20);
+    const link = support ? '<a class="maintenance-support" target="_blank" rel="noopener" href="https://wa.me/'+support+'?text='+encodeURIComponent('مرحبًا، لدي حالة طارئة أثناء صيانة بوابة أدفانسد برو')+'">التواصل مع الدعم عبر واتساب</a>' : '';
+    portal.innerHTML = '<main class="maintenance-screen"><section class="maintenance-box"><div class="maintenance-mark">AP</div><small>بوابة أدفانسد برو</small><h1>نعود إليكم بعد قليل</h1><p>'+escapeHtml(settings.maintenanceMessage)+'</p>'+link+'<span class="maintenance-foot">Advanced Pro Portal • خدمة العملاء متوقفة مؤقتًا للصيانة</span></section></main>';
+    return true;
+  };
+</script>

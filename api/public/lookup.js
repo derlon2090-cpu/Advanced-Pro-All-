@@ -1,4 +1,5 @@
 import { createHmac, randomBytes } from 'node:crypto';
+import { blockForMaintenance } from '../../lib/maintenance-mode.js';
 
 const ip = request => String(request.headers['x-forwarded-for'] || request.headers['x-real-ip'] || 'unknown').split(',')[0].trim().slice(0, 128);
 const normalizeOrder = value => String(value || '').trim().replace(/[٠-٩]/g, digit => String(digit.charCodeAt(0) - 1632)).replace(/[۰-۹]/g, digit => String(digit.charCodeAt(0) - 1776));
@@ -65,6 +66,7 @@ async function importFromSalla(orderNumber) {
 
 export default async function handler(request, response) {
   if (request.method !== 'POST') return response.status(405).json({ message: 'الطريقة غير مسموحة.' });
+  if (await blockForMaintenance(response)) return;
   const order = normalizeOrder(request.body?.orderNumber || request.body?.order_number || request.body?.salla_reference_id);
   if (!/^\d{1,30}$/.test(order)) return response.status(400).json({ message: 'أدخل رقم الطلب بالأرقام فقط.' });
   if (!(process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL) || !process.env.SUPABASE_SERVICE_ROLE_KEY) return response.status(503).json({ message: 'خدمة الاستعلام غير متاحة مؤقتًا.' });
