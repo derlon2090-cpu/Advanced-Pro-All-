@@ -15,6 +15,7 @@
   "rewrites": [
     { "source": "/api/public/activity", "destination": "/api/public/track?_route=activity" },
     { "source": "/api/public/verify-device", "destination": "/api/public/track?_route=verify-device" },
+    { "source": "/api/public/track/:token/reminder-email", "destination": "/api/public/track?_route=reminder-email&token=:token" },
     { "source": "/api/admin/dispute-report", "destination": "/api/admin/operations?_route=dispute-report" },
     { "source": "/api/admin/orders/:id/reset-device", "destination": "/api/admin/operations?_route=reset-device&orderId=:id" },
     { "source": "/admin/:path*", "destination": "/index.html" },

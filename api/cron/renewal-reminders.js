@@ -18,7 +18,7 @@ export default async function handler(request, response) {
   if (!settings?.renewal_reminders_enabled) return json(response, 200, { processed: 0, sent: 0, skipped: true, reason: 'disabled' });
   const stages = Array.isArray(settings.renewal_reminder_days) ? settings.renewal_reminder_days.map(Number).filter(day => day === 3 || day === 1) : [3, 1];
   const maxDays = Math.max(...stages, 1), now = new Date(), end = new Date(now.getTime() + (maxDays + 1) * 86400000);
-  const params = new URLSearchParams({ select: 'id,order_number,product_name,customer_email,expires_at,tracking_token,renewal_url,renewal_discount_code,renewal_reminder_3d_sent_at,renewal_reminder_1d_sent_at,customers(name)', status: 'eq.delivered', customer_email: 'not.is.null', expires_at: `gte.${now.toISOString()}` });
+  const params = new URLSearchParams({ select: 'id,order_number,product_name,customer_email,reminder_email,expires_at,tracking_token,renewal_url,renewal_discount_code,renewal_reminder_3d_sent_at,renewal_reminder_1d_sent_at,customers(name)', status: 'eq.delivered', or: '(customer_email.not.is.null,reminder_email.not.is.null)', expires_at: `gte.${now.toISOString()}` });
   params.append('expires_at', `lt.${end.toISOString()}`);
   const ordersResponse = await db(`orders?${params}`);
   if (!ordersResponse.ok) return json(response, 502, { error: 'Renewal query failed' });
@@ -32,6 +32,7 @@ export default async function handler(request, response) {
     if (order[column]) { results.push({ orderNumber: order.order_number, stage, status: 'already_sent' }); continue; }
     try {
       order.customer_name = Array.isArray(order.customers) ? order.customers[0]?.name : order.customers?.name;
+      order.customer_email = order.reminder_email || order.customer_email;
       order.renewal_store_url = settings.renewal_store_url || null;
       await sendRenewalEmail({ order, daysRemaining, baseUrl: process.env.APP_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://ok-phi-ten.vercel.app' });
       const sentAt = new Date().toISOString();

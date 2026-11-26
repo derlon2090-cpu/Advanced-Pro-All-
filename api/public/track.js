@@ -1,6 +1,7 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import activityHandler from '../../lib/activity-api.js';
 import verifyDeviceHandler from '../../lib/verify-device-api.js';
+import { sendReminderConfirmation } from '../../lib/renewal-email.js';
 
 const buckets = new Map();
 const clientIp = request => String(request.headers['x-forwarded-for'] || request.headers['x-real-ip'] || 'unknown').split(',')[0].trim().slice(0, 128);
@@ -35,6 +36,7 @@ const publicUrl = value => {
     return url.protocol === 'https:' ? url.toString() : null;
   } catch { return null; }
 };
+const maskEmail = value => { const [name, domain] = String(value || '').split('@'); return name && domain ? `${name.slice(0, 1)}***@${domain}` : null; };
 
 export default async function handler(request, response) {
   if (request.query?._route === 'activity') return activityHandler(request, response);
@@ -47,7 +49,7 @@ export default async function handler(request, response) {
   const token = cleanToken(request.query?.token || request.body?.token);
   if (!token) return response.status(400).json({ message: 'رابط الطلب غير صالح.' });
 
-  const select = 'id,order_number,product_name,service_type,status,duration_days,starts_at,expires_at,has_warranty,warranty_days,warranty_expires_at,acknowledgment_text,acknowledged_at,renewal_url,renewal_discount_code,account_assignments(email_accounts(mailbox_alias))';
+  const select = 'id,order_number,product_name,service_type,status,duration_days,starts_at,expires_at,has_warranty,warranty_days,warranty_expires_at,acknowledgment_text,acknowledged_at,tracking_token,customer_email,reminder_email,reminder_subscribed_at,renewal_url,renewal_discount_code,customers(name),account_assignments(email_accounts(mailbox_alias))';
   const params = new URLSearchParams({ select, tracking_token: `eq.${token}`, limit: '1' });
   const foundResponse = await database(`orders?${params}`);
   if (!foundResponse.ok) return response.status(502).json({ message: 'تعذر تحميل بيانات الطلب.' });
@@ -58,6 +60,20 @@ export default async function handler(request, response) {
   const verifiedSession = deviceSession(request, order.id), deviceVerified = Boolean(verifiedSession);
 
   if (request.method === 'POST' && !deviceVerified) return response.status(403).json({ message: 'يجب التحقق من الجهاز قبل توثيق الإقرار.' });
+
+  if (request.method === 'POST' && request.query?._route === 'reminder-email') {
+    const email = String(request.body?.email || '').trim().toLowerCase();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) || email.length > 254) return response.status(400).json({ message: 'أدخل بريدًا إلكترونيًا صالحًا.' });
+    const subscribedAt = new Date().toISOString(), consentHash = createHmac('sha256', deviceSecret()).update(clientIp(request)).digest('hex');
+    const saved = await database(`orders?id=eq.${encodeURIComponent(order.id)}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ reminder_email: email, reminder_subscribed_at: subscribedAt, reminder_consent_ip_hash: consentHash, updated_at: subscribedAt }) });
+    if (!saved.ok) return response.status(502).json({ message: 'تعذر حفظ بريد التذكير.' });
+    const customer = Array.isArray(order.customers) ? order.customers[0] : order.customers;
+    order.customer_name = customer?.name;order.customer_email = email;order.renewal_store_url = portalSettings.renewal_store_url || null;
+    const daysRemaining = order.expires_at ? Math.ceil((new Date(order.expires_at) - Date.now()) / 86400000) : 0;
+    try { await sendReminderConfirmation({ order, daysRemaining, baseUrl: process.env.APP_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://ok-phi-ten.vercel.app' }); }
+    catch (error) { return response.status(502).json({ saved: true, message: 'تم حفظ البريد، لكن تعذر إرسال رسالة التأكيد حاليًا.' }); }
+    return response.status(200).setHeader('Cache-Control', 'private, no-store').json({ ok: true, emailMasked: maskEmail(email), subscribedAt });
+  }
 
   if (request.method === 'POST' && !order.acknowledged_at) {
     if (request.body?.accepted !== true) return response.status(400).json({ message: 'يجب الموافقة على سياسة المنتج أولًا.' });
@@ -81,6 +97,13 @@ export default async function handler(request, response) {
   if (accountEmail) await database('portal_activity_events', { method: 'POST', body: JSON.stringify({ order_id: order.id, activity_type: 'account_details_viewed', physical_core_hash: verifiedSession.physicalHash }) });
   delete order.id;
   delete order.account_assignments;
+  delete order.customers;
+  const reminderAddress = order.reminder_email || order.customer_email;
+  order.reminder_email_masked = deviceVerified ? maskEmail(reminderAddress) : null;
+  order.reminder_subscribed = Boolean(order.reminder_subscribed_at || order.customer_email);
+  delete order.reminder_email;
+  delete order.customer_email;
+  delete order.tracking_token;
   order.account_email = accountEmail;
   order.device_verified = deviceVerified;
   return response.status(200).setHeader('Cache-Control', 'private, no-store').json({

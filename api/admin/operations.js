@@ -35,7 +35,7 @@ export default async function handler(request, response) {
       db('salla_product_mappings?select=*&order=created_at.desc'), db('system_settings?select=*&singleton=eq.true'),
       db('mail_delivery_logs?select=recipient_address,category,received_at,email_accounts(mailbox_alias)&order=received_at.desc&limit=5'),
       db('stores?select=id&order=created_at.asc&limit=1'),
-      db('orders?select=id,order_number,product_name,service_type,customer_phone,customer_email,status,created_at,starts_at,expires_at,has_warranty,warranty_days,warranty_expires_at,acknowledgment_text,acknowledged_at,tracking_token,renewal_url,renewal_discount_code,renewal_reminder_3d_sent_at,renewal_reminder_1d_sent_at,renewal_reminder_manual_sent_at,security_strikes,locked_device_name,registered_city_name,registered_country_code,free_resets_remaining,customers(name),account_assignments(email_accounts(id,mailbox_alias,integrity_status,integrity_alerted_at))&order=created_at.desc&limit=100'),
+      db('orders?select=id,order_number,product_name,service_type,customer_phone,customer_email,reminder_email,reminder_subscribed_at,status,created_at,starts_at,expires_at,has_warranty,warranty_days,warranty_expires_at,acknowledgment_text,acknowledged_at,tracking_token,renewal_url,renewal_discount_code,renewal_reminder_3d_sent_at,renewal_reminder_1d_sent_at,renewal_reminder_manual_sent_at,security_strikes,locked_device_name,registered_city_name,registered_country_code,free_resets_remaining,customers(name),account_assignments(email_accounts(id,mailbox_alias,integrity_status,integrity_alerted_at))&order=created_at.desc&limit=100'),
       db('email_accounts?select=id,mailbox_alias,service_type,max_slots,is_active,archived_at,password_updated_at,integrity_status,integrity_alerted_at&order=created_at.desc&limit=200'),
       db('mail_security_events?select=id,event_type,received_at,suspected_order_id,attribution_basis,email_accounts(mailbox_alias)&order=received_at.desc&limit=100'),
     ]);
@@ -47,12 +47,13 @@ export default async function handler(request, response) {
     let result;
     if (action === 'send_renewal_reminder') {
       if (!/^[0-9a-f-]{36}$/i.test(String(orderId || ''))) return response.status(400).json({ message: 'معرّف الطلب غير صالح.' });
-      const orderResult = await db(`orders?select=id,order_number,product_name,customer_email,expires_at,tracking_token,renewal_url,renewal_discount_code,customers(name)&id=eq.${encodeURIComponent(orderId)}&limit=1`);
+      const orderResult = await db(`orders?select=id,order_number,product_name,customer_email,reminder_email,expires_at,tracking_token,renewal_url,renewal_discount_code,customers(name)&id=eq.${encodeURIComponent(orderId)}&limit=1`);
       const settingsResult = await db('system_settings?select=renewal_store_url&singleton=eq.true&limit=1');
       if (!orderResult.ok || !settingsResult.ok) return response.status(502).json({ message: 'تعذر تحميل بيانات التجديد.' });
       const [order] = await orderResult.json(), [portalSettings] = await settingsResult.json();
       if (!order) return response.status(404).json({ message: 'الطلب غير موجود.' });
       order.customer_name = Array.isArray(order.customers) ? order.customers[0]?.name : order.customers?.name;
+      order.customer_email = order.reminder_email || order.customer_email;
       order.renewal_store_url = portalSettings?.renewal_store_url || null;
       const remaining = order.expires_at ? Math.ceil((new Date(order.expires_at) - Date.now()) / 86400000) : 0;
       await sendRenewalEmail({ order, daysRemaining: remaining, baseUrl: process.env.APP_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://ok-phi-ten.vercel.app' });
