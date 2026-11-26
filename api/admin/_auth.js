@@ -12,7 +12,11 @@ export function supabaseConfig() {
 }
 
 export function allowedAdmin(email) {
-  return (process.env.ADMIN_EMAILS || "").split(",").map(value => value.trim().toLowerCase()).filter(Boolean).includes(email.toLowerCase());
+  return (process.env.ADMIN_EMAILS || "")
+    .split(",")
+    .map(value => value.trim().replace(/^["']|["']$/g, "").toLowerCase())
+    .filter(Boolean)
+    .includes(email.toLowerCase());
 }
 
 export function tokenFromRequest(request) {
