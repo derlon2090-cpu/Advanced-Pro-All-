@@ -3,6 +3,7 @@ import { normalizeOrderNumber } from '../../lib/order-number.js';
 import { decryptSensitivePayload } from '../../lib/account-credentials.js';
 import { blockForMaintenance } from '../../lib/maintenance-mode.js';
 import { isCrunchyrollOrder, portalForOrder, wrongProductMessage } from '../../lib/service-product.js';
+import { inspectBinding } from '../../lib/device-binding.js';
 
 const buckets = new Map();
 const clientIp = request => String(request.headers['x-forwarded-for'] || request.headers['x-real-ip'] || 'unknown').split(',')[0].trim().slice(0, 128);
@@ -39,12 +40,39 @@ const safeApprovalUrl = value => {
 
 async function findOrderByToken(token) {
   const params = new URLSearchParams({
-    select: 'id,order_number,product_name,service_type,payment_status,status,expires_at,acknowledged_at,tracking_token,account_assignments(email_account_id)',
+    select: 'id,order_number,product_name,service_type,payment_status,status,expires_at,acknowledged_at,tracking_token,locked_device_name,locked_device_fingerprint_hash,device_bind_token_hash,locked_browser_fingerprint_hash,locked_browser_family,locked_os_name,account_assignments(email_account_id)',
     tracking_token: `eq.${token}`,
     limit: '1',
   });
   const result = await db(`orders?${params}`);
   return result.ok ? (await result.json())[0] || null : null;
+}
+
+async function handleStartReauth(request, response) {
+  if (request.method !== 'POST') return response.status(405).json({ message: 'الطريقة غير مسموحة.' });
+  if (!allowed(request, 8)) return response.status(429).setHeader('Retry-After', '60').json({ message: 'طلبات كثيرة، حاول بعد دقيقة.' });
+  const token = cleanToken(request.body?.token);
+  if (!token) return response.status(400).json({ message: 'رابط الطلب غير صالح.' });
+  const order = await findOrderByToken(token);
+  if (!order || !isCrunchyrollOrder(order)) return response.status(404).json({ message: 'لم يتم العثور على اشتراك كرانشي رول.' });
+  if (!order.acknowledged_at) return response.status(403).json({ message: 'يجب الموافقة على إقرار الضمان أولًا.' });
+  const binding = inspectBinding(request, order);
+  if (!binding.ok) return response.status(403).json({ code: binding.code || 'DEVICE_MISMATCH', message: 'هذا الاشتراك مربوط بمتصفح وجهاز آخر.', trustedDevice: order.locked_device_name || 'الجهاز الموثّق' });
+  if (order.expires_at && new Date(order.expires_at) <= new Date()) return response.status(410).json({ message: 'انتهت صلاحية الاشتراك.' });
+  const assignment = order.account_assignments?.[0], accountId = assignment?.email_account_id;
+  if (!accountId) return response.status(409).json({ message: 'الحساب ما زال قيد التجهيز.' });
+  const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const attempts = await db(`service_reauth_sessions?select=id&order_id=eq.${encodeURIComponent(order.id)}&started_at=gte.${encodeURIComponent(since)}`);
+  if (!attempts.ok) return response.status(502).json({ message: 'تعذر فتح نافذة إعادة الدخول.' });
+  if ((await attempts.json()).length >= 3) return response.status(429).json({ code: 'REAUTH_LIMIT', message: 'تم بلوغ الحد اليومي لإعادة الدخول. تواصل مع الدعم إذا استمرت المشكلة.' });
+  const mutexSince = new Date(Date.now() - 2 * 60 * 1000).toISOString();
+  const mutex = await db(`service_reauth_sessions?select=id&email_account_id=eq.${encodeURIComponent(accountId)}&order_id=neq.${encodeURIComponent(order.id)}&started_at=gte.${encodeURIComponent(mutexSince)}&closed_at=is.null&limit=1`);
+  if (!mutex.ok) return response.status(502).json({ message: 'تعذر التحقق من نافذة الموافقة.' });
+  if ((await mutex.json()).length) return response.status(409).setHeader('Retry-After', '30').json({ code: 'REAUTH_BUSY', message: 'يوجد طلب موافقة جارٍ حاليًا على هذا الحساب، انتظر 30 ثانية ثم اضغط مجددًا.' });
+  const startedAt = new Date(), expiresAt = new Date(startedAt.getTime() + 10 * 60 * 1000);
+  const created = await db('service_reauth_sessions', { method: 'POST', headers: { Prefer: 'return=representation' }, body: JSON.stringify({ order_id: order.id, email_account_id: accountId, service_type: 'crunchyroll', started_at: startedAt.toISOString(), expires_at: expiresAt.toISOString() }) });
+  if (!created.ok) return response.status(502).json({ message: 'تعذر بدء محاولة إعادة الدخول.' });
+  return response.status(201).setHeader('Cache-Control', 'private, no-store').json({ ok: true, startedAt: startedAt.toISOString(), expiresAt: expiresAt.toISOString(), watermark: `#${order.order_number} • ${String(order.locked_device_fingerprint_hash || '').slice(0, 6).toUpperCase()}` });
 }
 
 async function handleAccess(request, response) {
@@ -79,11 +107,15 @@ async function handleMessages(request, response) {
   if (!order) return response.status(404).json({ message: 'لم يتم العثور على اشتراك كرانشي رول.' });
   if (!isCrunchyrollOrder(order)) return response.status(409).json({ message: wrongProductMessage(order, 'Crunchyroll'), redirectTo: portalForOrder(order) });
   if (!order.acknowledged_at) return response.status(403).json({ message: 'يجب الموافقة على إقرار الضمان أولًا.' });
-  if (!deviceSession(request, order.id)) return response.status(403).json({ message: 'انتهت جلسة الجهاز. أعد التحقق.' });
+  const binding = inspectBinding(request, order);
+  if (!binding.ok) return response.status(403).json({ code: binding.code || 'DEVICE_MISMATCH', message: 'هذا الاشتراك مربوط بمتصفح وجهاز آخر.' });
   if (order.expires_at && new Date(order.expires_at) <= new Date()) return response.status(410).json({ message: 'انتهت صلاحية الاشتراك.' });
   const assignment = order.account_assignments?.[0], accountId = assignment?.email_account_id;
   if (!accountId) return response.status(200).json({ messages: [], featured: null });
-  const query = new URLSearchParams({ select: 'id,received_at,encrypted_payload', email_account_id: `eq.${accountId}`, expires_at: `gt.${new Date().toISOString()}`, order: 'received_at.desc', limit: '5' });
+  const sessions = await db(`service_reauth_sessions?select=started_at,expires_at&order_id=eq.${encodeURIComponent(order.id)}&expires_at=gt.${encodeURIComponent(new Date().toISOString())}&closed_at=is.null&order=started_at.desc&limit=1`);
+  const [session] = sessions.ok ? await sessions.json() : [];
+  if (!session) return response.status(409).json({ code: 'REAUTH_REQUIRED', message: 'اضغط «تم تسجيل خروجي» لفتح نافذة الموافقة الحية.' });
+  const query = new URLSearchParams({ select: 'id,received_at,encrypted_payload', email_account_id: `eq.${accountId}`, received_at: `gte.${session.started_at}`, expires_at: `gt.${new Date().toISOString()}`, order: 'received_at.desc', limit: '5' });
   const result = await db(`crunchyroll_mailbox_messages?${query}`);
   if (!result.ok) return response.status(502).json({ message: 'تعذر تحميل الرسائل.' });
   const messages = (await result.json()).map(row => {
@@ -109,5 +141,7 @@ export default async function handler(request, response) {
   if (await blockForMaintenance(response)) return;
   const { url, key } = config();
   if (!url || !key || !secret()) return response.status(503).json({ message: 'خدمة بوابة كرانشي رول غير متاحة مؤقتًا.' });
-  return request.query?._route === 'messages' ? handleMessages(request, response) : handleAccess(request, response);
+  if (request.query?._route === 'messages') return handleMessages(request, response);
+  if (request.query?._route === 'start-reauth') return handleStartReauth(request, response);
+  return handleAccess(request, response);
 }

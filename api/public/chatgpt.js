@@ -3,6 +3,7 @@ import { normalizeOrderNumber } from '../../lib/order-number.js';
 import { generateTotp } from '../../lib/totp.js';
 import { blockForMaintenance } from '../../lib/maintenance-mode.js';
 import { isChatgptOrder, portalForOrder, wrongProductMessage } from '../../lib/service-product.js';
+import { inspectBinding } from '../../lib/device-binding.js';
 
 const buckets = new Map();
 const clientIp = request => String(request.headers['x-forwarded-for'] || request.headers['x-real-ip'] || 'unknown').split(',')[0].trim().slice(0, 128);
@@ -55,7 +56,7 @@ async function handleTotp(request, response) {
   const token = cleanToken(request.query?.token);
   if (!token) return response.status(400).json({ message: 'رابط الطلب غير صالح.' });
   const params = new URLSearchParams({
-    select: 'id,product_name,service_type,status,expires_at,acknowledged_at,account_assignments(email_accounts(totp_secret))',
+    select: 'id,product_name,service_type,status,expires_at,acknowledged_at,locked_device_name,locked_device_fingerprint_hash,device_bind_token_hash,locked_browser_fingerprint_hash,locked_browser_family,locked_os_name,account_assignments(email_accounts(totp_secret))',
     tracking_token: `eq.${token}`,
     limit: '1',
   });
@@ -65,7 +66,8 @@ async function handleTotp(request, response) {
   if (!order) return response.status(404).json({ message: 'لم يتم العثور على اشتراك ChatGPT.' });
   if (!isChatgptOrder(order)) return response.status(409).json({ message: wrongProductMessage(order, 'ChatGPT'), redirectTo: portalForOrder(order) });
   if (!order.acknowledged_at) return response.status(403).json({ message: 'يجب الموافقة على إقرار الضمان أولًا.' });
-  if (!deviceSession(request, order.id)) return response.status(403).json({ message: 'انتهت جلسة الجهاز. أعد التحقق.' });
+  const binding = inspectBinding(request, order);
+  if (!binding.ok) return response.status(403).json({ code: binding.code || 'DEVICE_MISMATCH', message: 'هذا الاشتراك مربوط بمتصفح وجهاز آخر.', trustedDevice: order.locked_device_name || 'الجهاز الموثّق' });
   if (order.status === 'suspended_security') return response.status(403).json({ message: 'الوصول موقوف للمراجعة الأمنية.' });
   if (order.expires_at && new Date(order.expires_at) <= new Date()) return response.status(410).json({ message: 'انتهت صلاحية الاشتراك.' });
   const assignment = order.account_assignments?.[0];

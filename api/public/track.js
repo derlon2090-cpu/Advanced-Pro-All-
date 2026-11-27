@@ -5,6 +5,7 @@ import { sendReminderConfirmation } from '../../lib/renewal-email.js';
 import { blockForMaintenance } from '../../lib/maintenance-mode.js';
 import { decryptPassword } from '../../lib/account-credentials.js';
 import { isCrunchyrollOrder } from '../../lib/service-product.js';
+import { inspectBinding } from '../../lib/device-binding.js';
 
 const buckets = new Map();
 const clientIp = request => String(request.headers['x-forwarded-for'] || request.headers['x-real-ip'] || 'unknown').split(',')[0].trim().slice(0, 128);
@@ -54,11 +55,12 @@ export default async function handler(request, response) {
   const token = cleanToken(request.query?.token || request.body?.token);
   if (!token) return response.status(400).json({ message: 'رابط الطلب غير صالح.' });
 
-  const baseSelect = 'id,order_number,product_name,service_type,status,created_at,duration_days,starts_at,expires_at,has_warranty,warranty_days,warranty_expires_at,acknowledgment_text,acknowledged_at,tracking_token,customer_email,reminder_email,reminder_subscribed_at,renewal_url,renewal_discount_code,security_strikes,locked_device_name,locked_device_fingerprint_hash,customers(name),account_assignments(email_accounts(mailbox_alias,encrypted_connection))';
+  const legacySelect = 'id,order_number,product_name,service_type,status,created_at,duration_days,starts_at,expires_at,has_warranty,warranty_days,warranty_expires_at,acknowledgment_text,acknowledged_at,tracking_token,customer_email,reminder_email,reminder_subscribed_at,renewal_url,renewal_discount_code,security_strikes,locked_device_name,locked_device_fingerprint_hash,customers(name),account_assignments(email_accounts(mailbox_alias,encrypted_connection))';
+  const baseSelect = legacySelect.replace('locked_device_fingerprint_hash,','locked_device_fingerprint_hash,device_bind_token_hash,locked_browser_fingerprint_hash,locked_browser_family,locked_os_name,registered_country_code,');
   const select = baseSelect.replace('tracking_token,','tracking_token,referral_code,referral_coupon_unlocked_at,referral_assigned_coupon,');
   let params = new URLSearchParams({ select, tracking_token: `eq.${token}`, limit: '1' });
   let foundResponse = await database(`orders?${params}`);
-  if(!foundResponse.ok){params=new URLSearchParams({select:baseSelect,tracking_token:`eq.${token}`,limit:'1'});foundResponse=await database(`orders?${params}`)}
+  if(!foundResponse.ok){params=new URLSearchParams({select:legacySelect,tracking_token:`eq.${token}`,limit:'1'});foundResponse=await database(`orders?${params}`)}
   if (!foundResponse.ok) return response.status(502).json({ message: 'تعذر تحميل بيانات الطلب.' });
   const [order] = await foundResponse.json();
   if (!order) return response.status(404).json({ message: 'لم يتم العثور على الطلب.' });
@@ -66,7 +68,7 @@ export default async function handler(request, response) {
   let portalSettingsResponse = await database(`system_settings?select=${settingsSelect}&singleton=eq.true&limit=1`);
   if (!portalSettingsResponse.ok) portalSettingsResponse = await database('system_settings?select=renewal_store_url,salla_review_url,support_whatsapp,upsell_enabled,upsell_title,upsell_description,upsell_url,upsell_duration_minutes&singleton=eq.true&limit=1');
   const portalSettings = portalSettingsResponse.ok ? (await portalSettingsResponse.json())[0] || {} : {};
-  const verifiedSession = deviceSession(request, order.id), deviceVerified = Boolean(verifiedSession);
+  const strictBinding = inspectBinding(request, order), verifiedSession = strictBinding.legacy ? deviceSession(request, order.id) : strictBinding.ok ? { physicalHash: order.locked_device_fingerprint_hash } : null, deviceVerified = Boolean(verifiedSession);
 
   if (request.method === 'POST' && !deviceVerified) return response.status(403).json({ message: 'يجب التحقق من الجهاز قبل توثيق الإقرار.' });
 
@@ -129,8 +131,14 @@ export default async function handler(request, response) {
   }
 
   const assignedAccount=order.account_assignments?.[0]?.email_accounts;
-  const accountEmail = order.acknowledged_at && deviceVerified ? assignedAccount?.mailbox_alias || null : null;
-  const accountPassword = order.acknowledged_at && deviceVerified ? decryptPassword(assignedAccount?.encrypted_connection?.password) : null;
+  let reauthActive = !isCrunchyrollOrder(order);
+  if (isCrunchyrollOrder(order) && deviceVerified && String(request.headers['x-reauth-window'] || '') === '1') {
+    const active = await database(`service_reauth_sessions?select=id&order_id=eq.${encodeURIComponent(order.id)}&expires_at=gt.${encodeURIComponent(new Date().toISOString())}&closed_at=is.null&order=started_at.desc&limit=1`);
+    reauthActive = active.ok && (await active.json()).length > 0;
+  }
+  const credentialAccess = Boolean(order.acknowledged_at && deviceVerified && reauthActive);
+  const accountEmail = credentialAccess ? assignedAccount?.mailbox_alias || null : null;
+  const accountPassword = credentialAccess ? decryptPassword(assignedAccount?.encrypted_connection?.password) : null;
   const reviewResponse = order.acknowledged_at && deviceVerified ? await database(`order_reviews?select=status&order_id=eq.${encodeURIComponent(order.id)}&limit=1`) : null;
   const referralResponse = deviceVerified ? await database(`referral_rewards?select=id&referrer_order_id=eq.${encodeURIComponent(order.id)}&limit=100`) : null;
   const [existingReview] = reviewResponse?.ok ? await reviewResponse.json() : [];
@@ -153,9 +161,15 @@ export default async function handler(request, response) {
   delete order.tracking_token;
   delete order.locked_device_name;
   delete order.locked_device_fingerprint_hash;
+  delete order.device_bind_token_hash;
+  delete order.locked_browser_fingerprint_hash;
+  delete order.locked_browser_family;
+  delete order.locked_os_name;
+  delete order.registered_country_code;
   order.account_email = accountEmail;
   order.account_password = accountPassword;
   order.device_verified = deviceVerified;
+  order.reauth_required = isCrunchyrollOrder(order) && deviceVerified && !reauthActive;
   order.trusted_device = trustedDevice;
   const compensationAvailable = Boolean(deviceVerified && order.acknowledged_at && order.has_warranty && order.warranty_expires_at && new Date(order.warranty_expires_at) > new Date());
   const compensationEligible = compensationAvailable && Number(order.security_strikes || 0) === 0;

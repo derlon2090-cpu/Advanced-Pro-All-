@@ -271,6 +271,7 @@
   document.addEventListener('DOMContentLoaded', async () => {
     if (!location.pathname.startsWith('/track/') && !location.pathname.startsWith('/compensate/')) return;
     const { setOrderProgress, confirmOrderFound } = await import('/lib/order-progress.js');
+    const { getBindAnchor, saveBindAnchor, bindingHeaders } = await import('/lib/device-bind-client.js');
     if (await window.apMaintenanceGate?.()) { setOrderProgress(); return; }
     const portal = document.getElementById('portal');
     if (!portal) return;
@@ -425,7 +426,7 @@
       if (reminderForm) reminderForm.onsubmit = async event => {
         event.preventDefault(); const input = document.getElementById('reminderEmailInput'), status = document.getElementById('reminderEmailStatus'), button = reminderForm.querySelector('button');
         button.disabled = true; button.textContent = 'جارِ التفعيل…'; status.textContent = '';
-        try { const response = await fetch('/api/public/track/' + encodeURIComponent(token) + '/reminder-email', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: input.value.trim() }) }); const result = await response.json().catch(() => ({})); if (!response.ok) throw new Error(result.message || 'تعذر تفعيل التذكير.'); status.textContent = 'تم تفعيل التذكير بنجاح! أرسلنا نسخة من رابط اشتراكك ورابط التجديد إلى بريدك الإلكتروني الآن.'; input.value = ''; button.textContent = 'تم التفعيل ✓'; }
+        try { const response = await fetch('/api/public/track/' + encodeURIComponent(token) + '/reminder-email', { method: 'POST', headers: await bindingHeaders(token, { 'content-type': 'application/json' }), body: JSON.stringify({ email: input.value.trim() }) }); const result = await response.json().catch(() => ({})); if (!response.ok) throw new Error(result.message || 'تعذر تفعيل التذكير.'); status.textContent = 'تم تفعيل التذكير بنجاح! أرسلنا نسخة من رابط اشتراكك ورابط التجديد إلى بريدك الإلكتروني الآن.'; input.value = ''; button.textContent = 'تم التفعيل ✓'; }
         catch (error) { status.textContent = error.message; button.disabled = false; button.textContent = order.reminder_email_masked ? 'تغيير الإيميل' : 'تفعيل التذكير'; }
       };
       const reviewForm = document.getElementById('reviewForm');
@@ -441,12 +442,12 @@
           if (Boolean(suggestionCategory) !== Boolean(suggestionText)) { message.textContent = 'أكمل تصنيف الاقتراح ونصه معًا.'; return; }
           submit.disabled = true; submit.textContent = 'جارِ إرسال تقييمك…'; message.textContent = '';
           try {
-            const response = await fetch('/api/public/track/' + encodeURIComponent(token) + '/review', { method:'POST', headers:{'content-type':'application/json'}, body:JSON.stringify({ rating:selectedRating, comment, suggestionCategory, suggestionText }) });
+            const response = await fetch('/api/public/track/' + encodeURIComponent(token) + '/review', { method:'POST', headers:await bindingHeaders(token,{'content-type':'application/json'}), body:JSON.stringify({ rating:selectedRating, comment, suggestionCategory, suggestionText }) });
             const result = await response.json().catch(() => ({})); if (!response.ok) throw new Error(result.message || 'تعذر إرسال التقييم.');
             const box = document.getElementById('reviewResult'); reviewForm.hidden = true; box.hidden = false;
             if (result.positive) {
               box.className = 'review-result'; box.innerHTML = '<h3>شكرًا لك، أسعدنا رضاك عن التجربة ✦</h3><p>تم حفظ تقييمك بأمان وسيظهر بعد اعتماده من فريقنا.</p>' + (result.sallaReviewUrl ? '<button id="shareSallaReview" type="button">شارك تقييمك في متجرنا على سلة ↗</button>' : '');
-              const share = document.getElementById('shareSallaReview'); if (share) share.onclick = async () => { try { await navigator.clipboard.writeText(comment || labels[selectedRating]); } catch {} fetch('/api/public/track/'+encodeURIComponent(token)+'/review-share',{method:'POST'}).catch(()=>{});window.open(result.sallaReviewUrl, '_blank', 'noopener'); share.textContent = 'تم نسخ رأيك — جارِ فتح سلة ↗'; };
+              const share = document.getElementById('shareSallaReview'); if (share) share.onclick = async () => { try { await navigator.clipboard.writeText(comment || labels[selectedRating]); } catch {} fetch('/api/public/track/'+encodeURIComponent(token)+'/review-share',{method:'POST',headers:await bindingHeaders(token)}).catch(()=>{});window.open(result.sallaReviewUrl, '_blank', 'noopener'); share.textContent = 'تم نسخ رأيك — جارِ فتح سلة ↗'; };
             } else {
               const whatsappText = encodeURIComponent('مرحبًا، لدي ملاحظة على الطلب #' + order.order_number + ': ' + (comment || labels[selectedRating]));
               box.className = 'review-result negative'; box.innerHTML = '<h3>نعتذر عن أي تقصير!</h3><p>تم رفع ملاحظتك لإدارة الجودة برقم طلبك وسنتواصل معك فورًا لحلها.</p>' + (result.supportWhatsapp ? '<a target="_blank" rel="noopener" href="https://wa.me/'+escapeHtml(result.supportWhatsapp)+'?text='+whatsappText+'">تواصل مباشر مع الدعم لحل ملاحظتك الآن (واتساب)</a>' : '');
@@ -480,7 +481,7 @@
           if (!checkbox.checked) return;
           button.disabled = true; button.textContent = 'جارِ توثيق الإقرار…';
           try {
-            const response = await fetch('/api/public/track?token=' + encodeURIComponent(token), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ token, accepted: true }) });
+            const response = await fetch('/api/public/track?token=' + encodeURIComponent(token), { method: 'POST', headers: await bindingHeaders(token, { 'content-type': 'application/json' }), body: JSON.stringify({ token, accepted: true }) });
             const result = await response.json().catch(() => ({}));
             if (!response.ok) throw new Error(result.message || 'تعذر توثيق الإقرار.');
             render(result);
@@ -493,7 +494,7 @@
     const shell = content => '<main class="order-portal"><section class="track-hero"><header class="order-brand"><button id="switchOrder" class="switch-order-button" type="button"><span aria-hidden="true">⌕</span> استعلام عن طلب آخر ↺</button></header><div class="track-hero-copy"><span class="order-number">تحقق أمني صامت</span><h1>التحقق الأمني من الجهاز</h1></div></section><section class="track-night"><div class="order-wrap">'+content+'</div></section></main>';
     const loadOrder = async (trackingToken = token) => {
       const [orderResponse, settingsResponse] = await Promise.all([
-        fetch('/api/public/track?token=' + encodeURIComponent(trackingToken), { headers: { accept: 'application/json' } }),
+        fetch('/api/public/track?token=' + encodeURIComponent(trackingToken), { headers: await bindingHeaders(trackingToken, { accept: 'application/json' }) }),
         fetch('/api/public/system-settings', { headers: { accept: 'application/json' } }).catch(() => null),
       ]);
       const data = await orderResponse.json().catch(() => ({}));
@@ -506,8 +507,8 @@
       const challengeResponse = await fetch('/api/public/verify-device', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ token, action: 'challenge' }) });
       const challengePayload = await challengeResponse.json().catch(() => ({}));
       if (!challengeResponse.ok || !challengePayload.challenge) throw new Error(challengePayload.message || 'تعذر إنشاء التحدي الأمني.');
-      const response = await fetch('/api/public/verify-device', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ token, action, challenge: challengePayload.challenge, ...dna }) });
-      return { response, result: await response.json().catch(() => ({})) };
+      const bindAnchor=await getBindAnchor(token),response = await fetch('/api/public/verify-device', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ token, action, bindAnchor, challenge: challengePayload.challenge, ...dna }) });
+      const result=await response.json().catch(() => ({}));if(response.ok&&result.bindAnchor)await saveBindAnchor(token,result.bindAnchor);return { response, result };
     };
     const showTransfer = (security, dna) => {
       portal.innerHTML = shell('<article class="digital-order device-card"><div class="device-icon">↻</div><h1>يبدو أنك تستخدم جهازًا جديدًا</h1><p>نرحب بك! لاحظنا أن هذا الجهاز مختلف عن جهازك السابق (<strong>' + escapeHtml(security.oldDeviceName || 'جهازك السابق') + '</strong>). إذا قمت بتغيير جهازك، يمكنك اعتماد هذا الجهاز الجديد مجانًا لمرة واحدة.</p><p class="device-note">لن نسجل أي مخالفة عند النقل. بعد اعتماده يصبح الجهاز السابق غير معتمد، ويتبقى لك ' + Math.max(0, Number(security.freeResetsRemaining) || 0) + ' فرصة نقل.</p><button id="deviceTransfer" class="device-transfer" type="button">اعتماد هذا الجهاز كجهازي الأساسي</button><p id="deviceTransferMessage" class="ack-message" role="status"></p></article>');
@@ -533,7 +534,7 @@
       portal.innerHTML = shell('<article class="digital-order device-card step-ack"><div class="device-icon">⌾</div><h1>إقرار وسياسة الضمان</h1><p>تمت مطابقة الجهاز. بقي توثيق موافقتك قبل كشف بيانات الاشتراك الحساسة.</p><section class="ack-box"><ul class="ack-list">'+points.map(point=>'<li>'+escapeHtml(point)+'</li>').join('')+'</ul><div class="ack-control"><label class="ack-check"><input id="stageAckCheckbox" type="checkbox"> <span>أقرّ بقراءة شروط المنتج وسياسة الضمان وأوافق عليها</span></label><button id="stageAckButton" class="ack-button" type="button" disabled>أوافق وأُوثّق جهازي الآن ✓</button><p id="stageAckMessage" class="ack-message" role="status"></p></div></section></article>');
       const checkbox=document.getElementById('stageAckCheckbox'),button=document.getElementById('stageAckButton'),message=document.getElementById('stageAckMessage');
       checkbox.onchange=()=>{button.disabled=!checkbox.checked;message.textContent=''};
-      button.onclick=async()=>{if(!checkbox.checked)return;button.disabled=true;button.textContent='جارِ توثيق الإقرار…';try{const response=await fetch('/api/public/track?token='+encodeURIComponent(token),{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({token,accepted:true})});const result=await response.json().catch(()=>({}));if(!response.ok)throw new Error(result.message||'تعذر توثيق الإقرار.');render(result)}catch(error){message.textContent=error.message;button.disabled=false;button.textContent='أوافق وأُوثّق جهازي الآن ✓'}};
+      button.onclick=async()=>{if(!checkbox.checked)return;button.disabled=true;button.textContent='جارِ توثيق الإقرار…';try{const response=await fetch('/api/public/track?token='+encodeURIComponent(token),{method:'POST',headers:await bindingHeaders(token,{'content-type':'application/json'}),body:JSON.stringify({token,accepted:true})});const result=await response.json().catch(()=>({}));if(!response.ok)throw new Error(result.message||'تعذر توثيق الإقرار.');render(result)}catch(error){message.textContent=error.message;button.disabled=false;button.textContent='أوافق وأُوثّق جهازي الآن ✓'}};
     };
     const enterVerified = payload => {
       if (!payload?.order?.device_verified) throw new Error('تعذر توثيق الجهاز لهذا الطلب.');

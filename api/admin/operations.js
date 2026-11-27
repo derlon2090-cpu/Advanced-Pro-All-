@@ -41,7 +41,7 @@ export default async function handler(request, response) {
     return result?.success ? response.status(200).json({ ok: true, freeResetsRemaining: result.free_resets_remaining }) : response.status(404).json({ message: 'الطلب غير موجود.' });
   }
   if (request.method === 'GET') {
-    const [capacity, rotations, mappings, settings, mailLogs, stores, orders, accounts, mailSecurityEvents, reviews, compensations, deviceEvents] = await Promise.all([
+    const [capacity, rotations, mappings, settings, mailLogs, stores, orders, accounts, mailSecurityEvents, reviews, compensations, deviceEvents, reauthSessions] = await Promise.all([
       db('admin_capacity_radar?select=*'), db('admin_password_rotation_queue?select=*'),
       db('salla_product_mappings?select=*&order=created_at.desc'), db('system_settings?select=*&singleton=eq.true'),
       db('mail_delivery_logs?select=recipient_address,category,received_at,email_accounts(mailbox_alias)&order=received_at.desc&limit=5'),
@@ -52,10 +52,27 @@ export default async function handler(request, response) {
       db('order_reviews?select=id,order_id,order_number,customer_name,product_name,rating,comment,suggestion_category,suggestion_text,status,is_negative,salla_shared_at,created_at,reviewed_at&order=created_at.desc&limit=500'),
       db('compensation_requests?select=id,order_id,reason,customer_note,status,review_mode,strikes_at_request,cumulative_strikes,cumulative_orders,cumulative_compensations,reputation_badge,old_email_account_id,replacement_email_account_id,evidence_image_url,evidence_image_hash,device_mismatch_blocked,customer_email,decision_reason,reviewed_at,created_at&order=created_at.desc&limit=500'),
       db('device_access_events?select=order_id,physical_core_hash&order=occurred_at.desc&limit=5000'),
+      db(`service_reauth_sessions?select=email_account_id,started_at&started_at=gte.${encodeURIComponent(new Date(Date.now() - 86400000).toISOString())}&limit=5000`),
     ]);
     if (!capacity.ok || !rotations.ok || !mappings.ok || !settings.ok || !mailLogs.ok || !stores.ok || !orders.ok || !accounts.ok || !mailSecurityEvents.ok || !deviceEvents.ok) return response.status(502).json({ message: 'تعذر تحميل بيانات التشغيل.' });
     const orderRows = await orders.json(), compensationRows = compensations.ok ? await compensations.json() : [], deviceRows = await deviceEvents.json(), reviewRows = reviews.ok ? await reviews.json() : [];
-    const accountRows = (await accounts.json()).map(({ totp_secret, ...account }) => ({ ...account, totp_configured: Boolean(totp_secret) }));
+    const reauthRows = reauthSessions.ok ? await reauthSessions.json() : [];
+    const reauthCounts = reauthRows.reduce((counts, item) => {
+      if (item.email_account_id) counts[item.email_account_id] = (counts[item.email_account_id] || 0) + 1;
+      return counts;
+    }, {});
+    const accountRows = (await accounts.json()).map(({ totp_secret, ...account }) => {
+      const attempts = reauthCounts[account.id] || 0;
+      const quarantined = !account.is_active || Boolean(account.archived_at) || (account.integrity_status && account.integrity_status !== 'healthy');
+      return {
+        ...account,
+        totp_configured: Boolean(totp_secret),
+        reauth_attempts_24h: attempts,
+        health_status: quarantined ? 'quarantined' : attempts > 3 ? 'watch' : 'excellent',
+        health_label: quarantined ? 'محجور' : attempts > 3 ? 'تحت المراقبة' : 'ممتاز 100%',
+        health_score: quarantined ? 0 : attempts > 3 ? 65 : 100,
+      };
+    });
     const reputations = buildCustomerReputations(orderRows, compensationRows, deviceRows);
     const enrichedOrders = orderRows.map(order => ({ ...order, customer_reputation: reputations[order.id] }));
     const enrichedCompensations = compensationRows.map(item => ({ ...item, customer_reputation: reputations[item.order_id] }));

@@ -4,6 +4,7 @@ import { blockForMaintenance } from '../../lib/maintenance-mode.js';
 import { sendOperationalEmail } from '../../lib/operational-email.js';
 import { decryptPassword } from '../../lib/account-credentials.js';
 import { portalForOrder } from '../../lib/service-product.js';
+import { inspectBinding } from '../../lib/device-binding.js';
 
 const db = (path, options = {}) => {
   const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -35,11 +36,12 @@ export default async function handler(request, response) {
   if (!['GET', 'POST'].includes(request.method)) return response.status(405).json({ message: 'الطريقة غير مسموحة.' });
   const token = cleanToken(request.query?.token || request.body?.token);
   if (!token || !(process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL) || !process.env.SUPABASE_SERVICE_ROLE_KEY) return response.status(400).json({ message: 'رابط الطلب غير صالح.' });
-  const orderResult = await db(`orders?select=id,store_id,order_number,product_name,service_type,payment_status,customer_phone,customer_email,reminder_email,security_strikes,has_warranty,expires_at,warranty_expires_at,renewal_url,status,customers(name)&tracking_token=eq.${encodeURIComponent(token)}&limit=1`);
+  const orderResult = await db(`orders?select=id,store_id,order_number,product_name,service_type,payment_status,customer_phone,customer_email,reminder_email,security_strikes,has_warranty,expires_at,warranty_expires_at,renewal_url,status,locked_device_name,locked_device_fingerprint_hash,device_bind_token_hash,locked_browser_fingerprint_hash,locked_browser_family,locked_os_name,customers(name)&tracking_token=eq.${encodeURIComponent(token)}&limit=1`);
   if (!orderResult.ok) return response.status(502).json({ message: 'تعذر التحقق من الطلب.' });
   const [order] = await orderResult.json();
   if (!order) return response.status(404).json({ message: 'الطلب غير موجود.' });
-  if (!verifiedDevice(request, order.id)) {
+  const binding = inspectBinding(request, order), deviceAllowed = binding.legacy ? verifiedDevice(request, order.id) : binding.ok;
+  if (!deviceAllowed) {
     if (request.method === 'POST') await Promise.allSettled([
         db('mail_security_events', { method: 'POST', body: JSON.stringify({ provider_message_id: `compensation-device-${randomUUID()}`, event_type: 'compensation_wrong_device', suspected_order_id: order.id, attribution_basis: 'unverified_device_attempt' }) }),
         db('compensation_requests', { method: 'POST', body: JSON.stringify({ order_id: order.id, reason: 'other', customer_note: 'محاولة تقديم طلب تعويض من جهاز غير معتمد.', status: 'rejected', review_mode: 'manual_review', strikes_at_request: Number(order.security_strikes || 0), device_mismatch_blocked: true, customer_email: order.reminder_email || order.customer_email || null, reviewed_at: new Date().toISOString() }) }),

@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "build": "node scripts/build.mjs",
-    "validate": "node scripts/validate-artifact.mjs && node --test tests/compensation-portal.test.js tests/customer-reputation.test.js tests/device-info.test.js tests/growth-automation.test.js tests/maintenance-and-sync.test.js tests/order-number.test.js tests/order-track-experience.test.js tests/service-portals.test.js tests/subdomain-routing.test.js tests/totp.test.js"
+    "validate": "node scripts/validate-artifact.mjs && node --test tests/compensation-portal.test.js tests/customer-reputation.test.js tests/device-info.test.js tests/growth-automation.test.js tests/maintenance-and-sync.test.js tests/order-number.test.js tests/order-track-experience.test.js tests/service-portals.test.js tests/strict-browser-binding.test.js tests/subdomain-routing.test.js tests/totp.test.js"
   },
   "devDependencies": {
     "wrangler": "^3.114.14"

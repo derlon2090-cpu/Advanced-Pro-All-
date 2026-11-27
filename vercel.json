@@ -33,6 +33,7 @@
     { "source": "/api/public/verify-device", "destination": "/api/public/track?_route=verify-device" },
     { "source": "/api/public/crunchyroll/access", "destination": "/api/public/crunchyroll?_route=access" },
     { "source": "/api/public/crunchyroll/messages", "destination": "/api/public/crunchyroll?_route=messages" },
+    { "source": "/api/public/crunchyroll/start-reauth", "destination": "/api/public/crunchyroll?_route=start-reauth" },
     { "source": "/api/public/chatgpt/access", "destination": "/api/public/chatgpt?_route=access" },
     { "source": "/api/public/chatgpt/totp", "destination": "/api/public/chatgpt?_route=totp" },
     { "source": "/api/public/track/:token/reminder-email", "destination": "/api/public/track?_route=reminder-email&token=:token" },
