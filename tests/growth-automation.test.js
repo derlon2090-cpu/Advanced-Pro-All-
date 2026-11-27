@@ -20,6 +20,14 @@ test('growth migration includes referral reward and evidence deduplication safeg
   assert.match(sql,/admin_resolve_compensation/);
 });
 
+test('five-friend referral migration unlocks a configurable coupon',async()=>{
+  const sql=await readFile(new URL('../supabase/migrations/022_referral_5_friends_coupon.sql',import.meta.url),'utf8');
+  assert.match(sql,/referral_coupon_target integer not null default 5/i);
+  assert.match(sql,/referral_assigned_coupon text/i);
+  assert.match(sql,/count\(\*\).*referral_rewards/is);
+  assert.match(sql,/referral_coupon_unlocked_at = coalesce/i);
+});
+
 test('wrong-device compensation attempts are rejected and visible to administrators',async()=>{
   const source=await readFile(new URL('../api/public/compensate.js',import.meta.url),'utf8');
   assert.match(source,/device_mismatch_blocked:\s*true/);
@@ -44,9 +52,9 @@ test('Vercel Hobby deployment stays within the 12 serverless function limit',asy
   assert.ok(config.rewrites.some(route=>route.source==='/api/cron/daily-digest'&&route.destination.includes('/api/cron?job=')));
 });
 
-test('customer pages expose timed upsell, referral sharing, evidence and social proof',async()=>{
+test('customer pages expose referral progress, coupon sharing, evidence and social proof',async()=>{
   const track=await readFile(new URL('../ui/order-track.html',import.meta.url),'utf8');
   const home=await readFile(new URL('../ui/single-order-home.html',import.meta.url),'utf8');
-  assert.match(track,/offerCountdown/);assert.match(track,/copyReferral/);assert.match(track,/compensationEvidence/);
+  assert.match(track,/offerCountdown/);assert.match(track,/referral-progress/);assert.match(track,/copyReferral/);assert.match(track,/coupon-unlocked/);assert.match(track,/compensationEvidence/);
   assert.match(home,/api\/public\/reviews/);assert.match(home,/advpro_referral/);
 });

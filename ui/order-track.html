@@ -21,11 +21,8 @@
   .track-service { display:block; margin-top:9px; color:#ffedd5; font-size:.76rem; font-weight:800; }
   .track-night { min-height:calc(100vh - 300px); padding:0 18px 58px; background:radial-gradient(circle at 50% -10%,#c2410c1c,transparent 28rem),#050a18; }
   .track-night .order-wrap { transform:translateY(-58px); }
-  .digital-order { position: relative; overflow: hidden; border: 1px solid #274568; border-radius: 24px; background: linear-gradient(145deg, #0a1d38, #071426); box-shadow: 0 32px 95px #000b,0 0 0 1px #ea580c18; animation:cardEnter .45s cubic-bezier(.2,.75,.25,1) both; }
+  .digital-order { position: relative; overflow: hidden; border: 1px solid #ffffff14; border-radius: 24px; background: linear-gradient(145deg, #0b1224, #080f1f); box-shadow: 0 32px 95px #000b,0 0 0 1px #ea580c12; animation:cardEnter .45s cubic-bezier(.2,.75,.25,1) both; }
   @keyframes cardEnter { from{opacity:0;transform:translateY(18px) scale(.985)} to{opacity:1;transform:none} }
-  .order-watermark { position: absolute; inset: 0; z-index: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 38px; overflow: hidden; padding: 34px; pointer-events: none; opacity: .045; transform: rotate(-12deg) scale(1.15); }
-  .order-watermark span { color: #fff; font-weight: 900; font-size: .72rem; white-space: nowrap; letter-spacing: .08em; }
-  .digital-order > :not(.order-watermark) { position: relative; z-index: 1; }
   .ticket-head { position: relative; display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; padding: 26px; background: linear-gradient(120deg, #9a3412, #c2410c 65%, #ea580c); }
   .ticket-head::after { content: ''; position: absolute; inset: 0; opacity: .1; background: repeating-linear-gradient(135deg, #fff 0 1px, transparent 1px 28px); pointer-events: none; }
   .ticket-head > * { position: relative; z-index: 1; }
@@ -40,6 +37,19 @@
   .state-badge.pending { border-color:#fcd34d99; background: #78350fd9; color: #fde68a; box-shadow:0 0 25px #f59e0b2e; animation:statusPulse 1.8s ease-in-out infinite; }
   @keyframes statusPulse { 50%{box-shadow:0 0 34px #f59e0b55} }
   .ticket-body { padding: 24px; }
+  .track-stack { display:grid; gap:15px; }
+  .glass-card { padding:22px; border:1px solid #ffffff14; border-radius:20px; background:linear-gradient(145deg,#0b1224,#081124); box-shadow:0 15px 42px #0005; }
+  .identity-card { display:grid; gap:16px; border-color:#ea580c55; background:radial-gradient(circle at 90% 0,#ea580c20,transparent 18rem),linear-gradient(145deg,#0b1224,#081124); }
+  .identity-top { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; }
+  .identity-card h1 { margin:7px 0 0; font-size:clamp(1.35rem,4vw,2.25rem); line-height:1.45; }
+  .identity-badges { display:flex; flex-wrap:wrap; gap:8px; }
+  .identity-badges .salla-verified { margin:0; }
+  .status-card h2,.referral-card h2,.reminder-card h2,.review-card h2 { margin:0 0 8px; font-size:1.02rem; }
+  .status-head { display:flex; justify-content:space-between; gap:12px; align-items:center; margin-bottom:14px; }
+  .status-head strong { color:#86efac; }
+  .policy-details { margin-top:14px; border:1px solid #1e3a5f; border-radius:14px; background:#060d1c; overflow:hidden; }
+  .policy-details summary { padding:14px; color:#cbd5e1; font-size:.82rem; font-weight:900; cursor:pointer; }
+  .policy-details .policy-body { padding:0 15px 15px; }
   .time-grid { display: grid; grid-template-columns: 1fr 1fr 1.4fr; gap: 12px; }
   .time-cell { min-height: 96px; padding: 15px; border: 1px solid #1e3a5f; border-radius: 15px; background: #050f20; }
   .time-cell span { display: block; margin-bottom: 8px; color: #94a3b8; font-size: .82rem; }
@@ -84,13 +94,16 @@
   .renewal-card.urgent { box-shadow: 0 0 0 1px #ea580c55, 0 0 30px #ea580c24; animation: renewalPulse 2.4s ease-in-out infinite; }
   @keyframes renewalPulse { 50% { box-shadow: 0 0 0 1px #fb923c88, 0 0 42px #ea580c38; } }
   .renewal-card p, .feedback-card p { margin: 0 0 13px; color: #cbd5e1; font-size: .88rem; }
-  .reminder-card { padding: 18px; border: 1px solid #1e3a5f; border-radius: 17px; background: linear-gradient(145deg, #0f172a, #071426); }
+  .reminder-card { padding: 20px; border: 1px solid #ffffff14; border-radius: 20px; background: linear-gradient(145deg, #0b1224, #081124); }
   .reminder-card h2 { margin: 0 0 8px; font-size: 1rem; }
   .reminder-card p { margin: 0 0 13px; color: #94a3b8; line-height: 1.7; font-size: .83rem; }
   .reminder-form { display: grid; grid-template-columns: 1fr auto; gap: 9px; }
   .reminder-form input { min-width: 0; padding: 12px; border: 1px solid #253754; border-radius: 11px; color: #fff; background: #050f20; font: inherit; direction: ltr; }
   .reminder-form button { padding: 12px 15px; border: 0; border-radius: 11px; color: #fff; background: #c2410c; font: inherit; font-weight: 900; cursor: pointer; }
   .reminder-status { margin-top: 10px!important; color: #86efac!important; }
+  .reminder-compact { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+  .reminder-compact p { margin:0; }
+  .reminder-toggle { flex:0 0 auto; padding:8px 11px; border:1px solid #ea580c66; border-radius:9px; color:#fdba74; background:#7c2d1228; font:inherit; font-size:.74rem; font-weight:900; cursor:pointer; }
   .salla-verified { display: inline-flex; margin-top: 8px; padding: 5px 8px; border: 1px solid #ffffff38; border-radius: 999px; color: #ffedd5; background: #43140755; font-size: .7rem; font-weight: 900; }
   .discount-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; padding: 10px 12px; border: 1px dashed #fb923c88; border-radius: 11px; color: #fed7aa; }
   .renewal-button { display: block; padding: 14px; border-radius: 12px; color: #fff; background: linear-gradient(110deg, #c2410c, #f97316); text-align: center; font-weight: 900; }
@@ -109,7 +122,7 @@
   .review-submit,.review-result a,.review-result button{width:100%;box-sizing:border-box;margin-top:14px;padding:13px;border:0;border-radius:11px;color:#fff;background:linear-gradient(110deg,#c2410c,#f97316);font:inherit;font-weight:900;text-align:center;cursor:pointer}.review-submit:disabled{opacity:.55;cursor:wait}.review-message{min-height:20px;margin:9px 0 0!important;color:#fda4af!important;text-align:center}.review-result{padding:18px;border:1px solid #166534;border-radius:14px;background:#052e2033;text-align:center}.review-result.negative{border-color:#92400e;background:#78350f24}.review-result h3{margin:0 0 8px;color:#86efac}.review-result.negative h3{color:#fde68a}.review-result p{margin:0;color:#cbd5e1;line-height:1.8;font-size:.86rem}.review-result a{display:block;background:#16a34a}.review-existing{padding:15px;border:1px solid #92400e;border-radius:12px;color:#fde68a;background:#78350f22;text-align:center;line-height:1.8}
   .compensation-card{padding:18px;border:1px solid #166534;border-radius:17px;background:linear-gradient(135deg,#052e2038,#071426)}.compensation-card h2{margin:0 0 7px;color:#86efac;font-size:1rem}.compensation-card p{margin:0 0 12px;color:#cbd5e1;font-size:.84rem;line-height:1.7}.compensation-open,.compensation-form button{width:100%;padding:13px;border:0;border-radius:11px;color:#fff;background:linear-gradient(110deg,#15803d,#22c55e);font:inherit;font-weight:900;cursor:pointer}.compensation-form{display:grid;gap:10px;margin-top:12px}.compensation-form select,.compensation-form textarea{box-sizing:border-box;width:100%;padding:11px;border:1px solid #253754;border-radius:10px;color:#f8fafc;background:#050f20;font:inherit}.compensation-form textarea{min-height:72px;resize:vertical}.compensation-result{margin:10px 0 0!important;padding:11px;border-radius:10px;color:#bbf7d0!important;background:#052e20;text-align:center}.compensation-result.manual{color:#fde68a!important;background:#78350f33}
   .compensation-file{padding:11px;border:1px dashed #475569;border-radius:10px;color:#cbd5e1;background:#050f20;font-size:.78rem}.compensation-preview{display:none;width:100%;max-height:240px;object-fit:contain;border-radius:10px;background:#020617}.compensation-preview.show{display:block}
-  .upsell-card,.referral-card{padding:18px;border:1px solid #c2410c;border-radius:17px;background:linear-gradient(135deg,#7c2d122d,#071426)}.upsell-card h2,.referral-card h2{margin:0 0 7px;color:#fdba74;font-size:1rem}.upsell-card p,.referral-card p{margin:0 0 12px;color:#cbd5e1;font-size:.84rem;line-height:1.7}.offer-countdown{display:block;margin:8px 0 12px;color:#fff;font-size:1.15rem;font-weight:900;text-align:center;direction:ltr}.upsell-card a,.referral-share{display:block;padding:13px;border:0;border-radius:11px;color:#fff;background:#ea580c;text-align:center;font:inherit;font-weight:900;cursor:pointer}.referral-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}.referral-actions button,.referral-actions a{padding:11px;border:1px solid #166534;border-radius:10px;color:#bbf7d0;background:#052e20;text-align:center;font:inherit;font-size:.78rem;font-weight:900;cursor:pointer}
+  .upsell-card,.referral-card{padding:20px;border:1px solid #ea580c66;border-radius:20px;background:radial-gradient(circle at 85% 0,#ea580c1b,transparent 18rem),linear-gradient(145deg,#0b1224,#081124)}.upsell-card h2,.referral-card h2{color:#fdba74}.upsell-card p,.referral-card p{margin:0 0 12px;color:#cbd5e1;font-size:.84rem;line-height:1.7}.offer-countdown{display:block;margin:8px 0 12px;color:#fff;font-size:1.15rem;font-weight:900;text-align:center;direction:ltr}.upsell-card a,.referral-share{display:block;padding:13px;border:0;border-radius:11px;color:#fff;background:#ea580c;text-align:center;font:inherit;font-weight:900;cursor:pointer}.referral-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}.referral-actions button,.referral-actions a{padding:11px;border:1px solid #ea580c66;border-radius:10px;color:#fed7aa;background:#7c2d1230;text-align:center;font:inherit;font-size:.78rem;font-weight:900;cursor:pointer}.referral-url{direction:ltr;text-align:left;padding:10px 12px;border:1px solid #253754;border-radius:10px;color:#94a3b8;background:#050a18;font-size:.75rem;overflow-wrap:anywhere}.referral-meter{margin:14px 0}.referral-meter-head{display:flex;justify-content:space-between;gap:10px;margin-bottom:8px;color:#cbd5e1;font-size:.78rem}.referral-progress{height:9px;overflow:hidden;border-radius:99px;background:#1e293b}.referral-progress i{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#ea580c,#fbbf24)}.coupon-unlocked{margin-top:14px;padding:15px;border:1px solid #fbbf2488;border-radius:14px;background:linear-gradient(135deg,#78350f44,#451a0333);text-align:center}.coupon-unlocked strong{display:block;margin:7px 0;color:#fde68a;font-size:1.35rem;letter-spacing:.08em}.coupon-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:11px}.coupon-actions button,.coupon-actions a{padding:10px;border:1px solid #fbbf2466;border-radius:9px;color:#fff7ed;background:#9a341244;font:inherit;font-size:.75rem;font-weight:900;cursor:pointer;text-align:center}
   .device-card { padding: 28px; }
   .device-card .device-icon { display: grid; place-items: center; width: 52px; height: 52px; margin-bottom: 16px; border: 1px solid #fb923c55; border-radius: 15px; color: #fdba74; background: #9a34122b; font-size: 1.45rem; }
   .device-card h1 { margin: 0 0 11px; font-size: 1.35rem; }
@@ -123,6 +136,30 @@
   .track-loading strong,.track-loading small{display:block}.track-loading strong{margin-top:14px;color:#f8fafc}.track-loading small{margin-top:7px}
   .track-spinner{display:block;width:36px;height:36px;margin:auto;border:3px solid #334155;border-top-color:#ea580c;border-radius:50%;animation:trackSpin .75s linear infinite}@keyframes trackSpin{to{transform:rotate(360deg)}}
   .track-error strong { display: block; margin-bottom: 8px; color: #fda4af; }
+  .progressive-found { min-height:100vh; display:grid; place-items:center; padding:24px; overflow:hidden; background:linear-gradient(135deg,#9a3412 0%,#ea580c 50%,#c2410c 100%); }
+  .progressive-found::before { content:""; position:fixed; inset:0; opacity:.13; background-image:repeating-linear-gradient(135deg,#fff 0 1px,transparent 1px 32px); pointer-events:none; }
+  .found-card { position:relative; z-index:1; width:min(570px,100%); text-align:center; color:#fff; animation:cardEnter .45s cubic-bezier(.2,.75,.25,1) both; }
+  .found-check { display:grid; place-items:center; width:84px; height:84px; margin:0 auto 22px; border:2px solid #ffffff90; border-radius:50%; color:#9a3412; background:#fff; box-shadow:0 0 0 12px #ffffff16,0 22px 55px #43140766; font-size:2.5rem; font-weight:900; animation:foundCheck .65s cubic-bezier(.2,.9,.25,1.2) both; }
+  @keyframes foundCheck { from{opacity:0;transform:scale(.55) rotate(-18deg)} to{opacity:1;transform:none} }
+  .found-card h1 { margin:0 0 10px; font-size:clamp(2rem,7vw,3.35rem); letter-spacing:-.04em; }
+  .found-card>p { margin:0 0 22px; color:#ffedd5; }
+  .found-summary { display:grid; gap:8px; margin:0 0 20px; padding:21px; border:1px solid #ffffff42; border-radius:20px; background:#43140738; box-shadow:inset 0 1px #ffffff22; backdrop-filter:blur(14px); }
+  .found-summary strong { font-size:1.22rem; }.found-summary span{color:#ffedd5}.found-summary .salla-found{justify-self:center;padding:6px 10px;border:1px solid #ffffff42;border-radius:999px;background:#ffffff12;font-size:.76rem;font-weight:900}
+  .found-continue { width:100%; padding:15px 18px; border:0; border-radius:13px; color:#9a3412; background:#fff; box-shadow:0 14px 35px #4314074d; font:inherit; font-weight:950; cursor:pointer; transition:transform .2s,box-shadow .2s; }
+  .found-continue:hover { transform:translateY(-2px); box-shadow:0 18px 42px #43140766; }
+  .found-auto { display:block; margin-top:12px; color:#fed7aa; font-size:.72rem; }
+  .journey-stepper { position:relative; z-index:2; display:grid; grid-template-columns:repeat(3,1fr); gap:8px; width:min(720px,100%); margin:18px auto 26px; padding:10px; border:1px solid #1e3a5f; border-radius:15px; background:#071426d9; }
+  .journey-step { display:flex; align-items:center; justify-content:center; gap:7px; min-height:38px; padding:7px; border-radius:10px; color:#64748b; font-size:.72rem; font-weight:900; text-align:center; }
+  .journey-step b { display:grid; place-items:center; width:22px; height:22px; border:1px solid #334155; border-radius:50%; font-size:.68rem; }
+  .journey-step.done { color:#86efac; background:#052e203d; }.journey-step.done b{border-color:#22c55e;background:#166534;color:#fff}
+  .journey-step.active { color:#fed7aa; background:#7c2d1238; }.journey-step.active b{border-color:#ea580c;background:#9a3412;color:#fff;box-shadow:0 0 15px #ea580c55}
+  .security-scan { overflow:hidden; text-align:center; }
+  .security-scan .device-icon { margin:0 auto 16px; }
+  .scan-bar { height:7px; margin:21px 0 13px; overflow:hidden; border-radius:99px; background:#1e293b; }
+  .scan-bar i { display:block; width:38%; height:100%; border-radius:inherit; background:linear-gradient(90deg,#c2410c,#fb923c); animation:scanMove 1.1s ease-in-out infinite; }
+  @keyframes scanMove { 0%{transform:translateX(260%)} 50%{transform:translateX(40%)} 100%{transform:translateX(-260%)} }
+  .verified-shield .device-icon { border-color:#22c55e88; color:#86efac; background:#052e2b; box-shadow:0 0 28px #22c55e38; }
+  .step-ack { text-align:right; }.step-ack>h1,.step-ack>p{text-align:center}.step-ack .ack-box{margin-top:22px}
   @media (max-width: 700px) {
     .track-hero { min-height:275px; padding:20px 14px 86px; }
     .track-hero-copy { margin-top:34px; }
@@ -131,10 +168,12 @@
     .order-brand strong{font-size:.9rem}.order-brand small{font-size:.62rem}.order-brand a{font-size:.68rem}
     .ticket-head { padding: 21px 18px; }
     .ticket-body { padding: 16px; }
-    .time-grid, .order-actions, .feedback-actions { grid-template-columns: 1fr; }
+    .time-grid, .order-actions, .feedback-actions, .coupon-actions { grid-template-columns: 1fr; }
+    .identity-top,.status-head,.reminder-compact { align-items:flex-start; flex-direction:column; }
     .account-line { align-items: flex-start; flex-direction: column; }
     .reminder-form { grid-template-columns: 1fr; }
     .time-cell { min-height: auto; }
+    .journey-stepper{gap:4px;padding:7px}.journey-step{display:grid;gap:3px;padding:5px 2px;font-size:.58rem}.journey-step b{margin:auto}
   }
 </style>
 <script>
@@ -169,6 +208,7 @@
       if (['delivered','follow_up_complete','completed','active','تم التنفيذ'].includes(value)) return { label:'تم التنفيذ • بدأ سريان الاشتراك ✓', cls:'', active:true, expired:false };
       return { label:'قيد التنفيذ • سيبدأ احتساب المدة فور التفعيل', cls:'pending', active:false, expired:false };
     };
+    const stepper = active => '<nav class="journey-stepper" aria-label="مراحل فتح الطلب"><span class="journey-step '+(active>1?'done':active===1?'active':'')+'"><b>'+(active>1?'✓':'١')+'</b>العثور على الطلب</span><span class="journey-step '+(active>2?'done':active===2?'active':'')+'"><b>'+(active>2?'✓':'٢')+'</b>التحقق من الجهاز</span><span class="journey-step '+(active===3?'active':'')+'"><b>٣</b>بيانات الاشتراك</span></nav>';
     const render = payload => {
       const order = payload.order, actions = payload.actions || {}, review = payload.review || {};
       if (!order.device_verified) throw new Error('تعذر توثيق الجهاز لهذا الطلب.');
@@ -187,28 +227,35 @@
       const points = String(order.acknowledgment_text || 'يرجى الالتزام بشروط استخدام المنتج وعدم مشاركة بياناته.').split(/\r?\n/).map(x => x.trim()).filter(Boolean);
       const acknowledged = Boolean(order.acknowledged_at);
       const crunchyUrl = actions.crunchyrollPortalUrl || '';
-      const crunchyAction = order.service_type === 'crunchyroll' && crunchyUrl ? '<a class="crunchy-action" href="' + escapeHtml(crunchyUrl) + '">الانتقال لبوابة دخول كرانشي رول واستلام رمز الموافقة</a>' : '';
+      const productName = String(order.product_name || 'اشتراك رقمي');
+      const isCrunchyroll = /crunchyroll|كرانشي/i.test(productName);
+      const crunchyAction = isCrunchyroll && crunchyUrl ? '<a class="crunchy-action" href="' + escapeHtml(crunchyUrl) + '">الانتقال لبوابة دخول كرانشي رول واستلام رمز الموافقة</a>' : '';
       const accountCard = order.account_email ? '<section class="account-card"><h2>بيانات الاشتراك</h2><div class="account-line"><div><span>البريد الإلكتروني</span><strong>' + escapeHtml(order.account_email) + '</strong></div>' + copyButton(order.account_email, 'نسخ البريد', 'account_email_copied') + '</div>'+(order.account_password?'<div class="account-line" style="margin-top:8px"><div><span>كلمة المرور المحدّثة</span><strong>'+escapeHtml(order.account_password)+'</strong></div>'+copyButton(order.account_password,'نسخ كلمة المرور')+'</div>':'')+'</section>' : '';
       const renewalUrl = order.renewal_url || actions.renewalStoreUrl || '';
       const renewalCard = renewalUrl && remaining <= 5 ? '<section class="renewal-card urgent"><h2>' + (remaining > 0 ? 'اشتراكك ينتهي خلال ' + remaining + ' أيام' : 'انتهى اشتراكك') + '</h2><p>جدّد الآن لتفادي انقطاع الخدمة.</p>' + (order.renewal_discount_code ? '<div class="discount-row"><span>كود خصم خاص: <strong>' + escapeHtml(order.renewal_discount_code) + '</strong></span>' + copyButton(order.renewal_discount_code, 'نسخ الكود') + '</div>' : '') + '<a class="renewal-button" target="_blank" rel="noopener" href="' + escapeHtml(renewalUrl) + '">جدّد اشتراكك الآن بضغطة واحدة ↗</a></section>' : '';
-      const reminderCard = '<section class="reminder-card"><h2>تذكير التجديد الذكي عبر البريد الإلكتروني</h2><p>' + (order.reminder_email_masked ? 'سيصلك تذكير تلقائي قبل انتهاء اشتراكك على: <strong>' + escapeHtml(order.reminder_email_masked) + '</strong>. يمكنك إدخال بريد جديد لتغييره.' : 'أضف بريدك الإلكتروني ليصلك رابط اشتراكك الآن، وتنبيه تلقائي قبل انتهاء الاشتراك مع رابط التجديد المباشر.') + '</p><form id="reminderEmailForm" class="reminder-form"><input id="reminderEmailInput" type="email" maxlength="254" required autocomplete="email" placeholder="name@example.com"><button type="submit">' + (order.reminder_email_masked ? 'تغيير الإيميل' : 'تفعيل التذكير') + '</button></form><p id="reminderEmailStatus" class="reminder-status" role="status"></p>' + (renewalUrl ? '<a class="renewal-button" target="_blank" rel="noopener" href="' + escapeHtml(renewalUrl) + '">تجديد الاشتراك الآن ↗</a>' : '') + '</section>';
+      const reminderCard = '<section class="reminder-card"><div class="reminder-compact"><div><h2>تذكير التجديد بالبريد</h2><p>' + (order.reminder_email_masked ? 'مفعّل على <strong>' + escapeHtml(order.reminder_email_masked) + '</strong>' : 'أضف بريدك لاستلام تنبيه قبل انتهاء الاشتراك.') + '</p></div>' + (order.reminder_email_masked ? '<button id="reminderToggle" class="reminder-toggle" type="button">تغيير الإيميل</button>' : '') + '</div><form id="reminderEmailForm" class="reminder-form"' + (order.reminder_email_masked ? ' hidden' : '') + '><input id="reminderEmailInput" type="email" maxlength="254" required autocomplete="email" placeholder="name@example.com"><button type="submit">' + (order.reminder_email_masked ? 'حفظ التغيير' : 'تفعيل التذكير') + '</button></form><p id="reminderEmailStatus" class="reminder-status" role="status"></p></section>';
       const directCompensation = location.pathname.startsWith('/compensate/');
       const showCompensation = directCompensation && (actions.compensationEligible || actions.compensationManualAvailable);
       const compensationCard = showCompensation ? '<section class="compensation-card"><h2>مشكلة في الحساب؟</h2><p>'+(actions.compensationEligible?'سجلك الحالي نظيف وضمانك سارٍ. أرفق لقطة شاشة حقيقية، وسيفحص النظام السجل والصورة قبل الاستبدال.':'ضمانك سارٍ، لكن الطلب يحتاج مراجعة بشرية بسبب السجل الأمني. أرفق الإثبات وسيصل الطلب للإدارة دون استبدال آلي.')+'</p><button id="compensationOpen" class="compensation-open" type="button">'+(actions.compensationEligible?'طلب استبدال فوري':'إرسال طلب للمراجعة')+'</button><form id="compensationForm" class="compensation-form" hidden><select id="compensationReason" required><option value="">اختر سبب المشكلة</option><option value="password_changed">تغيّرت كلمة المرور</option><option value="account_not_working">الحساب لا يعمل</option><option value="signed_out">تم تسجيل خروجي</option><option value="other">مشكلة أخرى</option></select><label class="compensation-file">لقطة شاشة للإثبات — PNG/JPG/WEBP حتى 5MB<input id="compensationEvidence" type="file" accept="image/png,image/jpeg,image/webp" required></label><img id="compensationPreview" class="compensation-preview" alt="معاينة صورة الإثبات"><input id="compensationEmail" type="email" maxlength="254" placeholder="بريدك للإشعار (اختياري)"><textarea id="compensationNote" maxlength="1000" placeholder="ملاحظة إضافية (اختياري)"></textarea><button type="submit">فحص الأهلية وإرسال الطلب</button></form><p id="compensationResult" role="status"></p></section>' : '';
-      const upsellCard=actions.upsellOffer?'<section class="upsell-card"><h2>'+escapeHtml(actions.upsellOffer.title)+'</h2><p>'+escapeHtml(actions.upsellOffer.description)+'</p><strong id="offerCountdown" class="offer-countdown" data-expires="'+escapeHtml(actions.upsellOffer.expiresAt)+'">30:00</strong><a target="_blank" rel="noopener" href="'+escapeHtml(actions.upsellOffer.url)+'">احصل على العرض المخفض الآن ↗</a></section>':'';
-      const referralCard=actions.referralUrl?'<section class="referral-card"><h2>اربح 5 أيام مجانية بدعوة صديق</h2><p>شارك رابطك الخاص. عندما يشتري صديقك ويدخل رقم طلبه، نضيف 5 أيام إلى اشتراكك تلقائيًا.</p><div class="referral-actions"><button id="copyReferral" type="button" data-url="'+escapeHtml(actions.referralUrl)+'">نسخ رابط الدعوة</button><a target="_blank" rel="noopener" href="https://wa.me/?text='+encodeURIComponent('استخدم رابط دعوتي في بوابة أدفانسد برو: '+actions.referralUrl)+'">مشاركة واتساب</a></div></section>':'';
+      const referral = actions.referralProgram || (actions.referralUrl ? { url:actions.referralUrl, count:0, target:5, enabled:true } : null);
+      const referralCount = Math.max(0, Number(referral?.count)||0), referralTarget = Math.max(1, Number(referral?.target)||5), referralPercent = Math.min(100, referralCount/referralTarget*100);
+      const couponBox = referral?.coupon ? '<div class="coupon-unlocked"><span>مكافأتك جاهزة ✦</span><strong>'+escapeHtml(referral.coupon)+'</strong><small>'+escapeHtml(referral.discountLabel||'كود خصم خاص لعملائنا السفراء')+'</small><div class="coupon-actions"><button type="button" data-copy="'+escapeHtml(referral.coupon)+'" data-copy-label="كود الخصم">نسخ كود الخصم</button>'+(referral.storeUrl?'<a target="_blank" rel="noopener" href="'+escapeHtml(referral.storeUrl)+'">استخدام الكود في المتجر ↗</a>':'')+'</div></div>' : '';
+      const referralCard=referral&&referral.enabled?'<section class="referral-card"><h2>ادعُ '+referralTarget+' أصدقاء واربح كود خصم خاص + أيام مجانية</h2><p>كل صديق يشتري عبر رابطك يضيف لك أيامًا مجانية، وعند اكتمال الهدف يُفتح كود الخصم تلقائيًا.</p><div class="referral-url">'+escapeHtml(referral.url)+'</div><div class="referral-meter"><div class="referral-meter-head"><span>تمت دعوة '+referralCount+' من أصل '+referralTarget+' أصدقاء</span><strong>'+referralCount+' / '+referralTarget+'</strong></div><div class="referral-progress"><i style="width:'+referralPercent.toFixed(0)+'%"></i></div></div><div class="referral-actions"><button id="copyReferral" type="button" data-url="'+escapeHtml(referral.url)+'">نسخ رابط الدعوة</button><a target="_blank" rel="noopener" href="https://wa.me/?text='+encodeURIComponent('استخدم رابط دعوتي في بوابة أدفانسد برو: '+referral.url)+'">مشاركة واتساب</a></div>'+couponBox+'</section>':'';
       const stars = [1,2,3,4,5].map(n => '<button class="review-star" type="button" data-rating="'+n+'" aria-label="'+n+' نجوم">★</button>').join('');
       const reviewCard = review.submitted
         ? '<section class="review-card"><h2>تقييم تجربتك واقتراحات التطوير</h2><div class="review-existing">✓ وصلنا تقييمك وهو الآن ' + (review.status === 'published' ? 'منشور بعد الاعتماد.' : review.status === 'hidden' ? 'محفوظ لدى فريق الجودة.' : 'بانتظار مراجعة فريق الجودة.') + '</div></section>'
         : '<section class="review-card"><h2>تقييم تجربتك واقتراحات التطوير</h2><p>رأيك يصل مباشرة إلى فريق الجودة ويرتبط بطلبك بأمان.</p><form id="reviewForm"><div class="review-stars" role="radiogroup" aria-label="تقييم الخدمة">'+stars+'</div><p id="reviewRatingLabel" class="review-rating-label">اختر عدد النجوم</p><label>اكتب رأيك أو ملاحظتك حول الخدمة<textarea id="reviewComment" maxlength="2000" placeholder="اكتب تجربتك هنا (اختياري)"></textarea></label><details class="review-suggestion"><summary>هل لديك اقتراح لتطوير البوابة؟</summary><div><label>تصنيف الاقتراح<select id="suggestionCategory"><option value="">اختر التصنيف</option><option value="activation_speed">سرعة التفعيل</option><option value="portal_ux">سهولة البوابة</option><option value="new_feature">إضافة ميزة جديدة</option><option value="support">الدعم الفني</option><option value="other">أخرى</option></select></label><label>تفاصيل الاقتراح<textarea id="suggestionText" maxlength="2000" placeholder="ما الذي تحب أن نطوره؟"></textarea></label></div></details><button class="review-submit" type="submit">إرسال التقييم بأمان</button><p id="reviewMessage" class="review-message" role="status"></p></form><div id="reviewResult" hidden></div></section>';
       const timingSummary = state.active ? 'اشتراكك سارٍ حاليًا — متبقي '+remaining+' يوم' : state.expired ? 'اكتملت مدة الاشتراك — يمكنك التجديد الآن' : 'مدة اشتراكك محفوظة بالكامل ولن تُحتسب إلا لحظة التنفيذ';
-      portal.innerHTML = '<main class="order-portal"><section class="track-hero"><header class="order-brand"><div><strong>بوابة أدفانسد برو</strong><small>Advanced Pro Portal</small></div><a href="/">← استعلام عن طلب آخر</a></header><div class="track-hero-copy"><span class="order-number copy-inline">طلب #' + escapeHtml(order.order_number) + ' ' + copyButton(order.order_number, 'نسخ الرقم') + '</span><h1>' + escapeHtml(order.product_name || 'اشتراك رقمي') + '</h1><span class="state-badge ' + statusClass + '">' + statusLabel + '</span><span class="track-service">' + escapeHtml(order.service_type === 'crunchyroll' ? 'Crunchyroll' : order.service_type === 'chatgpt' ? 'ChatGPT' : 'منتج رقمي') + '</span></div></section><section class="track-night"><div class="order-wrap"><article class="digital-order"><div class="ticket-body"><section class="time-grid"><div class="time-cell"><span>'+(state.active?'تاريخ التنفيذ وبداية السريان':'موعد بداية احتساب الاشتراك')+'</span><strong>' + (state.active?dateTime(order.starts_at):'عند اكتمال التنفيذ') + '</strong></div><div class="time-cell"><span>تاريخ الانتهاء</span><strong>' + (state.active||state.expired?date(order.expires_at):'يُحسب بعد التنفيذ') + '</strong></div><div class="time-cell"><span>المدة</span><strong>' + escapeHtml(order.duration_days || 30) + ' يوم</strong></div><div class="time-cell subscription-summary '+statusClass+'"><span>حالة مدة الاشتراك</span><strong>'+timingSummary+'</strong><div class="progress" aria-label="نسبة المدة المتبقية"><i style="width:' + remainingProgress.toFixed(1) + '%"></i></div></div></section><section class="warranty-card ' + warranty.cls + '"><h2>✦ ' + warranty.title + '</h2><p>' + warranty.text + '</p></section><section class="ack-box"><h2>إقرار وسياسة المنتج</h2><ul class="ack-list">' + points.map(point => '<li>' + escapeHtml(point) + '</li>').join('') + '</ul><div id="ackArea">' + (acknowledged ? '<div class="ack-stamp">✓ تم توثيق الإقرار بتاريخ ' + date(order.acknowledged_at) + ' وحمايته ببصمة الجهاز الفيزيائية</div>' : '<div class="ack-control"><label class="ack-check"><input id="ackCheckbox" type="checkbox"> <span>أقرّ بقراءة وموافقة شروط وسياسة المنتج أعلاه</span></label><button id="ackButton" class="ack-button" type="button" disabled>تأكيد الإقرار وعرض تفاصيل الاشتراك</button><p id="ackMessage" class="ack-message" role="status"></p></div>') + '</div></section>' + (crunchyAction ? '<section id="orderActions" class="order-actions"' + (acknowledged ? '' : ' hidden') + '>' + crunchyAction + '</section>' : '') + (acknowledged ? '<div class="post-ack">' + accountCard + renewalCard + reminderCard + upsellCard + referralCard + compensationCard + reviewCard + '</div>' : '') + '</div></article>' + (!directCompensation ? '<p class="compensation-link-line">واجهت مشكلة في الحساب؟ <a href="/compensate/' + encodeURIComponent(order.tracking_token || token) + '">عندك مشكلة؟</a></p>' : '') + '</div></section></main>';
-      const card = portal.querySelector('.digital-order');
-      if (card) card.insertAdjacentHTML('afterbegin', '<div class="order-watermark" aria-hidden="true">' + Array.from({ length: 15 }, () => '<span>ORDER #' + escapeHtml(order.order_number) + '</span>').join('') + '</div>');
-      portal.querySelector('.track-service')?.insertAdjacentHTML('afterend', '<span class="salla-verified">تم التحقق من متجر سلة ✓</span>');
+      const policyCard = acknowledged ? '<details class="policy-details"><summary>إقرار وسياسة المنتج الموثّق ببصمة الجهاز</summary><div class="policy-body"><ul class="ack-list">'+points.map(point=>'<li>'+escapeHtml(point)+'</li>').join('')+'</ul><div class="ack-stamp">✓ تم التوثيق بتاريخ '+date(order.acknowledged_at)+'</div></div></details>' : '<section class="ack-box"><h2>إقرار وسياسة المنتج</h2><ul class="ack-list">'+points.map(point=>'<li>'+escapeHtml(point)+'</li>').join('')+'</ul><div class="ack-control"><label class="ack-check"><input id="ackCheckbox" type="checkbox"> <span>أقرّ بقراءة وموافقة شروط وسياسة المنتج أعلاه</span></label><button id="ackButton" class="ack-button" type="button" disabled>تأكيد الإقرار وعرض تفاصيل الاشتراك</button><p id="ackMessage" class="ack-message" role="status"></p></div></section>';
+      const identityCard = '<section class="glass-card identity-card"><div class="identity-top"><div><span class="order-number copy-inline">طلب #'+escapeHtml(order.order_number)+' '+copyButton(order.order_number,'نسخ الرقم')+'</span><h1>'+escapeHtml(productName)+'</h1></div><div class="identity-badges"><span class="salla-verified">تم التحقق من متجر سلة ✓</span><span class="state-badge '+statusClass+'">'+statusLabel+'</span></div></div>'+accountCard+(crunchyAction?'<div class="order-actions">'+crunchyAction+'</div>':'')+'</section>';
+      const statusCard = '<section class="glass-card status-card"><div class="status-head"><div><h2>الوقت المتبقي والضمان</h2><span>'+timingSummary+'</span></div><strong>متبقي '+remaining+' يوم من أصل '+escapeHtml(order.duration_days||30)+' يوم</strong></div><div class="progress" aria-label="نسبة المدة المتبقية"><i style="width:'+remainingProgress.toFixed(1)+'%"></i></div><section class="time-grid" style="margin-top:14px"><div class="time-cell"><span>'+(state.active?'تاريخ بداية السريان':'موعد بداية الاشتراك')+'</span><strong>'+(state.active?dateTime(order.starts_at):'عند اكتمال التنفيذ')+'</strong></div><div class="time-cell"><span>تاريخ الانتهاء</span><strong>'+(state.active||state.expired?date(order.expires_at):'يُحسب بعد التنفيذ')+'</strong></div><div class="time-cell"><span>المدة</span><strong>'+escapeHtml(order.duration_days||30)+' يوم</strong></div></section><section class="warranty-card '+warranty.cls+'"><h2>✦ '+warranty.title+'</h2><p>'+warranty.text+'</p></section>'+policyCard+renewalCard+'</section>';
+      const regularCards = acknowledged ? identityCard+statusCard+upsellCard+referralCard+reminderCard+reviewCard : identityCard+statusCard;
+      const compensationCards = identityCard+statusCard+compensationCard;
+      portal.innerHTML = '<main class="order-portal"><section class="track-hero"><header class="order-brand"><div><strong>بوابة أدفانسد برو</strong><small>Advanced Pro Portal</small></div><a href="/">← استعلام عن طلب آخر</a></header><div class="track-hero-copy"><span class="order-number">بوابة الطلب الآمنة</span><h1>تفاصيل اشتراكك</h1></div></section><section class="track-night"><div class="order-wrap">'+stepper(3)+'<div class="track-stack">'+(directCompensation?compensationCards:regularCards)+'</div>'+(!directCompensation?'<p class="compensation-link-line">واجهت مشكلة في الحساب؟ <a href="/compensate/'+encodeURIComponent(token)+'">عندك مشكلة؟</a></p>':'')+'</div></section></main>';
       bindCopyButtons();
       const countdown=document.getElementById('offerCountdown');if(countdown){const tick=()=>{const left=Math.max(0,new Date(countdown.dataset.expires)-Date.now()),m=Math.floor(left/60000),s=Math.floor(left%60000/1000);countdown.textContent=String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');if(!left)countdown.closest('.upsell-card').hidden=true};tick();const timer=setInterval(()=>{if(!countdown.isConnected){clearInterval(timer);return}tick()},1000)}
       const copyReferral=document.getElementById('copyReferral');if(copyReferral)copyReferral.onclick=async()=>{try{await navigator.clipboard.writeText(copyReferral.dataset.url);copyReferral.textContent='تم نسخ رابط الدعوة ✓'}catch{copyReferral.textContent='تعذر النسخ — انسخ الرابط يدويًا'}};
+      const reminderToggle=document.getElementById('reminderToggle');if(reminderToggle)reminderToggle.onclick=()=>{document.getElementById('reminderEmailForm').hidden=false;reminderToggle.hidden=true;document.getElementById('reminderEmailInput').focus()};
       const reminderForm = document.getElementById('reminderEmailForm');
       if (reminderForm) reminderForm.onsubmit = async event => {
         event.preventDefault(); const input = document.getElementById('reminderEmailInput'), status = document.getElementById('reminderEmailStatus'), button = reminderForm.querySelector('button');
@@ -278,10 +325,10 @@
         };
       }
     };
-    const shell = content => '<main class="order-portal"><section class="track-hero"><header class="order-brand"><div><strong>بوابة أدفانسد برو</strong><small>حماية الاشتراك بجهاز واحد</small></div><a href="/">← العودة للاستعلام</a></header><div class="track-hero-copy"><span class="order-number">بوابة الطلب الآمنة</span><h1>التحقق من الجهاز</h1></div></section><section class="track-night"><div class="order-wrap">' + content + '</div></section></main>';
+    const shell = content => '<main class="order-portal"><section class="track-hero"><header class="order-brand"><div><strong>بوابة أدفانسد برو</strong><small>حماية الاشتراك بجهاز واحد</small></div><a href="/">← العودة للاستعلام</a></header><div class="track-hero-copy"><span class="order-number">المرحلة الثانية</span><h1>التحقق الأمني من الجهاز</h1></div></section><section class="track-night"><div class="order-wrap">'+stepper(2)+content+'</div></section></main>';
     const loadOrder = () => fetch('/api/public/track?token=' + encodeURIComponent(token), { headers: { accept: 'application/json' } })
       .then(async response => { const data = await response.json().catch(() => ({})); if (!response.ok) throw new Error(data.message || 'تعذر تحميل الطلب.'); return data; })
-      .then(render);
+    ;
     const verifyDevice = async (action, dna) => {
       const challengeResponse = await fetch('/api/public/verify-device', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ token, action: 'challenge' }) });
       const challengePayload = await challengeResponse.json().catch(() => ({}));
@@ -297,7 +344,7 @@
         try {
           const { response, result } = await verifyDevice('transfer', dna);
           if (!response.ok || !result.allowed) throw new Error(result.message || 'تعذر نقل الجهاز.');
-          await loadOrder();
+          await enterVerified(await loadOrder());
         } catch (error) { message.textContent = error.message; button.disabled = false; button.textContent = 'اعتماد هذا الجهاز كجهازي الأساسي'; }
       };
     };
@@ -307,13 +354,33 @@
       portal.innerHTML = shell('<article class="digital-order device-card device-lock"><div class="device-icon">!</div><h1>تم إيقاف الوصول لحماية الاشتراك</h1><p>' + reason + '</p><p class="device-note">إذا كنت صاحب الطلب وتعتقد أن هذا الإجراء غير صحيح، تواصل مع الدعم لمراجعة الحالة يدويًا.</p></article>');
     };
     const showStrike = security => {logCompensationMismatch();portal.innerHTML = shell('<article class="digital-order device-card"><div class="device-icon">!</div><h1>تنبيه أمني: لا يمكن تقديم طلب التعويض من هذا الجهاز</h1><p>' + escapeHtml(security.message || 'يرجى فتح الرابط من نفس جهازك الأصلي المعتمد في الطلب.') + '</p><p class="device-note">تم تسجيل محاولة التعويض من جهاز غير معتمد وإبلاغ الإدارة.</p></article>')};
-    portal.innerHTML = shell('<div class="digital-order track-loading"><span class="track-spinner"></span><strong>جارِ تجهيز تفاصيل طلبك…</strong><small>نتحقق من حماية الجهاز وحالة الاشتراك</small></div>');
-    (async () => {
+    const showScanning = () => {
+      portal.innerHTML = shell('<article class="digital-order device-card security-scan"><div class="device-icon">♢</div><h1>جارٍ التحقق من أمان الجهاز</h1><p>نطابق بصمة الجهاز الفيزيائية الآمنة ونربطها بطلبك دون كشف بيانات الاشتراك.</p><div class="scan-bar" aria-label="جارٍ فحص بصمة الجهاز"><i></i></div><p class="device-note">تتم هذه الخطوة تلقائيًا لحماية اشتراكك من الوصول غير المصرح.</p></article>');
+    };
+    const showVerified = payload => {
+      portal.innerHTML = shell('<article class="digital-order device-card security-scan verified-shield"><div class="device-icon">✓</div><h1>تم التحقق من جهازك بنجاح ✓</h1><p>اكتملت المطابقة الأمنية. جارِ فتح معلومات الاشتراك والضمان…</p></article>');
+      setTimeout(() => render(payload), 800);
+    };
+    const showAcknowledgment = payload => {
+      const order = payload.order || {};
+      const points = String(order.acknowledgment_text || 'يرجى الالتزام بشروط استخدام المنتج وعدم مشاركة بياناته.').split(/\r?\n/).map(value => value.trim()).filter(Boolean);
+      portal.innerHTML = shell('<article class="digital-order device-card step-ack"><div class="device-icon">⌾</div><h1>إقرار وسياسة الضمان</h1><p>تمت مطابقة الجهاز. بقي توثيق موافقتك قبل كشف بيانات الاشتراك الحساسة.</p><section class="ack-box"><ul class="ack-list">'+points.map(point=>'<li>'+escapeHtml(point)+'</li>').join('')+'</ul><div class="ack-control"><label class="ack-check"><input id="stageAckCheckbox" type="checkbox"> <span>أقرّ بقراءة شروط المنتج وسياسة الضمان وأوافق عليها</span></label><button id="stageAckButton" class="ack-button" type="button" disabled>أوافق وأُوثّق جهازي الآن ✓</button><p id="stageAckMessage" class="ack-message" role="status"></p></div></section></article>');
+      const checkbox=document.getElementById('stageAckCheckbox'),button=document.getElementById('stageAckButton'),message=document.getElementById('stageAckMessage');
+      checkbox.onchange=()=>{button.disabled=!checkbox.checked;message.textContent=''};
+      button.onclick=async()=>{if(!checkbox.checked)return;button.disabled=true;button.textContent='جارِ توثيق الإقرار…';try{const response=await fetch('/api/public/track?token='+encodeURIComponent(token),{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({token,accepted:true})});const result=await response.json().catch(()=>({}));if(!response.ok)throw new Error(result.message||'تعذر توثيق الإقرار.');showVerified(result)}catch(error){message.textContent=error.message;button.disabled=false;button.textContent='أوافق وأُوثّق جهازي الآن ✓'}};
+    };
+    const enterVerified = async payload => {
+      if (!payload?.order?.device_verified) throw new Error('تعذر توثيق الجهاز لهذا الطلب.');
+      if (!payload.order.acknowledged_at) return showAcknowledgment(payload);
+      showVerified(payload);
+    };
+    const startVerification = async () => {
+      showScanning();
       try {
         const { collectDeviceDna } = await import('/lib/device-dna.js');
         const dna = await collectDeviceDna();
         const { response, result: security } = await verifyDevice('verify', dna);
-        if (response.ok && security.allowed) return loadOrder();
+        if (response.ok && security.allowed) return enterVerified(await loadOrder());
         if (security.transferRequired) return showTransfer(security, dna);
         if (security.locked) return showLocked(security);
         if (security.state === 'device_mismatch_strike') return showStrike(security);
@@ -321,7 +388,16 @@
       } catch (error) {
         portal.innerHTML = shell('<div class="digital-order track-error"><strong>تعذر عرض الطلب</strong>' + escapeHtml(error.message) + '<br><br><a href="/">العودة إلى الاستعلام</a></div>');
       }
-    })();
+    };
+    const showFound = payload => {
+      const order=payload.order||{};
+      portal.innerHTML='<main class="progressive-found"><section class="found-card"><div class="found-check">✓</div><h1>تم العثور على طلبك بنجاح!</h1><p>طلبك موثّق وجاهز لبدء التحقق الأمني.</p><div class="found-summary"><strong>طلب #'+escapeHtml(order.order_number||'—')+'</strong><span>'+escapeHtml(order.product_name||'اشتراك رقمي')+'</span><span class="salla-found">طلب موثّق من سلة ✓</span></div><button id="continueToDevice" class="found-continue" type="button">المتابعة للتحقق من الجهاز ←</button><small class="found-auto">سيتم الانتقال تلقائيًا خلال لحظات</small></section></main>';
+      let continued=false;const proceed=()=>{if(continued)return;continued=true;startVerification()};
+      document.getElementById('continueToDevice').onclick=proceed;
+      setTimeout(proceed,1800);
+    };
+    portal.innerHTML='<main class="order-portal"><div class="track-loading"><span class="track-spinner"></span><strong>جارِ البحث عن طلبك…</strong><small>لحظات ونجهز رحلة التحقق الآمنة</small></div></main>';
+    loadOrder().then(showFound).catch(error=>{portal.innerHTML='<main class="order-portal"><div class="track-error"><strong>تعذر عرض الطلب</strong>'+escapeHtml(error.message)+'<br><br><a href="/">العودة إلى الاستعلام</a></div></main>'});
   });
 </script>
 

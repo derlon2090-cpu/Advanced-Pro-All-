@@ -8,8 +8,20 @@ test('order tracking uses the split brand layout and explicit lifecycle labels',
   assert.match(source, /تم التنفيذ • بدأ سريان الاشتراك ✓/);
   assert.match(source, /قيد التنفيذ • سيبدأ احتساب المدة فور التفعيل/);
   assert.match(source, /انتهت مدة الاشتراك/);
-  assert.match(source, /تاريخ التنفيذ وبداية السريان/);
+  assert.match(source, /تاريخ بداية السريان/);
   assert.match(source, /بصمة الجهاز الفيزيائية/);
+});
+
+test('order tracking reveals the order through three secure progressive stages', async () => {
+  const source = await readFile(new URL('../ui/order-track.html', import.meta.url), 'utf8');
+  assert.match(source, /تم العثور على طلبك بنجاح!/);
+  assert.match(source, /المتابعة للتحقق من الجهاز/);
+  assert.match(source, /جارٍ التحقق من أمان الجهاز/);
+  assert.match(source, /أوافق وأُوثّق جهازي الآن/);
+  assert.match(source, /تم التحقق من جهازك بنجاح/);
+  assert.match(source, /journey-stepper/);
+  assert.match(source, /setTimeout\(proceed,1800\)/);
+  assert.match(source, /setTimeout\(\(\) => render\(payload\), 800\)/);
 });
 
 test('home lookup shows a branded transition before navigation', async () => {
@@ -29,6 +41,10 @@ test('tracking page links to the dedicated compensation portal without legacy su
   assert.match(source, /\/compensate\//);
   assert.doesNotMatch(source, /طلب دعم \/ تعويض الضمان \(واتساب\)/);
   assert.doesNotMatch(source, /بوابة Crunchyroll غير مهيأة حاليًا/);
+  assert.doesNotMatch(source, /order-watermark/);
+  assert.doesNotMatch(source, /Array\.from\(\{ length: 15 \}/);
+  assert.match(source, /isCrunchyroll = \/crunchyroll\|كرانشي/i);
+  assert.match(source, /policy-details/);
 });
 
 test('home page renders immediately without the orange split boot screen', async () => {

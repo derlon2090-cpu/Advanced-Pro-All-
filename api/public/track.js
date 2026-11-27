@@ -53,14 +53,16 @@ export default async function handler(request, response) {
   if (!token) return response.status(400).json({ message: 'رابط الطلب غير صالح.' });
 
   const baseSelect = 'id,order_number,product_name,service_type,status,duration_days,starts_at,expires_at,has_warranty,warranty_days,warranty_expires_at,acknowledgment_text,acknowledged_at,tracking_token,customer_email,reminder_email,reminder_subscribed_at,renewal_url,renewal_discount_code,security_strikes,customers(name),account_assignments(email_accounts(mailbox_alias,encrypted_connection))';
-  const select = baseSelect.replace('tracking_token,','tracking_token,referral_code,');
+  const select = baseSelect.replace('tracking_token,','tracking_token,referral_code,referral_coupon_unlocked_at,referral_assigned_coupon,');
   let params = new URLSearchParams({ select, tracking_token: `eq.${token}`, limit: '1' });
   let foundResponse = await database(`orders?${params}`);
   if(!foundResponse.ok){params=new URLSearchParams({select:baseSelect,tracking_token:`eq.${token}`,limit:'1'});foundResponse=await database(`orders?${params}`)}
   if (!foundResponse.ok) return response.status(502).json({ message: 'تعذر تحميل بيانات الطلب.' });
   const [order] = await foundResponse.json();
   if (!order) return response.status(404).json({ message: 'لم يتم العثور على الطلب.' });
-  const portalSettingsResponse = await database('system_settings?select=renewal_store_url,salla_review_url,support_whatsapp,upsell_enabled,upsell_title,upsell_description,upsell_url,upsell_duration_minutes&singleton=eq.true&limit=1');
+  const settingsSelect = 'renewal_store_url,salla_review_url,support_whatsapp,upsell_enabled,upsell_title,upsell_description,upsell_url,upsell_duration_minutes,referral_coupon_enabled,referral_coupon_target,referral_coupon_code,referral_coupon_discount_label';
+  let portalSettingsResponse = await database(`system_settings?select=${settingsSelect}&singleton=eq.true&limit=1`);
+  if (!portalSettingsResponse.ok) portalSettingsResponse = await database('system_settings?select=renewal_store_url,salla_review_url,support_whatsapp,upsell_enabled,upsell_title,upsell_description,upsell_url,upsell_duration_minutes&singleton=eq.true&limit=1');
   const portalSettings = portalSettingsResponse.ok ? (await portalSettingsResponse.json())[0] || {} : {};
   const verifiedSession = deviceSession(request, order.id), deviceVerified = Boolean(verifiedSession);
 
@@ -128,7 +130,9 @@ export default async function handler(request, response) {
   const accountEmail = order.acknowledged_at && deviceVerified ? assignedAccount?.mailbox_alias || null : null;
   const accountPassword = order.acknowledged_at && deviceVerified ? decryptPassword(assignedAccount?.encrypted_connection?.password) : null;
   const reviewResponse = order.acknowledged_at && deviceVerified ? await database(`order_reviews?select=status&order_id=eq.${encodeURIComponent(order.id)}&limit=1`) : null;
+  const referralResponse = deviceVerified ? await database(`referral_rewards?select=id&referrer_order_id=eq.${encodeURIComponent(order.id)}&limit=100`) : null;
   const [existingReview] = reviewResponse?.ok ? await reviewResponse.json() : [];
+  const referralCount = referralResponse?.ok ? (await referralResponse.json()).length : 0;
   if (accountEmail) await database('portal_activity_events', { method: 'POST', body: JSON.stringify({ order_id: order.id, activity_type: 'account_details_viewed', physical_core_hash: verifiedSession.physicalHash }) });
   delete order.id;
   delete order.account_assignments;
@@ -146,6 +150,8 @@ export default async function handler(request, response) {
   const compensationEligible = compensationAvailable && Number(order.security_strikes || 0) === 0;
   const origin=`https://${String(request.headers.host||'').replace(/[^a-zA-Z0-9.:-]/g,'')}`;
   const referralUrl=deviceVerified&&order.referral_code?`${origin}/?ref=${encodeURIComponent(order.referral_code)}`:null;
+  const referralTarget=Math.min(Math.max(Number(portalSettings.referral_coupon_target)||5,1),100);
+  const referralProgram=referralUrl?{url:referralUrl,count:referralCount,target:referralTarget,enabled:portalSettings.referral_coupon_enabled!==false,discountLabel:portalSettings.referral_coupon_discount_label||'خصم خاص 25% لعملائنا السفراء',coupon:order.referral_coupon_unlocked_at&&order.referral_assigned_coupon?order.referral_assigned_coupon:null,storeUrl:publicUrl(portalSettings.renewal_store_url)}:null;
   const offerMinutes=Math.min(Math.max(Number(portalSettings.upsell_duration_minutes)||30,1),1440),offerExpiresAt=order.acknowledged_at?new Date(new Date(order.acknowledged_at).getTime()+offerMinutes*60000):null;
   const upsellOffer=deviceVerified&&portalSettings.upsell_enabled&&offerExpiresAt>Date.now()&&publicUrl(portalSettings.upsell_url)?{title:portalSettings.upsell_title||'عرض خاص لعملائنا المميزين',description:portalSettings.upsell_description||'أضف منتجًا مكملًا بخصم حصري الآن',url:publicUrl(portalSettings.upsell_url),expiresAt:offerExpiresAt.toISOString()}:null;
   delete order.referral_code;
@@ -153,13 +159,14 @@ export default async function handler(request, response) {
   return response.status(200).setHeader('Cache-Control', 'private, no-store').json({
     order,
     actions: {
-      crunchyrollPortalUrl: deviceVerified && order.service_type === 'crunchyroll' ? publicUrl(process.env.PUBLIC_CRUNCHYROLL_PORTAL_URL) : null,
+      crunchyrollPortalUrl: deviceVerified && /crunchyroll|كرانشي/i.test(String(order.product_name || '')) ? publicUrl(process.env.PUBLIC_CRUNCHYROLL_PORTAL_URL) : null,
       supportWhatsapp: deviceVerified ? String(process.env.PUBLIC_SUPPORT_WHATSAPP || '').replace(/\D/g, '').slice(0, 20) || null : null,
       sallaReviewUrl: deviceVerified ? publicUrl(process.env.PUBLIC_SALLA_REVIEW_URL || portalSettings.salla_review_url) : null,
       renewalStoreUrl: deviceVerified ? publicUrl(portalSettings.renewal_store_url) : null,
       compensationEligible,
       compensationManualAvailable: compensationAvailable && !compensationEligible,
       referralUrl,
+      referralProgram,
       upsellOffer,
     },
     review: existingReview ? { submitted: true, status: existingReview.status } : { submitted: false },
