@@ -1,0 +1,37 @@
+<div id="portal">
+  <main class="single-home">
+    <section class="split-top">
+      <div class="split-copy">
+        <h1 class="split-title">بوابة استعلام عن طلبك</h1>
+        <p class="split-lead">أدخل رقم الطلب فقط لعرض وتفعيل اشتراكك فورًا</p>
+      </div>
+    </section>
+    <section class="split-bottom">
+      <div class="floating-wrap">
+        <div class="single-card">
+          <form id="singleOrderLookup" novalidate>
+            <div class="lookup-pair">
+              <label class="single-label" for="singleOrderNumber">
+                <span><b>#</b> رقم الطلب</span>
+                <input id="singleOrderNumber" class="single-input" name="orderNumber" type="text" required inputmode="numeric" pattern="[0-9]*" maxlength="30" autocomplete="off" placeholder="رقم الطلب">
+              </label>
+            </div>
+            <button class="single-action" type="submit">⌕ &nbsp; عرض بيانات الاشتراك</button>
+            <p id="singleLookupMessage" class="single-message" role="status" aria-live="polite"></p>
+          </form>
+          <div class="security-note"><i>▣</i><span>حماية ذكية غير مرئية توقف محاولات التخمين المتكررة دون إزعاج العميل.</span></div>
+        </div>
+        <section id="socialProof" class="social-proof" hidden><h2>آراء عملائنا المعتمدة ★</h2><div id="proofTrack" class="proof-track"></div></section>
+        <div class="clean-footer">
+          <a class="support-line" target="_blank" rel="noopener" href="https://wa.me/?text=%D9%85%D8%B1%D8%AD%D8%A8%D9%8B%D8%A7%D8%8C%20%D9%84%D8%A7%20%D8%A3%D8%AC%D8%AF%20%D8%B1%D9%82%D9%85%20%D8%B7%D9%84%D8%A8%D9%8A%20%D9%81%D9%8A%20%D8%A8%D9%88%D8%A7%D8%A8%D8%A9%20%D8%A3%D8%AF%D9%81%D8%A7%D9%86%D8%B3%D8%AF%20%D8%A8%D8%B1%D9%88"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M20 11.5a8 8 0 0 1-11.8 7L4 20l1.5-4.1A8 8 0 1 1 20 11.5Z"/></svg><span>لا تجد رقم الطلب؟</span><strong>تواصل مع الدعم</strong></a>
+          <span class="footer-mark" aria-hidden="true"><img src="/assets/bawaba-favicon.png" alt=""></span>
+          <div class="copyright">© بوابة أدفانسد برو | Advanced Pro Portal</div>
+        </div>
+      </div>
+    </section>
+  </main>
+  <div hidden aria-hidden="true">
+    <form id="lookup"><input id="query"><button type="submit">استعلام</button></form>
+    <p id="msg"></p><section id="results"></section>
+  </div>
+</div>

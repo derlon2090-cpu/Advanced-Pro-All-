@@ -20,8 +20,19 @@ test('home lookup shows a branded transition before navigation', async () => {
 
 test('home page renders immediately without the orange split boot screen', async () => {
   const build = await readFile(new URL('../scripts/build.mjs', import.meta.url), 'utf8');
+  const source = await readFile(new URL('../ui/single-order-home.html', import.meta.url), 'utf8');
   assert.doesNotMatch(build, /split-boot/);
   assert.doesNotMatch(build, /body\{opacity:0!important\}/);
+  assert.doesNotMatch(source, /portal\.innerHTML/);
+});
+
+test('built homepage contains only the current lookup design and disables document caching', async () => {
+  const html = await readFile(new URL('../public/index.html', import.meta.url), 'utf8');
+  const config = JSON.parse(await readFile(new URL('../vercel.json', import.meta.url), 'utf8'));
+  assert.match(html, /<form id="singleOrderLookup"/);
+  assert.doesNotMatch(html, /<section class="hero"><span class="chip">نظام الضمان والمتابعة الذكي/);
+  assert.doesNotMatch(html, /id="premiumLookup"/);
+  assert.ok(config.headers.some(rule => rule.source === '/' && rule.headers.some(header => header.key === 'Cache-Control' && header.value.includes('no-store'))));
 });
 
 test('fulfillment migration resets subscription and warranty start dates', async () => {

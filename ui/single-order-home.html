@@ -1,5 +1,8 @@
 <style>
   body.split-home-ready { background: #071a35 !important; }
+  html.current-home body { background: #071a35 !important; }
+  html.current-home .top, html.current-home .shell > .footer { display: none !important; }
+  html.current-home .shell { max-width: none; padding: 0; }
   .split-home-ready .top, .split-home-ready > .footer, .split-home-ready .shell > .footer { display: none !important; }
   .split-home-ready .shell { max-width: none; padding: 0; }
   .single-home { min-height: 100vh; background: #071a35; color: #f8fafc; overflow: hidden; }
@@ -165,20 +168,12 @@
   document.addEventListener('DOMContentLoaded', async () => {
     if (location.pathname !== '/') return;
     if (await window.apMaintenanceGate?.()) return;
-    const portal = document.getElementById('portal');
-    if (!portal) return;
+    if (!document.getElementById('portal')) return;
     document.body.classList.add('split-home-ready');
-    portal.innerHTML = '<main class="single-home"><section class="split-top"><div class="split-copy"><h1 class="split-title">بوابة استعلام عن طلبك</h1><p class="split-lead">أدخل بيانات الطلب لعرض وتفعيل اشتراكك بأمان</p></div></section><section class="split-bottom"><div class="floating-wrap"><div class="single-card"><form id="singleOrderLookup" novalidate><div class="lookup-pair"><label class="single-label" for="singleOrderNumber"><span><b>#</b> رقم الطلب</span><input id="singleOrderNumber" class="single-input" name="orderNumber" type="text" required inputmode="numeric" pattern="[0-9]*" maxlength="30" autocomplete="off" placeholder="رقم الطلب"></label><label class="single-label compact" for="singlePhoneLast4"><span><b>••</b> آخر 4 من الجوال</span><input id="singlePhoneLast4" class="single-input" name="phoneLast4" type="text" required inputmode="numeric" pattern="[0-9]{4}" minlength="4" maxlength="4" autocomplete="off" placeholder="1234"></label></div><button class="single-action" type="submit">⌕ &nbsp; عرض بيانات الاشتراك</button><p id="singleLookupMessage" class="single-message" role="status" aria-live="polite"></p></form><div class="security-note"><i>▣</i><span>نتحقق من آخر 4 أرقام فقط لحماية طلبك، ثم نربط الاشتراك بجهازك.</span></div></div><section id="socialProof" class="social-proof" hidden><h2>آراء عملائنا المعتمدة ★</h2><div id="proofTrack" class="proof-track"></div></section><div class="clean-footer"><a class="support-line" target="_blank" rel="noopener" href="https://wa.me/?text='+encodeURIComponent('مرحبًا، لا أجد رقم طلبي في بوابة أدفانسد برو')+'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M20 11.5a8 8 0 0 1-11.8 7L4 20l1.5-4.1A8 8 0 1 1 20 11.5Z"/></svg><span>لا تجد رقم الطلب؟</span><strong>تواصل مع الدعم</strong></a><span class="footer-mark" aria-hidden="true"><img src="/assets/bawaba-favicon.png" alt=""></span><div class="copyright">© بوابة أدفانسد برو | Advanced Pro Portal</div></div></div></section></main>';
-    document.querySelector('.split-lead').textContent = 'أدخل رقم الطلب فقط لعرض وتفعيل اشتراكك فورًا';
-    document.querySelector('.security-note span').textContent = 'حماية ذكية غير مرئية توقف محاولات التخمين المتكررة دون إزعاج العميل.';
-
     const orderInput = document.getElementById('singleOrderNumber');
     const incomingRef=new URLSearchParams(location.search).get('ref');if(/^[A-Z0-9]{8,32}$/i.test(incomingRef||''))localStorage.setItem('advpro_referral',incomingRef.toUpperCase());
     const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
     fetch('/api/public/reviews').then(r=>r.json()).then(data=>{if(!data.reviews?.length)return;document.getElementById('proofTrack').innerHTML=data.reviews.map(r=>'<article class="proof-item"><span class="proof-stars">★★★★★</span><strong>'+escapeHtml(r.customer_name)+'</strong><small>'+escapeHtml(r.product_name)+'</small>'+(r.comment?'<p>'+escapeHtml(r.comment)+'</p>':'')+'</article>').join('');document.getElementById('socialProof').hidden=false}).catch(()=>{});
-    const phoneInput = document.getElementById('singlePhoneLast4');
-    phoneInput.closest('label').hidden = true;
-    phoneInput.value = '0000';
     const message = document.getElementById('singleLookupMessage');
     const normalizeDigits = value => String(value)
       .replace(/[٠-٩]/g, digit => String(digit.charCodeAt(0) - 1632))
@@ -191,31 +186,16 @@
       orderInput.removeAttribute('aria-invalid');
       message.textContent = '';
     });
-    phoneInput.addEventListener('input', () => {
-      const digits = normalizeDigits(phoneInput.value).slice(0, 4);
-      if (phoneInput.value !== digits) phoneInput.value = digits;
-      phoneInput.removeAttribute('aria-invalid');
-      message.textContent = '';
-    });
-
     document.getElementById('singleOrderLookup').addEventListener('submit', async event => {
       event.preventDefault();
       const form = event.currentTarget;
       const button = form.querySelector('button');
       const orderNumber = normalizeDigits(orderInput.value);
-      const phoneLast4 = normalizeDigits(phoneInput.value).slice(0, 4);
       orderInput.value = orderNumber;
-      phoneInput.value = phoneLast4;
       if (!orderNumber) {
         orderInput.setAttribute('aria-invalid', 'true');
         message.textContent = 'أدخل رقم الطلب بالأرقام فقط.';
         orderInput.focus();
-        return;
-      }
-      if (!/^\d{4}$/.test(phoneLast4)) {
-        phoneInput.setAttribute('aria-invalid', 'true');
-        message.textContent = 'أدخل آخر 4 أرقام من رقم الجوال.';
-        phoneInput.focus();
         return;
       }
       button.disabled = true;
@@ -225,7 +205,7 @@
         const result = await fetch('/api/public/lookup', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ orderNumber, phoneLast4, referralCode:localStorage.getItem('advpro_referral') || null })
+          body: JSON.stringify({ orderNumber, referralCode:localStorage.getItem('advpro_referral') || null })
         });
         const data = await result.json().catch(() => ({}));
         if (result.ok && data.redirectTo) {
