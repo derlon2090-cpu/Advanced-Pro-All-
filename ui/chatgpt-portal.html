@@ -69,15 +69,12 @@
   <div id="guideModal" class="guide-modal hidden"><div class="guide-dialog"><button id="closeGuide" aria-label="إغلاق">×</button><h3>طريقة الدخول السريعة</h3><ol><li>انسخ البريد وكلمة المرور وسجّل الدخول إلى ChatGPT.</li><li>عند طلب رمز التحقق ارجع لهذه الصفحة.</li><li>انسخ كود 2FA الحي قبل انتهاء العداد.</li></ol></div></div>
   <footer id="footer" class="footer hidden">تواجه مشكلة؟ <a id="supportLink" href="#">افتح طلب تعويض أو مساعدة</a></footer>
   <script type="module">
-    import { setOrderProgress, previewOrder, verifyOrderDevice, revealVerified } from '/lib/order-progress.js';
+    import { setOrderProgress, previewOrder, verifyOrderDevice, revealVerified, openOrderDetails, resumeOrderDetails } from '/lib/order-progress.js';
+    import { isChatgptOrder } from '/lib/service-product.js';
     import { bindingHeaders } from '/lib/device-bind-client.js';
     const $=id=>document.getElementById(id), views=['lookup','dashboard'];
     let token='', portalData=null, countdown=null, passwordMaskTimer=null, seconds=0, passwordVisible=false, rawPassword='';
-    const sessionKey='advpro:gpt:session',sessionTtl=30*60*1000;
     const show=id=>{views.forEach(view=>{const element=$(view),visible=view===id;element.classList.toggle('hidden',!visible);if(visible){element.classList.remove('flow-view-enter');requestAnimationFrame(()=>element.classList.add('flow-view-enter'))}});$('switchOrder').hidden=id!=='dashboard'};
-    const saveSession=()=>{try{localStorage.setItem(sessionKey,JSON.stringify({token,expiresAt:Date.now()+sessionTtl}))}catch{}};
-    const forgetSession=()=>{try{localStorage.removeItem(sessionKey)}catch{}};
-    const restoreSession=()=>{try{const saved=JSON.parse(localStorage.getItem(sessionKey)||'null');if(saved?.token&&saved.expiresAt>Date.now())return saved.token;forgetSession()}catch{forgetSession()}return''};
     const message=(id,text,type='bad',link)=>{const box=$(id);box.className=`message show ${type}`;box.textContent=text;if(link){const a=document.createElement('a');a.className='redirect';a.href=link;a.textContent='فتح البوابة المناسبة ←';box.append(document.createElement('br'),a)}};
     const json=async(url,options={})=>{const response=await fetch(url,options);const data=await response.json().catch(()=>({}));if(!response.ok){const error=new Error(data.message||'تعذر إكمال الطلب.');error.status=response.status;error.data=data;throw error}return data};
     const cleanOrder=value=>String(value||'').replace(/[٠-٩]/g,d=>'٠١٢٣٤٥٦٧٨٩'.indexOf(d)).replace(/[۰-۹]/g,d=>'۰۱۲۳۴۵۶۷۸۹'.indexOf(d)).replace(/[^0-9]/g,'').slice(0,30);
@@ -91,33 +88,36 @@
       if (!orderNumber) return message('lookupMessage','أدخل رقم طلب صالحًا.');
       button.disabled = true;
       setOrderProgress('search');
+      let navigating = false;
       try {
         const data = await json('/api/public/chatgpt/access',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({orderNumber})});
-        history.replaceState({},'',data.redirectTo);
-        token = data.token;
-        saveSession();
-        await loadPortal();
+        navigating = await openOrderDetails({ token: data.token, destination: data.redirectTo, onOtherOrder: resetOrder });
       } catch (error) {
         let redirect = error.data?.redirectTo;
         if (redirect) redirect += (redirect.includes('?') ? '&' : '?') + 'order=' + encodeURIComponent(orderNumber);
         message('lookupMessage',error.message,'bad',redirect);
       } finally {
-        setOrderProgress();
+        if (!navigating) setOrderProgress();
         button.disabled = false;
       }
     }
     async function loadPortal() {
-      setOrderProgress('search');
       clearInterval(countdown);
       try {
-        const order = await previewOrder(token);
-        if (order.service_type !== 'chatgpt' || !/chatgpt|openai|شات\s*(?:جي\s*بي\s*تي|GPT)/i.test(String(order.product_name || ''))) {
-          location.replace('https://advpro.app');
-          return;
+        const resumed = await resumeOrderDetails(token);
+        if (!resumed) {
+          setOrderProgress('search');
+          const order = await previewOrder(token);
+          if (!isChatgptOrder(order)) {
+            location.replace('https://advpro.app');
+            return;
+          }
+          if (!await verifyOrderDevice({ token, onOtherOrder: resetOrder })) return;
         }
-        if (!await verifyOrderDevice({ token, onOtherOrder: resetOrder })) return;
-        portalData = await revealVerified(async () => json('/api/public/track?token='+encodeURIComponent(token), {headers:await bindingHeaders(token)}));
+        const loadDetails = async () => json('/api/public/track?token='+encodeURIComponent(token), {headers:await bindingHeaders(token)});
+        portalData = resumed ? await loadDetails() : await revealVerified(loadDetails);
         if (!portalData.order?.device_verified) throw new Error('تعذر توثيق الجهاز لهذا الطلب.');
+        if (!isChatgptOrder(portalData.order)) { location.replace('https://advpro.app'); return; }
         renderDashboard();
       } catch (error) {
         show('lookup');
@@ -136,9 +136,9 @@
     const maskPassword=()=>{passwordVisible=false;clearTimeout(passwordMaskTimer);$('togglePassword').textContent='إظهار';$('passwordValue').textContent='•'.repeat(Math.min(Math.max(rawPassword.length,8),16))};
     $('lookupForm').addEventListener('submit',openOrder);$('pasteButton').onclick=async()=>{try{$('orderNumber').value=cleanOrder(await navigator.clipboard.readText());$('orderNumber').focus()}catch{message('lookupMessage','اسمح بالوصول للحافظة أو الصق الرقم يدويًا.')}};$('togglePassword').onclick=()=>{if(!passwordVisible){passwordVisible=true;$('togglePassword').textContent='إخفاء';$('passwordValue').textContent=rawPassword;clearTimeout(passwordMaskTimer);passwordMaskTimer=setTimeout(maskPassword,60000)}else maskPassword()};document.querySelectorAll('[data-copy]').forEach(button=>button.onclick=()=>copyValue($(button.dataset.copy).textContent,button));document.querySelectorAll('[data-copy-secret]').forEach(button=>button.onclick=()=>copyValue(rawPassword,button));$('copyTotp').onclick=()=>{copyValue($('totpCode').dataset.code||'',$('copyTotp'));$('reviewPrompt').classList.remove('hidden')};
     $('quickGuide').onclick=()=>$('guideModal').classList.remove('hidden');$('closeGuide').onclick=()=>$('guideModal').classList.add('hidden');$('guideModal').onclick=e=>{if(e.target===$('guideModal'))$('guideModal').classList.add('hidden')};document.querySelector('[data-quick-rating]').onclick=async()=>{const button=document.querySelector('[data-quick-rating]');button.disabled=true;try{await json('/api/public/track/'+encodeURIComponent(token)+'/review',{method:'POST',headers:await bindingHeaders(token,{'content-type':'application/json'}),body:JSON.stringify({rating:5,comment:'تم التفعيل بنجاح عبر بوابة ChatGPT'})});button.textContent='شكرًا لتقييمك ★★★★★'}catch{button.textContent='تعذر إرسال التقييم الآن';button.disabled=false}};
-    const resetOrder=()=>{forgetSession();token='';portalData=null;clearInterval(countdown);$('footer').classList.add('hidden');history.replaceState({},'',location.hostname==='gpt.advpro.app'?'/':'/chatgpt');$('orderNumber').value='';$('lookupMessage').textContent='';show('lookup');$('orderNumber').focus()};
+    const resetOrder=()=>{token='';portalData=null;clearInterval(countdown);$('footer').classList.add('hidden');history.replaceState({},'',location.hostname==='gpt.advpro.app'?'/':'/chatgpt');$('orderNumber').value='';$('lookupMessage').textContent='';show('lookup');$('orderNumber').focus()};
     $('switchOrder').onclick=resetOrder;
-    token=pathToken();const requestedOrder=new URLSearchParams(location.search).get('order'),savedToken=restoreSession();if(token){saveSession();loadPortal()}else if(requestedOrder){show('lookup');$('orderNumber').value=cleanOrder(requestedOrder);openOrder()}else if(savedToken){token=savedToken;loadPortal()}else show('lookup');
+    token=pathToken();const requestedOrder=new URLSearchParams(location.search).get('order');if(token){loadPortal()}else if(requestedOrder){show('lookup');$('orderNumber').value=cleanOrder(requestedOrder);openOrder()}else show('lookup');
   </script>
 </body>
 </html>

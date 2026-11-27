@@ -23,6 +23,7 @@ test('order tracking uses the split brand layout and explicit lifecycle labels',
 test('order tracking verifies automatically and opens details behind the verified session', async () => {
   const source = await readFile(new URL('../ui/order-track.html', import.meta.url), 'utf8');
   assert.match(source, /await previewOrder\(token\);\s+await showOrder\(\)/);
+  assert.match(source, /if \(await resumeOrderDetails\(token\)\) \{\s+await loadVerifiedOrder\(\)/);
   assert.match(source, /if \(!await verifyOrderDevice\([\s\S]*?\)\) return;\s+await loadVerifiedOrder\(true\)/);
   assert.doesNotMatch(source, /ackCheckbox|stageAckCheckbox|confirmOrderFound|journey-stepper|journey-step/);
   assert.match(source, /confirmed \? await revealVerified\(loadOrder\)/);
@@ -39,16 +40,16 @@ test('order details switch to another lookup in place without a page reload', as
   assert.match(source, /history\.replaceState\(\{\},'', '\/'\)/);
   assert.match(source, /anotherOrderNumber/);
   assert.match(source, /input\.focus\(\)/);
-  assert.match(source, /destination\.origin !== location\.origin/);
-  assert.match(source, /await previewOrder\(nextToken\);\s+history\.replaceState\(/);
+  assert.match(source, /portal\.querySelector\('\.order-stage-layout'\)\.prepend\(progressCard\)/);
+  assert.match(source, /navigating = await openOrderDetails\(/);
   assert.doesNotMatch(source, /switchOrder[^\n]+location\.(?:assign|replace|reload)/);
 });
 
-test('home lookup keeps the search state until the tracking page confirms the order', async () => {
+test('home verifies on the lookup page before opening the details document', async () => {
   const source = await readFile(new URL('../ui/single-order-home.html', import.meta.url), 'utf8');
   const shell = await readFile(new URL('../ui/single-order-home-shell.html', import.meta.url), 'utf8');
   assert.match(source, /setOrderProgress\('search'\);[\s\S]*?fetch\('\/api\/public\/lookup'/);
-  assert.match(source, /location\.assign\(data\.redirectTo\)/);
+  assert.match(source, /navigating = await openOrderDetails\(/);
   assert.doesNotMatch(source, /confirmOrderFound|order-transition/);
   assert.match(source, /normalizeOrderNumber/);
   assert.match(source, /\.order-input-wrap:focus-within/);
@@ -93,7 +94,7 @@ test('built homepage contains only the current lookup design and disables docume
 test('track routes use a dedicated secure loading document without homepage flashes', async () => {
   const html = await readFile(new URL('../public/track.html', import.meta.url), 'utf8');
   const config = JSON.parse(await readFile(new URL('../vercel.json', import.meta.url), 'utf8'));
-  const boot = html.indexOf("dataset.orderProgress='search'");
+  const boot = html.indexOf("dataset.orderProgress=location.hash.startsWith('#open=')?'details':'search'");
   assert.ok(boot >= 0 && boot < html.search(/<body\b/));
   assert.match(html, /جارٍ التحقق من الطلب وتوثيق الجهاز…/);
   assert.doesNotMatch(html, /جارِ تجهيز تفاصيل طلبك/);
@@ -114,7 +115,7 @@ test('all public portals serve a shared in-place loader and have no manual devic
     assert.doesNotMatch(html, /deviceBindingForm|أوافق على ربط الاشتراك|confirmOrderFound|id="continueToDevice"/);
     assert.equal(html.match(/<body\b/g)?.length, 1, name);
     if (name !== 'home') {
-      const boot = html.indexOf("dataset.orderProgress='search'");
+      const boot = html.indexOf("dataset.orderProgress=location.hash.startsWith('#open=')?'details':'search'");
       assert.ok(boot >= 0 && boot < html.search(/<body\b/), name);
     }
   }

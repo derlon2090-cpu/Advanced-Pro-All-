@@ -50,17 +50,14 @@
   </main>
   <footer class="footer">بوابة أدفانسد برو · معالجة آمنة ومخصصة لطلبات الضمان</footer>
   <script type="module">
-    import { setOrderProgress, verifyOrderDevice, revealVerified } from '/lib/order-progress.js';
+    import { setOrderProgress, verifyOrderDevice, revealVerified, openOrderDetails, resumeOrderDetails } from '/lib/order-progress.js';
     import { bindingHeaders } from '/lib/device-bind-client.js';
     const $=id=>document.getElementById(id),digits=value=>String(value||'').replace(/[٠-٩]/g,d=>String(d.charCodeAt(0)-1632)).replace(/[۰-۹]/g,d=>String(d.charCodeAt(0)-1776)),cleanOrder=value=>digits(value).replace(/[^0-9]/g,'');
     let token='',evidenceData='';
-    const sessionKey='advpro:warranty:session',sessionTtl=30*60*1000,switchMarkup='';
+    const switchMarkup='';
     const esc=value=>String(value==null?'':value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
     const show=name=>{['entry','result'].forEach(id=>{const view=$(id),visible=id===name;view.hidden=!visible;if(visible){view.classList.remove('flow-view-enter');requestAnimationFrame(()=>view.classList.add('flow-view-enter'))}});$('switchOrder').hidden=name!=='result'};
-    const saveSession=()=>{try{localStorage.setItem(sessionKey,JSON.stringify({token,expiresAt:Date.now()+sessionTtl}))}catch{}};
-    const forgetSession=()=>{try{localStorage.removeItem(sessionKey)}catch{}};
-    const restoreSession=()=>{try{const saved=JSON.parse(localStorage.getItem(sessionKey)||'null');if(saved?.token&&saved.expiresAt>Date.now())return saved.token;forgetSession()}catch{forgetSession()}return''};
-    const resetOrder=()=>{forgetSession();token='';evidenceData='';history.replaceState({},'',location.hostname==='warranty.advpro.app'?'/':'/compensate');$('orderNumber').value='';$('entryMessage').textContent='';$('result').innerHTML='';$('checkButton').disabled=false;$('checkButton').textContent='فحص أهلية التعويض ←';show('entry');$('orderNumber').focus()};
+    const resetOrder=()=>{token='';evidenceData='';history.replaceState({},'',location.hostname==='warranty.advpro.app'?'/':'/compensate');$('orderNumber').value='';$('entryMessage').textContent='';$('result').innerHTML='';$('checkButton').disabled=false;$('checkButton').textContent='فحص أهلية التعويض ←';show('entry');$('orderNumber').focus()};
     const bindSwitch=()=>{const button=$('switchOrder');if(button)button.onclick=resetOrder};
     const copyValue=async(value,button)=>{try{await navigator.clipboard.writeText(value);navigator.vibrate?.(25);const label=button.textContent;button.textContent='تم النسخ ✓';button.classList.add('copy-success');setTimeout(()=>{button.textContent=label;button.classList.remove('copy-success')},2000)}catch{button.textContent='تعذر النسخ'}};
     const statusText=item=>item.status==='approved'?'تم التعويض':item.status==='rejected'?'مرفوض'+(item.reason?' — '+item.reason:''):'قيد المراجعة';
@@ -73,11 +70,11 @@
       return data.trackingToken;
     }
     async function inspect() {
-      setOrderProgress('search');
       try {
-        if (!await verifyOrderDevice({ token, onOtherOrder: resetOrder })) return;
-        const data = await revealVerified(async () => api('/api/public/compensate/'+encodeURIComponent(token),{headers:await bindingHeaders(token,{accept:'application/json'}),cache:'no-store'}));
-        render(data);
+        const resumed = await resumeOrderDetails(token);
+        if (!resumed && !await verifyOrderDevice({ token, onOtherOrder: resetOrder })) return;
+        const loadDetails = async () => api('/api/public/compensate/'+encodeURIComponent(token),{headers:await bindingHeaders(token,{accept:'application/json'}),cache:'no-store'});
+        render(resumed ? await loadDetails() : await revealVerified(loadDetails));
       } catch (error) {
         show('result');
         $('result').innerHTML = '<div class="outcome-head">'+switchMarkup+'</div><div class="notice danger"><strong>تعذر متابعة طلب التعويض</strong><br>'+esc(error.message)+'</div>';
@@ -102,20 +99,19 @@
       button.disabled = true;
       $('entryMessage').textContent = '';
       setOrderProgress('search');
+      let navigating = false;
       try {
-        token = await resolveOrder(number);
-        saveSession();
+        const nextToken = await resolveOrder(number);
         const prefix = location.hostname === 'warranty.advpro.app' ? '/' : '/compensate/';
-        history.replaceState({}, '', prefix + encodeURIComponent(token));
-        await inspect();
+        navigating = await openOrderDetails({ token: nextToken, destination: prefix + encodeURIComponent(nextToken), onOtherOrder: resetOrder });
       } catch (error) {
         $('entryMessage').textContent = error.message;
       } finally {
-        setOrderProgress();
+        if (!navigating) setOrderProgress();
         button.disabled = false;
       }
     };
-    const tokenPattern=location.hostname==='warranty.advpro.app'?/^\/([a-zA-Z0-9_-]{16,128})\/?$/:/^\/compensate\/([a-zA-Z0-9_-]{16,128})\/?$/,pathMatch=location.pathname.match(tokenPattern),queryOrder=cleanOrder(new URLSearchParams(location.search).get('order')),savedToken=restoreSession();if(pathMatch){token=pathMatch[1];saveSession();inspect()}else if(queryOrder){$('orderNumber').value='#'+queryOrder;$('orderForm').requestSubmit()}else if(savedToken){token=savedToken;history.replaceState({},'', '/'+encodeURIComponent(token));inspect()}
+    const tokenPattern=location.hostname==='warranty.advpro.app'?/^\/([a-zA-Z0-9_-]{16,128})\/?$/:/^\/compensate\/([a-zA-Z0-9_-]{16,128})\/?$/,pathMatch=location.pathname.match(tokenPattern),queryOrder=cleanOrder(new URLSearchParams(location.search).get('order'));if(pathMatch){token=pathMatch[1];inspect()}else if(queryOrder){$('orderNumber').value='#'+queryOrder;$('orderForm').requestSubmit()}
   </script>
 </body>
 </html>

@@ -174,7 +174,7 @@
     fetch('/api/public/reviews').then(r=>r.json()).then(data=>{if(!data.reviews?.length)return;document.getElementById('proofTrack').innerHTML=data.reviews.map(r=>'<article class="proof-item"><span class="proof-stars">★★★★★</span><strong>'+escapeHtml(r.customer_name)+'</strong><small>'+escapeHtml(r.product_name)+'</small>'+(r.comment?'<p>'+escapeHtml(r.comment)+'</p>':'')+'</article>').join('');document.getElementById('socialProof').hidden=false}).catch(()=>{});
     const message = document.getElementById('singleLookupMessage');
     const { normalizeOrderNumber } = await import('/lib/order-number.js');
-    const { setOrderProgress } = await import('/lib/order-progress.js');
+    const { setOrderProgress, openOrderDetails } = await import('/lib/order-progress.js');
     const pasteButton = document.getElementById('pasteOrderNumber');
     const clearButton = document.getElementById('clearOrderNumber');
     const updateTools = () => { clearButton.hidden = !orderInput.value; };
@@ -206,6 +206,7 @@
     const button = form.querySelector('.single-action');
     form.addEventListener('submit', async event => {
       event.preventDefault();
+      if (button.disabled) return;
       const orderNumber = normalizeOrderNumber(orderInput.value);
       orderInput.value = orderNumber;
       if (!orderNumber) {
@@ -227,15 +228,17 @@
         const data = await result.json().catch(() => ({}));
         if (result.ok && data.redirectTo) {
           localStorage.removeItem('advpro_referral');
-          location.assign(data.redirectTo);
-          navigating = true;
+          navigating = await openOrderDetails({
+            token: data.trackingToken, destination: data.redirectTo,
+            onOtherOrder: () => { orderInput.value = ''; orderInput.dispatchEvent(new Event('input')); },
+          });
           return;
         }
         message.textContent = result.status === 503
           ? 'خدمة الاستعلام غير متاحة مؤقتًا. يرجى المحاولة بعد قليل.'
           : data.message || 'لم يتم العثور على الطلب. تحقق من الرقم وحاول مجددًا.';
-      } catch {
-        message.textContent = 'تعذر الاتصال بالخدمة. حاول بعد قليل.';
+      } catch (error) {
+        message.textContent = error instanceof TypeError ? 'تعذر الاتصال بالخدمة. حاول بعد قليل.' : error.message;
       } finally {
         if (!navigating) {
           setOrderProgress();

@@ -61,7 +61,7 @@ test('verification binds the first browser automatically and rejects another bro
     return request({ ...signals, action:'verify', challenge:challenge.data.challenge }, cookie, host);
   };
 
-  const first = await verify(dna);
+  const first = await verify({ ...dna, handoff: true });
   assert.equal(first.code, 200);
   assert.equal(first.data.state, 'registered');
   assert.equal(order.locked_device_fingerprint_hash, physical);
@@ -70,6 +70,13 @@ test('verification binds the first browser automatically and rejects another bro
   const cookie = first.headers['Set-Cookie'].split(';')[0];
   assert.equal(inspectBinding({headers:{cookie, 'x-device-bind-anchor':first.data.bindAnchor}}, order).ok, true);
   const recordedAt = order.acknowledged_at;
+  assert.match(first.data.proof, /^\d+\.[a-f0-9]{64}$/);
+  const resume = (proof, deviceCookie = cookie) => request({ action: 'resume', proof }, deviceCookie, 'gpt.advpro.app');
+  const resumed = await resume(first.data.proof);
+  assert.equal(resumed.code, 200);
+  assert.equal(resumed.data.bindAnchor, first.data.bindAnchor);
+  assert.equal((await resume(first.data.proof, '')).code, 403);
+  assert.equal((await resume(first.data.proof.replace(/[a-f0-9]$/, tail => tail === '0' ? '1' : '0'))).code, 403);
 
   const returning = await verify(dna, cookie, 'gpt.advpro.app');
   assert.equal(returning.code, 200);
@@ -87,4 +94,6 @@ test('verification binds the first browser automatically and rejects another bro
   assert.equal(secondDevice.data.code, 'DEVICE_MISMATCH');
   assert.equal(bindingWrites, 1);
   assert.equal((await request({ action:'transfer' })).code, 400);
+  t.mock.method(Date, 'now', () => Number(first.data.proof.split('.')[0]) * 1000);
+  assert.equal((await resume(first.data.proof)).code, 403);
 });

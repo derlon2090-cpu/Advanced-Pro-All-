@@ -78,15 +78,12 @@
   <div id="guideModal" class="guide-modal" hidden><div class="guide-dialog"><button id="closeGuide" aria-label="إغلاق">×</button><h3>طريقة الدخول السريعة</h3><ol><li>اضغط «تم تسجيل خروجي» وانسخ البريد وكلمة المرور.</li><li>سجّل الدخول في موقع أو تطبيق Crunchyroll من جهازك الموثّق.</li><li>ارجع هنا واضغط «اعتماد جهازي» عند ظهور الرسالة.</li></ol></div></div>
   <footer class="footer">بوابة أدفانسد برو · وصول محمي ومخصص لعملاء Crunchyroll</footer>
   <script type="module">
-    import { setOrderProgress, previewOrder, verifyOrderDevice, revealVerified } from '/lib/order-progress.js';
+    import { setOrderProgress, previewOrder, verifyOrderDevice, revealVerified, openOrderDetails, resumeOrderDetails } from '/lib/order-progress.js';
+    import { isCrunchyrollOrder } from '/lib/service-product.js';
     import { bindingHeaders } from '/lib/device-bind-client.js';
     const $=id=>document.getElementById(id),arabicDigits=value=>String(value||'').replace(/[٠-٩]/g,d=>String(d.charCodeAt(0)-1632)).replace(/[۰-۹]/g,d=>String(d.charCodeAt(0)-1776)),cleanOrder=value=>arabicDigits(value).replace(/[^0-9]/g,'');
     let token='',orderData=null,plainPassword='',autoTimer=null,autoStopsAt=0,passwordMaskTimer=null,trustedDeviceLabel='جهازك الموثّق';
-    const sessionKey='advpro:anime:session',sessionTtl=30*60*1000;
     const show=name=>{['entry','dashboard'].forEach(id=>{const view=$(id),visible=id===name;view.hidden=!visible;if(visible){view.classList.remove('flow-view-enter');requestAnimationFrame(()=>view.classList.add('flow-view-enter'))}});$('switchOrder').hidden=name!=='dashboard'};
-    const saveSession=()=>{try{localStorage.setItem(sessionKey,JSON.stringify({token,expiresAt:Date.now()+sessionTtl}))}catch{}};
-    const forgetSession=()=>{try{localStorage.removeItem(sessionKey)}catch{}};
-    const restoreSession=()=>{try{const saved=JSON.parse(localStorage.getItem(sessionKey)||'null');if(saved?.token&&saved.expiresAt>Date.now())return saved.token;forgetSession()}catch{forgetSession()}return''};
     const copy=async(value,button)=>{try{await navigator.clipboard.writeText(value);navigator.vibrate?.(25);const old=button.textContent;button.textContent='تم النسخ ✓';button.classList.add('copy-success');setTimeout(()=>{button.textContent=old;button.classList.remove('copy-success')},2000)}catch{button.textContent='تعذر النسخ'}};
     const relative=date=>{const sec=Math.max(0,Math.floor((Date.now()-new Date(date))/1000));if(sec<60)return 'الآن';if(sec<3600)return `منذ ${Math.floor(sec/60)} دقيقة`;if(sec<86400)return `منذ ${Math.floor(sec/3600)} ساعة`;return new Date(date).toLocaleDateString('ar-SA')};
     $('pasteButton').onclick=async()=>{try{$('orderNumber').value=await navigator.clipboard.readText();$('orderNumber').focus()}catch{$('accessMessage').textContent='تعذر الوصول للحافظة. الصق الرقم يدويًا.'}};
@@ -98,6 +95,7 @@
       button.disabled = true;
       message.textContent = '';
       setOrderProgress('search');
+      let navigating = false;
       try {
         const response = await fetch('/api/public/crunchyroll/access',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({orderNumber})});
         const result = await response.json().catch(()=>({}));
@@ -113,29 +111,30 @@
           }
           return;
         }
-        history.replaceState({},'',result.redirectTo);
-        token = result.token;
-        saveSession();
-        await openPortal();
-      } catch {
-        message.textContent = 'تعذر الاتصال بالخدمة. حاول بعد قليل.';
+        navigating = await openOrderDetails({ token: result.token, destination: result.redirectTo, onOtherOrder: resetOrder });
+      } catch (error) {
+        message.textContent = error instanceof TypeError ? 'تعذر الاتصال بالخدمة. حاول بعد قليل.' : error.message;
       } finally {
-        setOrderProgress();
+        if (!navigating) setOrderProgress();
         button.disabled = false;
       }
     };
     async function fetchOrder(reauth=false){const headers=await bindingHeaders(token,{accept:'application/json',...(reauth?{'x-reauth-window':'1'}:{})}),response=await fetch('/api/public/track?token='+encodeURIComponent(token),{headers,cache:'no-store'}),result=await response.json().catch(()=>({}));if(!response.ok)throw new Error(result.message||'تعذر تحميل بيانات الاشتراك.');return result}
     async function openPortal() {
-      setOrderProgress('search');
       try {
-        const preview = await previewOrder(token);
-        if (preview.service_type !== 'crunchyroll' || !/crunchyroll|كرانشي\s*رول/i.test(String(preview.product_name || ''))) {
-          location.replace('https://advpro.app');
-          return;
+        const resumed = await resumeOrderDetails(token);
+        if (!resumed) {
+          setOrderProgress('search');
+          const preview = await previewOrder(token);
+          if (!isCrunchyrollOrder(preview)) {
+            location.replace('https://advpro.app');
+            return;
+          }
+          if (!await verifyOrderDevice({ token, onOtherOrder: resetOrder })) return;
         }
-        if (!await verifyOrderDevice({ token, onOtherOrder: resetOrder })) return;
-        const payload = await revealVerified(fetchOrder);
+        const payload = resumed ? await fetchOrder() : await revealVerified(fetchOrder);
         if (!payload.order?.device_verified) throw new Error('تعذر توثيق الجهاز لهذا الطلب.');
+        if (!isCrunchyrollOrder(payload.order)) { location.replace('https://advpro.app'); return; }
         renderDashboard(payload);
       } catch (error) {
         show('entry');
@@ -158,9 +157,9 @@
     $('refreshButton').onclick=()=>refreshMessages(true);
     $('quickGuide').onclick=()=>{$('guideModal').hidden=false};$('closeGuide').onclick=()=>{$('guideModal').hidden=true};$('guideModal').onclick=e=>{if(e.target===$('guideModal'))$('guideModal').hidden=true};
     document.querySelector('[data-quick-rating]').onclick=async()=>{const button=document.querySelector('[data-quick-rating]');button.disabled=true;try{const headers=await bindingHeaders(token,{'content-type':'application/json'}),response=await fetch('/api/public/track/'+encodeURIComponent(token)+'/review',{method:'POST',headers,body:JSON.stringify({rating:5,comment:'تم التفعيل بنجاح عبر بوابة كرانشي رول'})});if(!response.ok)throw new Error();button.textContent='شكرًا لتقييمك ★★★★★'}catch{button.textContent='تعذر إرسال التقييم الآن';button.disabled=false}};
-    const resetOrder=()=>{forgetSession();token='';orderData=null;plainPassword='';clearInterval(autoTimer);clearTimeout(passwordMaskTimer);history.replaceState({},'',location.hostname==='anime.advpro.app'?'/':'/crunchyroll');$('orderNumber').value='';$('accessMessage').textContent='';show('entry');$('orderNumber').focus()};
+    const resetOrder=()=>{token='';orderData=null;plainPassword='';clearInterval(autoTimer);clearTimeout(passwordMaskTimer);history.replaceState({},'',location.hostname==='anime.advpro.app'?'/':'/crunchyroll');$('orderNumber').value='';$('accessMessage').textContent='';show('entry');$('orderNumber').focus()};
     $('switchOrder').onclick=resetOrder;
-    const segments=location.pathname.split('/').filter(Boolean),directToken=location.hostname==='anime.advpro.app'?segments[0]:segments[1],queryOrder=new URLSearchParams(location.search).get('order'),savedToken=restoreSession();if(directToken&&/^[a-zA-Z0-9_-]{16,128}$/.test(directToken)){token=directToken;saveSession();openPortal()}else if(queryOrder){$('orderNumber').value='#'+cleanOrder(queryOrder);$('accessForm').requestSubmit()}else if(savedToken){token=savedToken;openPortal()}
+    const segments=location.pathname.split('/').filter(Boolean),directToken=location.hostname==='anime.advpro.app'?segments[0]:segments[1],queryOrder=new URLSearchParams(location.search).get('order');if(directToken&&/^[a-zA-Z0-9_-]{16,128}$/.test(directToken)){token=directToken;openPortal()}else if(queryOrder){$('orderNumber').value='#'+cleanOrder(queryOrder);$('accessForm').requestSubmit()}
   </script>
 </body>
 </html>
