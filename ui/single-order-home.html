@@ -144,6 +144,12 @@
   }
   .footer-mark img { width: 34px; height: 34px; object-fit: contain; display: block; }
   .copyright { margin-top: 13px; color: #64748b; font-size: .72rem; }
+  .order-transition { position:fixed; z-index:999; inset:0; display:grid; place-items:center; opacity:0; pointer-events:none; background:linear-gradient(135deg,#7c2d12,#c2410c 52%,#ea580c); transition:opacity .25s ease; }
+  .order-transition.show { opacity:1; pointer-events:auto; }
+  .order-transition div { text-align:center; color:#fff; }
+  .order-transition i { display:block; width:44px; height:44px; margin:0 auto 16px; border:4px solid #ffffff55; border-top-color:#fff; border-radius:50%; animation:orderTransitionSpin .7s linear infinite; }
+  .order-transition strong,.order-transition small { display:block; }.order-transition small{margin-top:7px;color:#ffedd5}
+  @keyframes orderTransitionSpin { to { transform:rotate(360deg); } }
   @media (max-width: 650px) {
     .lookup-pair { grid-template-columns: 1fr; }
     .split-top { min-height: 43vh; padding: 52px 16px 132px; }
@@ -219,7 +225,9 @@
           body: JSON.stringify({ orderNumber, phoneLast4 })
         });
         const data = await result.json().catch(() => ({}));
-        if (result.ok && data.redirectTo) return location.assign(data.redirectTo);
+        if (result.ok && data.redirectTo) {
+          var transition=document.createElement('div');transition.className='order-transition';transition.innerHTML='<div><i></i><strong>تم العثور على طلبك</strong><small>جارِ فتح تفاصيل الاشتراك بأمان…</small></div>';document.body.append(transition);requestAnimationFrame(function(){transition.classList.add('show')});setTimeout(function(){location.assign(data.redirectTo)},320);return;
+        }
         message.textContent = result.status === 503
           ? 'خدمة الاستعلام غير متاحة مؤقتًا. يرجى المحاولة بعد قليل.'
           : data.message || 'لم يتم العثور على الطلب. تحقق من الرقم وحاول مجددًا.';

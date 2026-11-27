@@ -2,13 +2,24 @@
   body.order-track-ready { background: #050a18 !important; }
   .order-track-ready .top, .order-track-ready > .footer, .order-track-ready .shell > .footer { display: none !important; }
   .order-track-ready .shell { max-width: none; padding: 0; }
-  .order-portal { min-height: 100vh; padding: 32px 18px 54px; color: #f8fafc; background: radial-gradient(circle at 85% 0, #c2410c25, transparent 30rem), #050a18; }
+  .order-portal { min-height: 100vh; color: #f8fafc; background: #050a18; }
   .order-wrap { width: min(860px, 100%); margin: auto; }
-  .order-brand { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 24px; }
-  .order-brand a { color: #94a3b8; font-size: .9rem; }
+  .track-hero { position: relative; min-height: 300px; padding: 26px 20px 96px; overflow: hidden; background: linear-gradient(135deg, #7c2d12 0%, #c2410c 50%, #ea580c 100%); }
+  .track-hero:before { content:""; position:absolute; inset:0; opacity:.1; background-image:repeating-linear-gradient(135deg,#fff 0 1px,transparent 1px 30px); }
+  .track-hero:after { content:""; position:absolute; width:420px; height:420px; top:-260px; left:-90px; border:1px solid #fff3; border-radius:50%; box-shadow:0 0 0 68px #ffffff08,0 0 0 136px #ffffff05; }
+  .order-brand,.track-hero-copy { position:relative; z-index:1; width:min(980px,100%); margin-inline:auto; }
+  .order-brand { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+  .order-brand a { padding:9px 12px; border:1px solid #ffffff40; border-radius:10px; color:#fff7ed; background:#43140733; font-size:.78rem; font-weight:800; }
   .order-brand strong { display: block; font-size: 1.05rem; }
-  .order-brand small { color: #94a3b8; }
-  .digital-order { position: relative; overflow: hidden; border: 1px solid #1e3a5f; border-radius: 26px; background: linear-gradient(145deg, #0a1d38, #071426); box-shadow: 0 28px 90px #0009; }
+  .order-brand small { color: #fed7aa; }
+  .track-hero-copy { margin-top:42px; text-align:center; }
+  .track-hero-copy .order-number { display:inline-flex; justify-content:center; }
+  .track-hero-copy h1 { margin:10px 0 13px; color:#fff; font-size:clamp(1.8rem,5vw,3.2rem); letter-spacing:-.035em; }
+  .track-service { display:block; margin-top:9px; color:#ffedd5; font-size:.76rem; font-weight:800; }
+  .track-night { min-height:calc(100vh - 300px); padding:0 18px 58px; background:radial-gradient(circle at 50% -10%,#c2410c1c,transparent 28rem),#050a18; }
+  .track-night .order-wrap { transform:translateY(-58px); }
+  .digital-order { position: relative; overflow: hidden; border: 1px solid #274568; border-radius: 24px; background: linear-gradient(145deg, #0a1d38, #071426); box-shadow: 0 32px 95px #000b,0 0 0 1px #ea580c18; animation:cardEnter .45s cubic-bezier(.2,.75,.25,1) both; }
+  @keyframes cardEnter { from{opacity:0;transform:translateY(18px) scale(.985)} to{opacity:1;transform:none} }
   .order-watermark { position: absolute; inset: 0; z-index: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 38px; overflow: hidden; padding: 34px; pointer-events: none; opacity: .045; transform: rotate(-12deg) scale(1.15); }
   .order-watermark span { color: #fff; font-weight: 900; font-size: .72rem; white-space: nowrap; letter-spacing: .08em; }
   .digital-order > :not(.order-watermark) { position: relative; z-index: 1; }
@@ -21,16 +32,21 @@
   .copy-button { padding: 5px 8px; border: 1px solid #ffffff45; border-radius: 8px; color: #fff7ed; background: #43140766; font: inherit; font-size: .72rem; cursor: pointer; transition: .2s; }
   .copy-button:hover { background: #7c2d1266; }
   .copy-button.copied { border-color: #22c55e88; color: #86efac; background: #052e2b; }
-  .state-badge { flex: 0 0 auto; padding: 8px 13px; border: 1px solid #ffffff45; border-radius: 999px; background: #052e2bd9; color: #86efac; font-weight: 900; }
+  .state-badge { display:inline-flex; align-items:center; justify-content:center; flex:0 0 auto; padding: 9px 14px; border: 1px solid #86efac88; border-radius: 999px; background: #052e2bd9; color: #bbf7d0; box-shadow:0 0 24px #22c55e35; font-size:.78rem; font-weight: 900; }
   .state-badge.expired { background: #334155d9; color: #e2e8f0; }
-  .state-badge.pending { background: #78350fd9; color: #fde68a; }
+  .state-badge.pending { border-color:#fcd34d99; background: #78350fd9; color: #fde68a; box-shadow:0 0 25px #f59e0b2e; animation:statusPulse 1.8s ease-in-out infinite; }
+  @keyframes statusPulse { 50%{box-shadow:0 0 34px #f59e0b55} }
   .ticket-body { padding: 24px; }
   .time-grid { display: grid; grid-template-columns: 1fr 1fr 1.4fr; gap: 12px; }
   .time-cell { min-height: 96px; padding: 15px; border: 1px solid #1e3a5f; border-radius: 15px; background: #050f20; }
   .time-cell span { display: block; margin-bottom: 8px; color: #94a3b8; font-size: .82rem; }
   .time-cell strong { font-size: 1rem; }
   .progress { height: 7px; margin-top: 13px; overflow: hidden; border-radius: 99px; background: #1e293b; }
-  .progress i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #fb923c, #c2410c); }
+  .progress i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #ea580c, #fb923c 52%, #22c55e); }
+  .subscription-summary { grid-column:1/-1; min-height:auto; border-color:#166534; background:linear-gradient(135deg,#052e2045,#050f20); }
+  .subscription-summary.pending { border-color:#92400e; background:linear-gradient(135deg,#78350f30,#050f20); }
+  .subscription-summary.expired { border-color:#475569; background:#0f172a; }
+  .subscription-summary strong { color:#bbf7d0; }.subscription-summary.pending strong{color:#fde68a}.subscription-summary.expired strong{color:#e2e8f0}
   .warranty-card { margin-top: 14px; padding: 18px; border: 1px solid #166534; border-radius: 17px; background: #052e202e; }
   .warranty-card.off { border-color: #92400e; background: #78350f20; }
   .warranty-card.expired { border-color: #475569; background: #33415520; }
@@ -86,9 +102,15 @@
   .device-lock { border-color: #7f1d1d; }
   .device-lock .device-icon { border-color: #ef444455; color: #fca5a5; background: #7f1d1d33; }
   .track-loading, .track-error { padding: 60px 20px; color: #94a3b8; text-align: center; }
+  .track-loading strong,.track-loading small{display:block}.track-loading strong{margin-top:14px;color:#f8fafc}.track-loading small{margin-top:7px}
+  .track-spinner{display:block;width:36px;height:36px;margin:auto;border:3px solid #334155;border-top-color:#ea580c;border-radius:50%;animation:trackSpin .75s linear infinite}@keyframes trackSpin{to{transform:rotate(360deg)}}
   .track-error strong { display: block; margin-bottom: 8px; color: #fda4af; }
   @media (max-width: 700px) {
-    .order-portal { padding: 20px 12px 38px; }
+    .track-hero { min-height:275px; padding:20px 14px 86px; }
+    .track-hero-copy { margin-top:34px; }
+    .track-night { padding-inline:12px; }
+    .track-night .order-wrap { transform:translateY(-48px); }
+    .order-brand strong{font-size:.9rem}.order-brand small{font-size:.62rem}.order-brand a{font-size:.68rem}
     .ticket-head { padding: 21px 18px; }
     .ticket-body { padding: 16px; }
     .time-grid, .order-actions, .feedback-actions { grid-template-columns: 1fr; }
@@ -106,7 +128,8 @@
     document.body.classList.add('order-track-ready');
     const token = decodeURIComponent(location.pathname.split('/').filter(Boolean)[1] || '');
     const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
-    const date = value => value ? new Intl.DateTimeFormat('ar-SA', { dateStyle: 'medium' }).format(new Date(value)) : '—';
+    const date = value => value ? new Intl.DateTimeFormat('ar-SA', { dateStyle: 'medium', timeZone: 'Asia/Riyadh' }).format(new Date(value)) : '—';
+    const dateTime = value => value ? new Intl.DateTimeFormat('ar-SA', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Riyadh' }).format(new Date(value)) : '—';
     const daysLeft = value => value ? Math.max(0, Math.ceil((new Date(value) - Date.now()) / 86400000)) : 0;
     const copyButton = (value, label = 'نسخ', activity = '') => '<button class="copy-button" type="button" data-copy="' + escapeHtml(value) + '" data-copy-label="' + escapeHtml(label) + '"' + (activity ? ' data-copy-activity="' + escapeHtml(activity) + '"' : '') + ' aria-label="نسخ ' + escapeHtml(label) + '">⧉ ' + escapeHtml(label) + '</button>';
     const bindCopyButtons = () => document.querySelectorAll('[data-copy]').forEach(button => {
@@ -122,18 +145,20 @@
       };
     });
     const statusInfo = order => {
-      if (order.expires_at && new Date(order.expires_at) <= new Date()) return ['منتهي', 'expired'];
-      if (order.status === 'delivered' || order.status === 'follow_up_complete') return ['نشط', ''];
-      return ['قيد التفعيل', 'pending'];
+      const value = String(order.salla_status || order.status || '').toLowerCase();
+      if (value === 'expired' || (order.expires_at && new Date(order.expires_at) <= new Date())) return { label:'انتهت مدة الاشتراك', cls:'expired', active:false, expired:true };
+      if (['delivered','follow_up_complete','completed','active','تم التنفيذ'].includes(value)) return { label:'تم التنفيذ • بدأ سريان الاشتراك ✓', cls:'', active:true, expired:false };
+      return { label:'قيد التنفيذ • سيبدأ احتساب المدة فور التفعيل', cls:'pending', active:false, expired:false };
     };
     const render = payload => {
       const order = payload.order, actions = payload.actions || {};
       if (!order.device_verified) throw new Error('تعذر توثيق الجهاز لهذا الطلب.');
-      const [statusLabel, statusClass] = statusInfo(order);
+      const state = statusInfo(order), statusLabel=state.label, statusClass=state.cls;
       const remaining = daysLeft(order.expires_at), warrantyRemaining = daysLeft(order.warranty_expires_at);
       const started = order.starts_at ? new Date(order.starts_at).getTime() : Date.now();
       const ending = order.expires_at ? new Date(order.expires_at).getTime() : started;
-      const progress = ending > started ? Math.max(0, Math.min(100, ((Date.now() - started) / (ending - started)) * 100)) : 0;
+      const elapsedProgress = ending > started ? Math.max(0, Math.min(100, ((Date.now() - started) / (ending - started)) * 100)) : 0;
+      const remainingProgress = state.active ? Math.max(0,100-elapsedProgress) : state.expired ? 0 : 100;
       const warrantyActive = order.has_warranty && warrantyRemaining > 0;
       const warranty = !order.has_warranty
         ? { cls: 'off', title: 'بدون ضمان (تسليم لمرة واحدة)', text: 'تم تسليم هذا المنتج مرة واحدة ولا يشمله التعويض بعد التسليم.' }
@@ -151,10 +176,11 @@
       const reminderCard = '<section class="reminder-card"><h2>تذكير التجديد الذكي عبر البريد الإلكتروني</h2><p>' + (order.reminder_email_masked ? 'سيصلك تذكير تلقائي قبل انتهاء اشتراكك على: <strong>' + escapeHtml(order.reminder_email_masked) + '</strong>. يمكنك إدخال بريد جديد لتغييره.' : 'أضف بريدك الإلكتروني ليصلك رابط اشتراكك الآن، وتنبيه تلقائي قبل انتهاء الاشتراك مع رابط التجديد المباشر.') + '</p><form id="reminderEmailForm" class="reminder-form"><input id="reminderEmailInput" type="email" maxlength="254" required autocomplete="email" placeholder="name@example.com"><button type="submit">' + (order.reminder_email_masked ? 'تغيير الإيميل' : 'تفعيل التذكير') + '</button></form><p id="reminderEmailStatus" class="reminder-status" role="status"></p>' + (renewalUrl ? '<a class="renewal-button" target="_blank" rel="noopener" href="' + escapeHtml(renewalUrl) + '">تجديد الاشتراك الآن ↗</a>' : '') + '</section>';
       const positiveAction = actions.sallaReviewUrl ? '<a class="positive" target="_blank" rel="noopener" href="' + escapeHtml(actions.sallaReviewUrl) + '">نعم، كانت رائعة ⭐</a>' : '<button class="positive" type="button" data-feedback-positive>نعم، كانت رائعة ⭐</button>';
       const feedbackCard = '<section class="feedback-card"><h2>هل كانت تجربة استلام طلبك سريعة؟</h2><p>رأيك يساعدنا على تحسين الخدمة.</p><div class="feedback-actions">' + positiveAction + '<a target="_blank" rel="noopener" href="' + supportUrl + '">واجهت مشكلة — تواصل معنا</a></div><p id="feedbackThanks" class="feedback-thanks" hidden>شكرًا لك، سعداء بخدمتك ✓</p></section>';
-      portal.innerHTML = '<main class="order-portal"><div class="order-wrap"><header class="order-brand"><div><strong>بوابة أدفانسد برو</strong><small>استعلام الطلبات والضمان</small></div><a href="/">استعلام عن طلب آخر</a></header><article class="digital-order"><header class="ticket-head"><div><span class="order-number copy-inline">طلب #' + escapeHtml(order.order_number) + ' ' + copyButton(order.order_number, 'نسخ الرقم') + '</span><h1>' + escapeHtml(order.product_name || 'اشتراك رقمي') + '</h1><small>' + escapeHtml(order.service_type === 'crunchyroll' ? 'Crunchyroll' : order.service_type === 'chatgpt' ? 'ChatGPT' : 'منتج رقمي') + '</small></div><span class="state-badge ' + statusClass + '">' + statusLabel + '</span></header><div class="ticket-body"><section class="time-grid"><div class="time-cell"><span>تاريخ البداية</span><strong>' + date(order.starts_at) + '</strong></div><div class="time-cell"><span>تاريخ الانتهاء</span><strong>' + date(order.expires_at) + '</strong></div><div class="time-cell"><span>المدة المتبقية</span><strong>' + remaining + ' يوم من ' + escapeHtml(order.duration_days || 30) + '</strong><div class="progress" aria-label="نسبة المدة المنقضية"><i style="width:' + progress.toFixed(1) + '%"></i></div></div></section><section class="warranty-card ' + warranty.cls + '"><h2>' + warranty.title + '</h2><p>' + warranty.text + '</p></section><section class="ack-box"><h2>إقرار وسياسة المنتج</h2><ul class="ack-list">' + points.map(point => '<li>' + escapeHtml(point) + '</li>').join('') + '</ul><div id="ackArea">' + (acknowledged ? '<div class="ack-stamp">✓ تم توثيق الإقرار بتاريخ ' + date(order.acknowledged_at) + '</div>' : '<div class="ack-control"><label class="ack-check"><input id="ackCheckbox" type="checkbox"> <span>أقرّ بقراءة وموافقة شروط وسياسة المنتج أعلاه</span></label><button id="ackButton" class="ack-button" type="button" disabled>تأكيد الإقرار وعرض تفاصيل الاشتراك</button><p id="ackMessage" class="ack-message" role="status"></p></div>') + '</div></section><section id="orderActions" class="order-actions"' + (acknowledged ? '' : ' hidden') + '>' + (order.service_type === 'crunchyroll' ? '<a class="crunchy-action" href="' + escapeHtml(crunchyUrl) + '">الانتقال لبوابة دخول كرانشي رول واستلام رمز الموافقة</a>' : '') + (warrantyActive ? '<a class="support-action" target="_blank" rel="noopener" href="' + supportUrl + '">طلب دعم / تعويض الضمان (واتساب)</a>' : '') + '</section>' + (acknowledged ? '<div class="post-ack">' + accountCard + renewalCard + reminderCard + feedbackCard + '</div>' : '') + '</div></article></div></main>';
+      const timingSummary = state.active ? 'اشتراكك سارٍ حاليًا — متبقي '+remaining+' يوم' : state.expired ? 'اكتملت مدة الاشتراك — يمكنك التجديد الآن' : 'مدة اشتراكك محفوظة بالكامل ولن تُحتسب إلا لحظة التنفيذ';
+      portal.innerHTML = '<main class="order-portal"><section class="track-hero"><header class="order-brand"><div><strong>بوابة أدفانسد برو</strong><small>Advanced Pro Portal</small></div><a href="/">← استعلام عن طلب آخر</a></header><div class="track-hero-copy"><span class="order-number copy-inline">طلب #' + escapeHtml(order.order_number) + ' ' + copyButton(order.order_number, 'نسخ الرقم') + '</span><h1>' + escapeHtml(order.product_name || 'اشتراك رقمي') + '</h1><span class="state-badge ' + statusClass + '">' + statusLabel + '</span><span class="track-service">' + escapeHtml(order.service_type === 'crunchyroll' ? 'Crunchyroll' : order.service_type === 'chatgpt' ? 'ChatGPT' : 'منتج رقمي') + '</span></div></section><section class="track-night"><div class="order-wrap"><article class="digital-order"><div class="ticket-body"><section class="time-grid"><div class="time-cell"><span>'+(state.active?'تاريخ التنفيذ وبداية السريان':'موعد بداية احتساب الاشتراك')+'</span><strong>' + (state.active?dateTime(order.starts_at):'عند اكتمال التنفيذ') + '</strong></div><div class="time-cell"><span>تاريخ الانتهاء</span><strong>' + (state.active||state.expired?date(order.expires_at):'يُحسب بعد التنفيذ') + '</strong></div><div class="time-cell"><span>المدة</span><strong>' + escapeHtml(order.duration_days || 30) + ' يوم</strong></div><div class="time-cell subscription-summary '+statusClass+'"><span>حالة مدة الاشتراك</span><strong>'+timingSummary+'</strong><div class="progress" aria-label="نسبة المدة المتبقية"><i style="width:' + remainingProgress.toFixed(1) + '%"></i></div></div></section><section class="warranty-card ' + warranty.cls + '"><h2>✦ ' + warranty.title + '</h2><p>' + warranty.text + '</p></section><section class="ack-box"><h2>إقرار وسياسة المنتج</h2><ul class="ack-list">' + points.map(point => '<li>' + escapeHtml(point) + '</li>').join('') + '</ul><div id="ackArea">' + (acknowledged ? '<div class="ack-stamp">✓ تم توثيق الإقرار بتاريخ ' + date(order.acknowledged_at) + ' وحمايته ببصمة الجهاز الفيزيائية</div>' : '<div class="ack-control"><label class="ack-check"><input id="ackCheckbox" type="checkbox"> <span>أقرّ بقراءة وموافقة شروط وسياسة المنتج أعلاه</span></label><button id="ackButton" class="ack-button" type="button" disabled>تأكيد الإقرار وعرض تفاصيل الاشتراك</button><p id="ackMessage" class="ack-message" role="status"></p></div>') + '</div></section><section id="orderActions" class="order-actions"' + (acknowledged ? '' : ' hidden') + '>' + (order.service_type === 'crunchyroll' ? '<a class="crunchy-action" href="' + escapeHtml(crunchyUrl) + '">الانتقال لبوابة دخول كرانشي رول واستلام رمز الموافقة</a>' : '') + (warrantyActive ? '<a class="support-action" target="_blank" rel="noopener" href="' + supportUrl + '">طلب دعم / تعويض الضمان (واتساب)</a>' : '') + '</section>' + (acknowledged ? '<div class="post-ack">' + accountCard + renewalCard + reminderCard + feedbackCard + '</div>' : '') + '</div></article></div></section></main>';
       const card = portal.querySelector('.digital-order');
       if (card) card.insertAdjacentHTML('afterbegin', '<div class="order-watermark" aria-hidden="true">' + Array.from({ length: 15 }, () => '<span>ORDER #' + escapeHtml(order.order_number) + '</span>').join('') + '</div>');
-      portal.querySelector('.ticket-head small')?.insertAdjacentHTML('afterend', '<span class="salla-verified">تم التحقق من متجر سلة ✓</span>');
+      portal.querySelector('.track-service')?.insertAdjacentHTML('afterend', '<span class="salla-verified">تم التحقق من متجر سلة ✓</span>');
       if (order.service_type === 'crunchyroll' && !crunchyUrl) {
         const action = portal.querySelector('.crunchy-action');
         if (action) action.outerHTML = '<p class="ack-message">بوابة Crunchyroll غير مهيأة حاليًا. تواصل مع الدعم لإكمال التفعيل.</p>';
@@ -186,7 +212,7 @@
         };
       }
     };
-    const shell = content => '<main class="order-portal"><div class="order-wrap"><header class="order-brand"><div><strong>بوابة أدفانسد برو</strong><small>حماية الاشتراك بجهاز واحد</small></div><a href="/">العودة للاستعلام</a></header>' + content + '</div></main>';
+    const shell = content => '<main class="order-portal"><section class="track-hero"><header class="order-brand"><div><strong>بوابة أدفانسد برو</strong><small>حماية الاشتراك بجهاز واحد</small></div><a href="/">← العودة للاستعلام</a></header><div class="track-hero-copy"><span class="order-number">بوابة الطلب الآمنة</span><h1>التحقق من الجهاز</h1></div></section><section class="track-night"><div class="order-wrap">' + content + '</div></section></main>';
     const loadOrder = () => fetch('/api/public/track?token=' + encodeURIComponent(token), { headers: { accept: 'application/json' } })
       .then(async response => { const data = await response.json().catch(() => ({})); if (!response.ok) throw new Error(data.message || 'تعذر تحميل الطلب.'); return data; })
       .then(render);
@@ -214,7 +240,7 @@
       portal.innerHTML = shell('<article class="digital-order device-card device-lock"><div class="device-icon">!</div><h1>تم إيقاف الوصول لحماية الاشتراك</h1><p>' + reason + '</p><p class="device-note">إذا كنت صاحب الطلب وتعتقد أن هذا الإجراء غير صحيح، تواصل مع الدعم لمراجعة الحالة يدويًا.</p></article>');
     };
     const showStrike = security => portal.innerHTML = shell('<article class="digital-order device-card"><div class="device-icon">!</div><h1>تم رفض هذا الجهاز</h1><p>' + escapeHtml(security.message || 'الجهاز لا يطابق الجهاز المعتمد.') + '</p><p class="device-note">لم يتم قفل الطلب بعد. يتم القفل بعد مخالفتين مؤكدتين.</p></article>');
-    portal.innerHTML = '<main class="order-portal"><div class="order-wrap"><div class="digital-order track-loading">جارِ تحميل بيانات الطلب…</div></div></main>';
+    portal.innerHTML = shell('<div class="digital-order track-loading"><span class="track-spinner"></span><strong>جارِ تجهيز تفاصيل طلبك…</strong><small>نتحقق من حماية الجهاز وحالة الاشتراك</small></div>');
     (async () => {
       try {
         const { collectDeviceDna } = await import('/lib/device-dna.js');
@@ -226,7 +252,7 @@
         if (security.state === 'device_mismatch_strike') return showStrike(security);
         throw new Error(security.message || 'تعذر التحقق من الجهاز.');
       } catch (error) {
-        portal.innerHTML = '<main class="order-portal"><div class="order-wrap"><div class="digital-order track-error"><strong>تعذر عرض الطلب</strong>' + escapeHtml(error.message) + '<br><br><a href="/">العودة إلى الاستعلام</a></div></div></main>';
+        portal.innerHTML = shell('<div class="digital-order track-error"><strong>تعذر عرض الطلب</strong>' + escapeHtml(error.message) + '<br><br><a href="/">العودة إلى الاستعلام</a></div>');
       }
     })();
   });
