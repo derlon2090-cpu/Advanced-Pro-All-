@@ -15,7 +15,7 @@
   </style>
   <style>
     :root{color-scheme:dark;--ink:#f8fafc;--muted:#94a3b8;--line:rgba(255,255,255,.12);--paper:rgba(11,18,36,.92);--wash:#071a35;--orange:#ea580c;--orange2:#9a3412;--green:#22c55e;--navy:#071a35;--shadow:0 25px 80px #02061788}
-    body{min-height:100vh;background:#071a35;color:#f8fafc}.top{justify-content:flex-end}.health{border-color:#166534;background:#052e20;color:#86efac}
+    body{min-height:100vh;background:#050a18;color:#f8fafc}.top{justify-content:flex-end}.health{border-color:#166534;background:#052e20;color:#86efac}
     .hero{background:linear-gradient(135deg,#9a3412 0%,#ea580c 55%,#c2410c 100%)}
     .hero:before{opacity:1;background-image:radial-gradient(rgba(255,255,255,.16) 1.5px,transparent 1.5px);background-size:24px 24px}
     .stage{margin-top:-36px}.card{border-color:rgba(255,255,255,.12);background:rgba(11,18,36,.92);color:#f8fafc;box-shadow:0 25px 80px #02061788}
@@ -24,12 +24,14 @@
     select option{background:#070d1d;color:#f8fafc}.paste,.btn.light,.icon-btn{border:1px solid rgba(255,255,255,.14);background:#101a2f;color:#cbd5e1}.btn,.btn.orange{background:#ea580c;color:#fff}
     .message.bad,.message.good,.pill,.pill.good,.device-pill,.pending-delivery,.credential,.totp-card,.gate-icon,.ack-text{border-color:rgba(255,255,255,.12);background:#071426;color:#f8fafc}
     .device-pill small,.pending-delivery small,.guide li,.ack-text{color:#cbd5e1}.count{background:#1e293b}.spinner{border-color:#294165;border-top-color:#ea580c}
+    .top{display:none}.hero{isolation:isolate;margin-top:28px;min-height:300px;display:flex;flex-direction:column;justify-content:center}.hero:before{z-index:-2}.hero>*:not(.hero-art){z-index:1}.hero-art{position:absolute;inset:0;z-index:-1;pointer-events:none;color:#fff;opacity:.3;mix-blend-mode:soft-light;mask-image:linear-gradient(90deg,#000 0 27%,transparent 47%,transparent 66%,#000 91%);-webkit-mask-image:linear-gradient(90deg,#000 0 27%,transparent 47%,transparent 66%,#000 91%)}.hero-art svg{width:100%;height:100%;display:block}.hero-art .node{fill:#fff}.hero-art .link{fill:none;stroke:#fff;stroke-width:2}.hero-art .ring{fill:none;stroke:#fff;stroke-width:5}.hero-art .soft{fill:none;stroke:#fed7aa;stroke-width:12;opacity:.28;filter:blur(5px)}
+    @media(max-width:760px){.hero{margin-top:18px}.hero-art{opacity:.2;mask-image:linear-gradient(90deg,#000,transparent 42%,transparent 72%,#000);-webkit-mask-image:linear-gradient(90deg,#000,transparent 42%,transparent 72%,#000)}}
+    @media(max-width:520px){.hero{margin-top:10px}.hero-art{transform:scale(1.2);opacity:.16}.hero h1,.hero p{max-width:88%}}
   </style>
 </head>
 <body>
-  <header class="top wrap"><div class="health"><i></i> النظام يعمل بكفاءة</div></header>
   <main>
-    <section class="hero wrap"><span class="eyebrow">ChatGPT Portal</span><h1>بوابة تفعيل وإدارة اشتراك ChatGPT</h1><p>بيانات اشتراكك ورمز التحقق الثنائي الحي في مكان واحد، محميان بجهازك المعتمد.</p></section>
+    <section class="hero wrap"><div class="hero-art ai-art" aria-hidden="true"><svg viewBox="0 0 1200 360" preserveAspectRatio="xMidYMid slice"><g transform="translate(45 52)"><path class="soft" d="M92 20 178 68v98l-86 49-86-49V68Z"/><path class="ring" d="M92 20 178 68v98l-86 49-86-49V68Z"/><path class="ring" opacity=".8" d="m92 54 55 31v63l-55 32-55-32V85Z"/><circle class="node" cx="92" cy="20" r="7"/><circle class="node" cx="178" cy="68" r="7"/><circle class="node" cx="178" cy="166" r="7"/><circle class="node" cx="92" cy="215" r="7"/><circle class="node" cx="6" cy="166" r="7"/><circle class="node" cx="6" cy="68" r="7"/></g><g transform="translate(915 28)"><path class="link" d="M26 70 91 28l72 36 61-25m-198 31 30 75 79-17 53 62m-132-45 18 86 78 35m-17-138 28-64m-89 167 114-41 44 64"/><g class="node"><circle cx="26" cy="70" r="8"/><circle cx="91" cy="28" r="7"/><circle cx="163" cy="64" r="9"/><circle cx="224" cy="39" r="6"/><circle cx="56" cy="145" r="9"/><circle cx="135" cy="128" r="7"/><circle cx="188" cy="190" r="10"/><circle cx="74" cy="231" r="7"/><circle cx="152" cy="266" r="9"/><circle cx="232" cy="254" r="7"/></g></g><g opacity=".65"><path class="link" d="M14 305h220m730 0h220"/><circle class="node" cx="42" cy="305" r="5"/><circle class="node" cx="98" cy="305" r="5"/><circle class="node" cx="154" cy="305" r="5"/><circle class="node" cx="210" cy="305" r="5"/><circle class="node" cx="990" cy="305" r="5"/><circle class="node" cx="1046" cy="305" r="5"/><circle class="node" cx="1102" cy="305" r="5"/><circle class="node" cx="1158" cy="305" r="5"/></g></svg></div><span class="eyebrow">ChatGPT Portal</span><h1>بوابة تفعيل وإدارة اشتراك ChatGPT</h1><p>بيانات اشتراكك ورمز التحقق الثنائي الحي في مكان واحد، محميان بجهازك المعتمد.</p></section>
     <section class="stage">
       <div id="lookup" class="card lookup">
         <h2 class="section-title">افتح اشتراكك</h2><p class="note">أدخل رقم الطلب كما يظهر في رسالة الشراء، مع أو بدون علامة #.</p>

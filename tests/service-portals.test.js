@@ -58,3 +58,25 @@ test('all customer portals share the dark glass theme and clean dot-matrix hero'
     assert.match(shell, /النظام يعمل بكفاءة/);
   }
 });
+
+test('service subdomain heroes use distinct responsive artwork without the health badge', async () => {
+  const [anime, gpt, warranty, home, homeShell] = await Promise.all([
+    readFile(new URL('../ui/crunchyroll-portal.html', import.meta.url), 'utf8'),
+    readFile(new URL('../ui/chatgpt-portal.html', import.meta.url), 'utf8'),
+    readFile(new URL('../ui/compensate-portal.html', import.meta.url), 'utf8'),
+    readFile(new URL('../ui/single-order-home.html', import.meta.url), 'utf8'),
+    readFile(new URL('../ui/single-order-home-shell.html', import.meta.url), 'utf8'),
+  ]);
+  for (const page of [anime, gpt, warranty]) {
+    assert.doesNotMatch(page, /النظام يعمل بكفاءة/);
+    assert.match(page, /class="hero-art/);
+    assert.match(page, /aria-hidden="true"/);
+    assert.match(page, /@media\(max-width:/);
+    assert.match(page, /background:#050a18/i);
+  }
+  assert.match(anime, /anime-art/);
+  assert.match(gpt, /ai-art/);
+  assert.match(warranty, /warranty-art/);
+  assert.match(homeShell, /النظام يعمل بكفاءة/);
+  assert.doesNotMatch(home, /class="hero-art/);
+});
