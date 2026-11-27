@@ -51,17 +51,39 @@ export default async function handler(request, response) {
   const token = cleanToken(request.query?.token || request.body?.token);
   if (!token) return response.status(400).json({ message: 'رابط الطلب غير صالح.' });
 
-  const select = 'id,order_number,product_name,service_type,status,duration_days,starts_at,expires_at,has_warranty,warranty_days,warranty_expires_at,acknowledgment_text,acknowledged_at,tracking_token,customer_email,reminder_email,reminder_subscribed_at,renewal_url,renewal_discount_code,customers(name),account_assignments(email_accounts(mailbox_alias))';
+  const select = 'id,order_number,product_name,service_type,status,duration_days,starts_at,expires_at,has_warranty,warranty_days,warranty_expires_at,acknowledgment_text,acknowledged_at,tracking_token,customer_email,reminder_email,reminder_subscribed_at,renewal_url,renewal_discount_code,security_strikes,customers(name),account_assignments(email_accounts(mailbox_alias))';
   const params = new URLSearchParams({ select, tracking_token: `eq.${token}`, limit: '1' });
   const foundResponse = await database(`orders?${params}`);
   if (!foundResponse.ok) return response.status(502).json({ message: 'تعذر تحميل بيانات الطلب.' });
   const [order] = await foundResponse.json();
   if (!order) return response.status(404).json({ message: 'لم يتم العثور على الطلب.' });
-  const portalSettingsResponse = await database('system_settings?select=renewal_store_url&singleton=eq.true&limit=1');
+  const portalSettingsResponse = await database('system_settings?select=renewal_store_url,salla_review_url,support_whatsapp&singleton=eq.true&limit=1');
   const portalSettings = portalSettingsResponse.ok ? (await portalSettingsResponse.json())[0] || {} : {};
   const verifiedSession = deviceSession(request, order.id), deviceVerified = Boolean(verifiedSession);
 
   if (request.method === 'POST' && !deviceVerified) return response.status(403).json({ message: 'يجب التحقق من الجهاز قبل توثيق الإقرار.' });
+
+  if (request.method === 'POST' && request.query?._route === 'review') {
+    if (!order.acknowledged_at) return response.status(403).json({ message: 'يجب توثيق استلام الطلب قبل إرسال التقييم.' });
+    const rating = Number(request.body?.rating);
+    const comment = String(request.body?.comment || '').trim().slice(0, 2000) || null;
+    const suggestionCategory = String(request.body?.suggestionCategory || '').trim() || null;
+    const suggestionText = String(request.body?.suggestionText || '').trim().slice(0, 2000) || null;
+    const categories = new Set(['activation_speed', 'portal_ux', 'new_feature', 'support', 'other']);
+    if (!Number.isInteger(rating) || rating < 1 || rating > 5) return response.status(400).json({ message: 'اختر تقييمًا من نجمة إلى خمس نجوم.' });
+    if ((suggestionCategory && !categories.has(suggestionCategory)) || Boolean(suggestionCategory) !== Boolean(suggestionText)) return response.status(400).json({ message: 'اختر تصنيف الاقتراح واكتب تفاصيله.' });
+    const existingResponse = await database(`order_reviews?select=id,status&order_id=eq.${encodeURIComponent(order.id)}&limit=1`);
+    if (!existingResponse.ok) return response.status(502).json({ message: 'تعذر التحقق من التقييم الحالي.' });
+    const [existing] = await existingResponse.json();
+    if (existing && existing.status !== 'pending') return response.status(409).json({ message: 'تمت مراجعة تقييم هذا الطلب ولا يمكن تعديله.' });
+    const customer = Array.isArray(order.customers) ? order.customers[0] : order.customers;
+    const review = { order_id: order.id, order_number: order.order_number, customer_name: customer?.name || null, product_name: order.product_name || 'منتج رقمي', rating, comment, suggestion_category: suggestionCategory, suggestion_text: suggestionText, status: 'pending' };
+    const saved = await database(existing ? `order_reviews?id=eq.${encodeURIComponent(existing.id)}` : 'order_reviews', { method: existing ? 'PATCH' : 'POST', headers: { Prefer: 'return=representation' }, body: JSON.stringify(review) });
+    if (!saved.ok) return response.status(502).json({ message: 'تعذر حفظ تقييمك حاليًا. حاول مرة أخرى.' });
+    const sallaReviewUrl = publicUrl(process.env.PUBLIC_SALLA_REVIEW_URL || portalSettings.salla_review_url);
+    const supportWhatsapp = String(process.env.PUBLIC_SUPPORT_WHATSAPP || portalSettings.support_whatsapp || '').replace(/\D/g, '').slice(0, 20) || null;
+    return response.status(existing ? 200 : 201).setHeader('Cache-Control', 'private, no-store').json({ ok: true, rating, positive: rating >= 4, sallaReviewUrl: rating >= 4 ? sallaReviewUrl : null, supportWhatsapp: rating <= 3 ? supportWhatsapp : null });
+  }
 
   if (request.method === 'POST' && request.query?._route === 'reminder-email') {
     const email = String(request.body?.email || '').trim().toLowerCase();
@@ -96,6 +118,8 @@ export default async function handler(request, response) {
   }
 
   const accountEmail = order.acknowledged_at && deviceVerified ? order.account_assignments?.[0]?.email_accounts?.mailbox_alias || null : null;
+  const reviewResponse = order.acknowledged_at && deviceVerified ? await database(`order_reviews?select=status&order_id=eq.${encodeURIComponent(order.id)}&limit=1`) : null;
+  const [existingReview] = reviewResponse?.ok ? await reviewResponse.json() : [];
   if (accountEmail) await database('portal_activity_events', { method: 'POST', body: JSON.stringify({ order_id: order.id, activity_type: 'account_details_viewed', physical_core_hash: verifiedSession.physicalHash }) });
   delete order.id;
   delete order.account_assignments;
@@ -108,14 +132,18 @@ export default async function handler(request, response) {
   delete order.tracking_token;
   order.account_email = accountEmail;
   order.device_verified = deviceVerified;
+  const compensationEligible = deviceVerified && order.acknowledged_at && order.has_warranty && Number(order.security_strikes || 0) === 0 && order.warranty_expires_at && new Date(order.warranty_expires_at) > new Date();
+  delete order.security_strikes;
   return response.status(200).setHeader('Cache-Control', 'private, no-store').json({
     order,
     actions: {
       crunchyrollPortalUrl: deviceVerified && order.service_type === 'crunchyroll' ? publicUrl(process.env.PUBLIC_CRUNCHYROLL_PORTAL_URL) : null,
       supportWhatsapp: deviceVerified ? String(process.env.PUBLIC_SUPPORT_WHATSAPP || '').replace(/\D/g, '').slice(0, 20) || null : null,
-      sallaReviewUrl: deviceVerified ? publicUrl(process.env.PUBLIC_SALLA_REVIEW_URL) : null,
+      sallaReviewUrl: deviceVerified ? publicUrl(process.env.PUBLIC_SALLA_REVIEW_URL || portalSettings.salla_review_url) : null,
       renewalStoreUrl: deviceVerified ? publicUrl(portalSettings.renewal_store_url) : null,
+      compensationEligible,
     },
+    review: existingReview ? { submitted: true, status: existingReview.status } : { submitted: false },
   });
 }
 

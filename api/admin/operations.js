@@ -2,6 +2,7 @@ import { allowedAdmin, tokenFromRequest } from './_auth.js';
 import disputeReportHandler from '../../lib/dispute-report-api.js';
 import { sendRenewalEmail } from '../../lib/renewal-email.js';
 import { createHash, randomBytes } from 'node:crypto';
+import { buildCustomerReputations } from '../../lib/customer-reputation.js';
 
 async function requireAdmin(request) {
   const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL, anon = process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY, token = tokenFromRequest(request);
@@ -31,7 +32,7 @@ export default async function handler(request, response) {
     return result?.success ? response.status(200).json({ ok: true, freeResetsRemaining: result.free_resets_remaining }) : response.status(404).json({ message: 'الطلب غير موجود.' });
   }
   if (request.method === 'GET') {
-    const [capacity, rotations, mappings, settings, mailLogs, stores, orders, accounts, mailSecurityEvents] = await Promise.all([
+    const [capacity, rotations, mappings, settings, mailLogs, stores, orders, accounts, mailSecurityEvents, reviews, compensations, deviceEvents] = await Promise.all([
       db('admin_capacity_radar?select=*'), db('admin_password_rotation_queue?select=*'),
       db('salla_product_mappings?select=*&order=created_at.desc'), db('system_settings?select=*&singleton=eq.true'),
       db('mail_delivery_logs?select=recipient_address,category,received_at,email_accounts(mailbox_alias)&order=received_at.desc&limit=5'),
@@ -39,9 +40,16 @@ export default async function handler(request, response) {
       db('orders?select=id,order_number,product_name,service_type,customer_phone,customer_email,reminder_email,reminder_subscribed_at,status,created_at,starts_at,expires_at,has_warranty,warranty_days,warranty_expires_at,acknowledgment_text,acknowledged_at,tracking_token,renewal_url,renewal_discount_code,renewal_reminder_3d_sent_at,renewal_reminder_1d_sent_at,renewal_reminder_manual_sent_at,security_strikes,locked_device_name,registered_city_name,registered_country_code,free_resets_remaining,customers(name),account_assignments(email_accounts(id,mailbox_alias,integrity_status,integrity_alerted_at))&order=created_at.desc&limit=100'),
       db('email_accounts?select=id,mailbox_alias,service_type,max_slots,is_active,archived_at,password_updated_at,integrity_status,integrity_alerted_at&order=created_at.desc&limit=200'),
       db('mail_security_events?select=id,event_type,received_at,suspected_order_id,attribution_basis,email_accounts(mailbox_alias)&order=received_at.desc&limit=100'),
+      db('order_reviews?select=id,order_id,order_number,customer_name,product_name,rating,comment,suggestion_category,suggestion_text,status,is_negative,created_at,reviewed_at&order=created_at.desc&limit=500'),
+      db('compensation_requests?select=id,order_id,reason,customer_note,status,review_mode,strikes_at_request,cumulative_strikes,cumulative_orders,cumulative_compensations,reputation_badge,old_email_account_id,replacement_email_account_id,reviewed_at,created_at&order=created_at.desc&limit=500'),
+      db('device_access_events?select=order_id,physical_core_hash&order=occurred_at.desc&limit=5000'),
     ]);
-    if (!capacity.ok || !rotations.ok || !mappings.ok || !settings.ok || !mailLogs.ok || !stores.ok || !orders.ok || !accounts.ok || !mailSecurityEvents.ok) return response.status(502).json({ message: 'تعذر تحميل بيانات التشغيل.' });
-    return response.status(200).json({ capacity: await capacity.json(), rotations: await rotations.json(), mappings: await mappings.json(), settings: (await settings.json())[0] || {}, mailLogs: await mailLogs.json(), storeId: (await stores.json())[0]?.id || null, orders: await orders.json(), accounts: await accounts.json(), mailSecurityEvents: await mailSecurityEvents.json() });
+    if (!capacity.ok || !rotations.ok || !mappings.ok || !settings.ok || !mailLogs.ok || !stores.ok || !orders.ok || !accounts.ok || !mailSecurityEvents.ok || !deviceEvents.ok) return response.status(502).json({ message: 'تعذر تحميل بيانات التشغيل.' });
+    const orderRows = await orders.json(), compensationRows = compensations.ok ? await compensations.json() : [], deviceRows = await deviceEvents.json(), reviewRows = reviews.ok ? await reviews.json() : [];
+    const reputations = buildCustomerReputations(orderRows, compensationRows, deviceRows);
+    const enrichedOrders = orderRows.map(order => ({ ...order, customer_reputation: reputations[order.id] }));
+    const enrichedCompensations = compensationRows.map(item => ({ ...item, customer_reputation: reputations[item.order_id] }));
+    return response.status(200).json({ capacity: await capacity.json(), rotations: await rotations.json(), mappings: await mappings.json(), settings: (await settings.json())[0] || {}, mailLogs: await mailLogs.json(), storeId: (await stores.json())[0]?.id || null, orders: enrichedOrders, accounts: await accounts.json(), mailSecurityEvents: await mailSecurityEvents.json(), reviews: reviewRows, compensations: enrichedCompensations });
   }
   if (request.method === 'POST') {
     const { action, emailAccountId, orderId, mapping, settings, bulk, manualOrder } = request.body || {};
