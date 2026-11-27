@@ -28,6 +28,15 @@ test('five-friend referral migration unlocks a configurable coupon',async()=>{
   assert.match(sql,/referral_coupon_unlocked_at = coalesce/i);
 });
 
+test('latest referral reward issues a unique coupon without extending subscription dates',async()=>{
+  const sql=await readFile(new URL('../supabase/migrations/028_referral_coupon_only.sql',import.meta.url),'utf8');
+  assert.match(sql,/referral_assigned_coupon = coalesce/i);
+  assert.match(sql,/v_coupon_prefix/i);
+  assert.doesNotMatch(sql,/set\s+expires_at\s*=/i);
+  assert.doesNotMatch(sql,/warranty_expires_at\s*=/i);
+  assert.doesNotMatch(sql,/interval\s+'\d+\s+days?'/i);
+});
+
 test('wrong-device compensation attempts are rejected and visible to administrators',async()=>{
   const source=await readFile(new URL('../api/public/compensate.js',import.meta.url),'utf8');
   assert.match(source,/device_mismatch_blocked:\s*true/);

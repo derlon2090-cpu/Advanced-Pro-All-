@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import { compensationEligibility } from '../api/public/compensate.js';
 
 const read = path => readFile(new URL(`../${path}`, import.meta.url), 'utf8');
 
@@ -43,4 +44,16 @@ test('all customer portals link to compensation by tracking token', async () => 
     read('ui/chatgpt-portal.html'),
   ]);
   for (const page of pages) assert.match(page, /https:\/\/warranty\.advpro\.app\//);
+});
+
+test('expired subscriptions and warranties can never receive automatic compensation', () => {
+  const now = new Date('2026-11-27T12:00:00.000Z');
+  const base = { payment_status: 'paid', status: 'active', has_warranty: true, security_strikes: 0, expires_at: '2026-12-27T12:00:00.000Z', warranty_expires_at: '2026-12-27T12:00:00.000Z' };
+  assert.deepEqual(compensationEligibility(base, now), { paid: true, subscriptionActive: true, warrantyActive: true, hasViolation: false, eligible: true, reason: null, errorCode: null });
+  const expiredSubscription = compensationEligibility({ ...base, status: 'expired' }, now);
+  assert.equal(expiredSubscription.eligible, false);
+  assert.equal(expiredSubscription.errorCode, 'WARRANTY_EXPIRED');
+  const expiredWarranty = compensationEligibility({ ...base, warranty_expires_at: '2026-11-26T12:00:00.000Z' }, now);
+  assert.equal(expiredWarranty.eligible, false);
+  assert.equal(expiredWarranty.errorCode, 'WARRANTY_EXPIRED');
 });
