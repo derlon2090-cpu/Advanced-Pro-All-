@@ -73,6 +73,10 @@ test('service subdomain heroes use distinct responsive artwork without the healt
     assert.match(page, /aria-hidden="true"/);
     assert.match(page, /@media\(max-width:/);
     assert.match(page, /background:#050a18/i);
+    assert.match(page, /class="service-page/);
+    assert.match(page, /class="service-shell"/);
+    assert.match(page, /border-radius:0/);
+    assert.match(page, /margin:-96px auto/);
   }
   assert.match(anime, /anime-art/);
   assert.match(gpt, /ai-art/);
