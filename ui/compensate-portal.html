@@ -32,14 +32,19 @@
   <style>
     .service-page .switch-order{display:inline-flex;align-items:center;justify-content:center;gap:7px;border:1px solid rgba(255,255,255,.14);border-radius:999px;background:rgba(255,255,255,.06);color:#e2e8f0;padding:9px 14px;font:inherit;font-size:.78rem;font-weight:900;box-shadow:0 8px 24px #02061738;transition:border-color .2s,background .2s,color .2s,transform .2s}.service-page .switch-order:hover,.service-page .switch-order:focus-visible{border-color:#ea580c;background:#ea580c1f;color:#fff;transform:translateY(-1px);outline:0}.service-page .switch-order span{color:#fb923c;font-size:1rem}.result-head-actions,.outcome-head{display:flex;align-items:center;justify-content:flex-end;gap:9px;flex-wrap:wrap}.outcome-head{margin-bottom:14px}@media(max-width:520px){.service-page .switch-order{width:100%}.result-head-actions{width:100%;justify-content:stretch}.result-head-actions .badge{margin-inline:auto}.outcome-head{justify-content:stretch}}
   </style>
-  <style>html,.service-page,.service-shell{background:#071a35}</style>
+  <style>
+    html,.service-page,.service-shell{background:#071a35}
+    .service-page .hero-switch-order{position:absolute;z-index:5;top:28px;right:max(22px,calc((100vw - 1120px)/2));width:auto;margin:0;background:rgba(7,26,53,.72);border-color:rgba(255,255,255,.25);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+    @media(max-width:650px){.service-page .hero-switch-order{top:16px;right:16px;width:auto;margin:0;padding:8px 12px;font-size:.72rem}}
+  </style>
 </head>
 <body class="service-page warranty-page">
   <main class="service-shell">
+    <button id="switchOrder" class="switch-order hero-switch-order" type="button" hidden><span aria-hidden="true">⌕</span> استعلام عن طلب آخر ↺</button>
     <section class="hero"><div class="hero-art warranty-art" aria-hidden="true"><svg viewBox="0 0 1200 360" preserveAspectRatio="xMidYMid slice"><circle class="glow" cx="135" cy="176" r="120"/><g transform="translate(42 35)"><path class="shield" opacity=".64" d="M120 5c42 30 82 36 112 38v91c0 75-43 124-112 156C51 258 8 209 8 134V43c30-2 70-8 112-38Z"/><path class="line" d="m70 139 34 35 70-82"/><path class="line" opacity=".66" d="M120 31c31 19 59 26 86 31v69c0 57-31 97-86 126-55-29-86-69-86-126V62c27-5 55-12 86-31Z"/></g><g transform="translate(912 52)"><circle class="pulse" cx="120" cy="120" r="104"/><circle class="pulse" cx="120" cy="120" r="76"/><circle class="pulse" cx="120" cy="120" r="48"/><path class="shield" opacity=".72" d="M120 52c25 18 48 21 66 23v55c0 45-26 74-66 93-40-19-66-48-66-93V75c18-2 41-5 66-23Z"/><path class="line" d="m92 131 19 20 40-48"/></g><path class="pulse" opacity=".6" d="M8 319h52l19-34 28 61 27-48 18 21h109m679 0h95l22-50 31 78 25-55 16 27h83"/></svg></div><div class="hero-copy"><span class="eyebrow">Advanced Pro · Smart Compensation</span><h1>بوابة التعويض والاستبدال الفوري</h1><p>أدخل رقم طلبك لفحص الضمان وبصمة الجهاز ومعالجة طلب التعويض آليًا.</p></div></section>
     <section class="stage">
       <div id="entry" class="panel"><div class="panel-head"><div><h2>فحص أهلية طلبك</h2><p>نتعرّف على الرمز # والأرقام العربية تلقائيًا.</p></div><span class="badge">فحص آمن</span></div><form id="orderForm" class="order-form"><div class="field-shell"><input id="orderNumber" inputmode="numeric" autocomplete="off" required aria-label="رقم الطلب" placeholder="مثال: #12345"><button id="pasteButton" class="paste" type="button">لصق</button></div><button id="checkButton" class="primary" type="submit">فحص أهلية التعويض ←</button></form><p id="entryMessage" class="message" role="status"></p></div>
-      <div id="loader" class="panel loader" hidden><div class="spinner"></div><strong>جارِ فحص الضمان وبصمة الجهاز…</strong><p class="muted">نطابق جهازك الموثّق ونراجع سجل الطلب بأمان.</p></div>
+      <div id="loader" class="panel loader" hidden><div class="spinner"></div><strong>تم العثور على طلبك ✓</strong><p class="muted">جارِ فحص الضمان ومطابقة الجهاز الموثّق بأمان…</p></div>
       <div id="result" class="panel" hidden></div>
     </section>
   </main>
@@ -48,9 +53,9 @@
     import { collectDeviceDna } from '/lib/device-dna.js';
     const $=id=>document.getElementById(id),digits=value=>String(value||'').replace(/[٠-٩]/g,d=>String(d.charCodeAt(0)-1632)).replace(/[۰-۹]/g,d=>String(d.charCodeAt(0)-1776)),cleanOrder=value=>digits(value).replace(/[^0-9]/g,'');
     let token='',evidenceData='';
-    const sessionKey='advpro:warranty:session',sessionTtl=30*60*1000,switchMarkup='<button id="switchOrder" class="switch-order" type="button"><span aria-hidden="true">⌕</span> استعلام عن طلب آخر ↺</button>';
+    const sessionKey='advpro:warranty:session',sessionTtl=30*60*1000,switchMarkup='';
     const esc=value=>String(value==null?'':value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-    const show=name=>{['entry','loader','result'].forEach(id=>{const view=$(id),visible=id===name;view.hidden=!visible;if(visible){view.classList.remove('flow-view-enter');requestAnimationFrame(()=>view.classList.add('flow-view-enter'))}})};
+    const show=name=>{['entry','loader','result'].forEach(id=>{const view=$(id),visible=id===name;view.hidden=!visible;if(visible){view.classList.remove('flow-view-enter');requestAnimationFrame(()=>view.classList.add('flow-view-enter'))}});$('switchOrder').hidden=name!=='result'};
     const saveSession=()=>{try{localStorage.setItem(sessionKey,JSON.stringify({token,expiresAt:Date.now()+sessionTtl}))}catch{}};
     const forgetSession=()=>{try{localStorage.removeItem(sessionKey)}catch{}};
     const restoreSession=()=>{try{const saved=JSON.parse(localStorage.getItem(sessionKey)||'null');if(saved?.token&&saved.expiresAt>Date.now())return saved.token;forgetSession()}catch{forgetSession()}return''};
