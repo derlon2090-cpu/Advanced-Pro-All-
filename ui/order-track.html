@@ -204,6 +204,88 @@
   .switch-order-button{display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:9px 14px;border:1px solid rgba(255,255,255,.14);border-radius:999px;background:rgba(255,255,255,.06);color:#e2e8f0;font:inherit;font-size:.76rem;font-weight:900;white-space:nowrap;cursor:pointer;transition:border-color .2s,background .2s,color .2s,transform .2s}.switch-order-button:hover,.switch-order-button:focus-visible{border-color:#ea580c;background:#ea580c1f;color:#fff;transform:translateY(-1px);outline:0}.switch-order-button span{color:#fb923c;font-size:1rem}.another-order-card{max-width:650px;margin:auto;padding:26px}.another-order-card h2{margin:0 0 6px}.another-order-card p{margin:0 0 18px;color:#94a3b8}.another-order-form{display:grid;grid-template-columns:1fr auto;gap:10px}.another-order-form input{min-width:0;height:54px;padding:0 16px;border:1px solid #ffffff24;border-radius:13px;background:#070d1d;color:#fff;font:inherit;font-weight:800;direction:ltr;text-align:right;outline:0}.another-order-form input:focus{border-color:#ea580c;box-shadow:0 0 0 4px #ea580c26}.another-order-form button{padding:0 22px;border:0;border-radius:13px;background:#ea580c;color:#fff;font:inherit;font-weight:900}.another-order-message{min-height:20px;margin:11px 0 0!important;color:#fda4af!important;font-size:.82rem}
   .order-brand .switch-order-button{background:rgba(7,26,53,.72);border-color:rgba(255,255,255,.25);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
   @media(max-width:650px){.switch-order-button{width:100%}.order-brand .switch-order-button{width:auto;padding:8px 12px;font-size:.72rem}.another-order-card{padding:20px}.another-order-form{grid-template-columns:1fr}.another-order-form button{min-height:52px}}
+  /* Structured SaaS card grid */
+  .track-night{padding:30px 16px 48px}
+  .track-night .order-wrap{box-sizing:border-box;width:100%;max-width:780px;margin:0 auto}
+  .track-stack{display:flex;flex-direction:column;gap:18px}
+  .glass-card,.reminder-card,.review-card,.referral-card,.upsell-card{box-sizing:border-box;padding:20px 22px;border:1px solid rgba(255,255,255,.08);border-radius:18px;background:rgba(15,23,42,.85);box-shadow:0 16px 44px rgba(2,6,23,.34);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+  .identity-card{display:block;border-color:rgba(234,88,12,.34);background:radial-gradient(circle at 90% 0,rgba(234,88,12,.12),transparent 18rem),rgba(15,23,42,.9)}
+  .identity-top{display:grid;gap:14px}
+  .identity-top>div:first-child{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+  .identity-label{color:#f8fafc;font-size:1.08rem;font-weight:900}
+  .identity-card h1{margin:0;color:#f8fafc;font-size:1.15rem;line-height:1.55}
+  .identity-badges{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .identity-badges .state-badge{flex:0 1 auto;max-width:100%;padding:7px 11px;border-radius:999px;box-shadow:none}
+  .identity-badges .state-badge small{display:none}
+  .identity-badges .salla-verified{padding:7px 11px;color:#bbf7d0;border-color:rgba(34,197,94,.28);background:rgba(20,83,45,.36)}
+  .copy-inline{gap:8px}
+  .copy-button{white-space:nowrap}
+  .order-info-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px}
+  .trusted-device-card,.order-info-grid .delivery-card{box-sizing:border-box;min-width:0;min-height:154px;margin:0;padding:18px;border:1px solid rgba(255,255,255,.08);border-radius:18px;background:rgba(15,23,42,.85);box-shadow:0 14px 38px rgba(2,6,23,.28)}
+  .trusted-device-card{display:flex;flex-direction:column;align-items:stretch;gap:17px}
+  .trusted-device-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .trusted-device-title{display:flex;align-items:center;gap:9px;color:#cbd5e1;font-size:.82rem;font-weight:900}
+  .trusted-device-icon{width:34px;height:34px;flex:0 0 34px;border-radius:10px}
+  .trusted-device-copy{padding-inline:2px}
+  .trusted-device-copy strong{margin:0 0 7px;font-size:.92rem;line-height:1.6;overflow-wrap:anywhere}
+  .trusted-device-copy small{font-size:.72rem;overflow-wrap:anywhere}
+  .trusted-device-count{flex:0 0 auto}
+  .order-info-grid .delivery-card{display:flex;align-items:flex-start;gap:13px;border-color:rgba(34,197,94,.26)}
+  .order-info-grid .delivery-card.pending{border-color:rgba(245,158,11,.35)}
+  .order-info-grid .delivery-copy{min-width:0}
+  .order-info-grid .delivery-copy h2{font-size:.82rem}
+  .order-info-grid .delivery-copy strong{font-size:.94rem;overflow-wrap:anywhere}
+  .status-card{padding:22px}
+  .status-head{align-items:flex-start;margin-bottom:15px}
+  .status-head>div{min-width:0}
+  .status-head h2{margin-bottom:6px}
+  .status-head span{display:block;color:#94a3b8;font-size:.76rem;line-height:1.6}
+  .status-head>strong{flex:0 0 auto;padding:7px 10px;border-radius:999px;background:rgba(20,83,45,.42);font-size:.76rem;white-space:nowrap}
+  .progress{height:8px;margin:0}
+  .time-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:16px}
+  .time-cell{box-sizing:border-box;min-width:0;min-height:90px;padding:14px;background:#071426}
+  .time-cell span{font-size:.76rem}
+  .time-cell strong{font-size:.88rem;line-height:1.55;overflow-wrap:anywhere}
+  .warranty-card{margin-top:16px;padding:16px 18px}
+  .warranty-card h2{font-size:.96rem}
+  .warranty-card p{font-size:.82rem}
+  .policy-details{margin-top:14px;background:#071426}
+  .policy-details summary{list-style-position:inside}
+  .referral-title-row{display:flex;align-items:flex-start;justify-content:space-between;gap:14px}
+  .referral-title-row h2{margin:0;max-width:560px}
+  .referral-title-row>strong{flex:0 0 auto;padding:6px 10px;border-radius:999px;color:#fed7aa;background:rgba(124,45,18,.55);font-size:.74rem;white-space:nowrap}
+  .referral-card p{margin-top:10px}
+  .referral-meter{margin:12px 0}
+  .referral-progress{height:7px}
+  .referral-url{margin-bottom:10px;padding:12px}
+  .referral-actions{gap:10px}
+  .referral-actions button,.referral-actions a{display:flex;align-items:center;justify-content:center;box-sizing:border-box;min-height:46px}
+  .reminder-compact{align-items:flex-start;margin-bottom:12px}
+  .reminder-form{grid-template-columns:minmax(0,1fr) auto;gap:10px}
+  .reminder-form input,.reminder-form button{box-sizing:border-box;height:46px}
+  .review-card{padding:16px 20px}
+  .compensation-link-line{margin:20px 0 0}
+  @media(max-width:650px){
+    .track-night{padding:24px 14px 42px}
+    .track-stack{gap:14px}
+    .glass-card,.reminder-card,.review-card,.referral-card,.upsell-card{padding:18px 16px;border-radius:17px}
+    .identity-top>div:first-child{align-items:flex-start}
+    .identity-badges{align-items:stretch}
+    .identity-badges .state-badge{width:100%;border-radius:14px}
+    .identity-badges .state-badge small{display:block}
+    .order-info-grid{grid-template-columns:1fr;gap:14px}
+    .trusted-device-card,.order-info-grid .delivery-card{min-height:0;padding:16px}
+    .time-grid{grid-template-columns:1fr;gap:10px}
+    .time-cell{min-height:0}
+    .status-head{display:grid}
+    .status-head>strong{justify-self:start;white-space:normal}
+    .referral-title-row{display:grid;gap:10px}
+    .referral-title-row>strong{justify-self:start}
+    .referral-actions,.coupon-actions{grid-template-columns:1fr}
+    .reminder-compact{display:grid}
+    .reminder-form{grid-template-columns:1fr}
+    .reminder-form button{width:100%}
+  }
 </style>
 <script>
   document.addEventListener('DOMContentLoaded', async () => {
@@ -266,7 +348,7 @@
       const crunchyAction = isCrunchyroll && crunchyUrl ? '<a class="crunchy-action" href="' + escapeHtml(crunchyUrl) + '">الانتقال لبوابة دخول كرانشي رول واستلام رمز الموافقة</a>' : '';
       const accountCard = order.account_email ? '<section class="account-card"><h2>بيانات الاشتراك</h2><div class="account-line"><div><span>البريد الإلكتروني</span><strong>' + escapeHtml(order.account_email) + '</strong></div>' + copyButton(order.account_email, 'نسخ البريد', 'account_email_copied') + '</div>'+(order.account_password?'<div class="account-line" style="margin-top:8px"><div><span>كلمة المرور المحدّثة</span><strong>'+escapeHtml(order.account_password)+'</strong></div>'+copyButton(order.account_password,'نسخ كلمة المرور')+'</div>':'')+'</section>' : '';
       const trustedDevice=order.trusted_device||{},trustedName=String(trustedDevice.name||'جهازك الحالي'),trustedIcon=/iphone|android|mobile/i.test(trustedName)?'▯':/ipad|tablet/i.test(trustedName)?'▭':'▣';
-      const trustedDeviceCard = '<section class="trusted-device-card"><span class="trusted-device-icon">'+trustedIcon+'</span><div class="trusted-device-copy"><span>الجهاز الموثّق</span><strong>'+escapeHtml(trustedName)+'</strong><small>ID: '+escapeHtml(trustedDevice.fingerprintId||'—')+'</small></div><span class="trusted-device-count">1 / 1 موثّق ✓</span></section>';
+      const trustedDeviceCard = '<section class="trusted-device-card"><div class="trusted-device-head"><span class="trusted-device-title"><i class="trusted-device-icon">'+trustedIcon+'</i> الجهاز الموثّق</span><span class="trusted-device-count">1 / 1 موثّق ✓</span></div><div class="trusted-device-copy"><strong>'+escapeHtml(trustedName)+'</strong><small>ID: '+escapeHtml(trustedDevice.fingerprintId||'—')+'</small></div></section>';
       const renewalUrl = order.renewal_url || actions.renewalStoreUrl || '';
       const renewalCard = renewalUrl && remaining <= 5 ? '<section class="renewal-card urgent"><h2>' + (remaining > 0 ? 'اشتراكك ينتهي خلال ' + remaining + ' أيام' : 'انتهى اشتراكك') + '</h2><p>جدّد الآن لتفادي انقطاع الخدمة.</p>' + (order.renewal_discount_code ? '<div class="discount-row"><span>كود خصم خاص: <strong>' + escapeHtml(order.renewal_discount_code) + '</strong></span>' + copyButton(order.renewal_discount_code, 'نسخ الكود') + '</div>' : '') + '<a class="renewal-button" target="_blank" rel="noopener" href="' + escapeHtml(renewalUrl) + '">جدّد اشتراكك الآن بضغطة واحدة ↗</a></section>' : '';
       const reminderCard = '<section class="reminder-card"><div class="reminder-compact"><div><h2>تذكير التجديد بالبريد</h2><p>' + (order.reminder_email_masked ? 'مفعّل على <strong>' + escapeHtml(order.reminder_email_masked) + '</strong>' : 'أضف بريدك لاستلام تنبيه قبل انتهاء الاشتراك.') + '</p></div>' + (order.reminder_email_masked ? '<button id="reminderToggle" class="reminder-toggle" type="button">تغيير الإيميل</button>' : '') + '</div><form id="reminderEmailForm" class="reminder-form"' + (order.reminder_email_masked ? ' hidden' : '') + '><input id="reminderEmailInput" type="email" maxlength="254" required autocomplete="email" placeholder="name@example.com"><button type="submit">' + (order.reminder_email_masked ? 'حفظ التغيير' : 'تفعيل التذكير') + '</button></form><p id="reminderEmailStatus" class="reminder-status" role="status"></p></section>';
@@ -280,7 +362,7 @@
       const referral = actions.referralProgram || (actions.referralUrl ? { url:actions.referralUrl, count:0, target:5, enabled:true } : null);
       const referralCount = Math.max(0, Number(referral?.count)||0), referralTarget = Math.max(1, Number(referral?.target)||5), referralPercent = Math.min(100, referralCount/referralTarget*100);
       const couponBox = referral?.coupon ? '<div class="coupon-unlocked"><span>تهانينا! اكتملت '+referralTarget+' دعوات بنجاح ✓</span><strong>'+escapeHtml(referral.coupon)+'</strong><small>'+escapeHtml(referral.discountLabel||'كود خصم خاص لعملائنا السفراء')+'</small><div class="coupon-actions"><button type="button" data-copy="'+escapeHtml(referral.coupon)+'" data-copy-label="كود الخصم">نسخ الكود ✓</button>'+(referral.storeUrl?'<a target="_blank" rel="noopener" href="'+escapeHtml(referral.storeUrl)+'">استخدام الكود في المتجر</a>':'')+'</div></div>' : '';
-      const referralCard=referral&&referral.enabled?'<section class="referral-card"><h2>ادعُ '+referralTarget+' أصدقاء واحصل على كود خصم خاص</h2><p>ادعُ أصدقاءك للشراء عبر رابطك، وعند اكتمال الهدف تحصل على كود خصم مخصص لطلبك القادم دون تغيير مدة اشتراكك الحالية.</p><div class="referral-url">'+escapeHtml(referral.url)+'</div><div class="referral-meter"><div class="referral-meter-head"><span>'+referralCount+' / '+referralTarget+' أصدقاء مكتملين</span><strong>'+referralCount+' / '+referralTarget+'</strong></div><div class="referral-progress"><i style="width:'+referralPercent.toFixed(0)+'%"></i></div></div><div class="referral-actions"><button id="copyReferral" type="button" data-url="'+escapeHtml(referral.url)+'">نسخ رابط الدعوة الخاص بك</button><a target="_blank" rel="noopener" href="https://wa.me/?text='+encodeURIComponent('أدعوك للشراء من بوابة أدفانسد برو عبر رابط دعوتي والحصول على تجربة موثوقة: '+referral.url)+'">مشاركة عبر واتساب</a></div>'+couponBox+'</section>':'';
+      const referralCard=referral&&referral.enabled?'<section class="referral-card"><div class="referral-title-row"><h2>ادعُ '+referralTarget+' أصدقاء واحصل على كود خصم خاص</h2><strong>'+referralCount+' / '+referralTarget+' مكتمل</strong></div><p>ادعُ أصدقاءك للشراء عبر رابطك، وعند اكتمال الهدف تحصل على كود خصم مخصص لطلبك القادم دون تغيير مدة اشتراكك الحالية.</p><div class="referral-meter"><div class="referral-progress"><i style="width:'+referralPercent.toFixed(0)+'%"></i></div></div><div class="referral-url">'+escapeHtml(referral.url)+'</div><div class="referral-actions"><button id="copyReferral" type="button" data-url="'+escapeHtml(referral.url)+'">نسخ رابط الدعوة</button><a target="_blank" rel="noopener" href="https://wa.me/?text='+encodeURIComponent('أدعوك للشراء من بوابة أدفانسد برو عبر رابط دعوتي والحصول على تجربة موثوقة: '+referral.url)+'">مشاركة عبر واتساب</a></div>'+couponBox+'</section>':'';
       const stars = [1,2,3,4,5].map(n => '<button class="review-star" type="button" data-rating="'+n+'" aria-label="'+n+' نجوم">★</button>').join('');
       const reviewCard = review.submitted
         ? '<section class="review-card"><h2>تقييم تجربتك واقتراحات التطوير</h2><div class="review-existing">✓ وصلنا تقييمك وهو الآن ' + (review.status === 'published' ? 'منشور بعد الاعتماد.' : review.status === 'hidden' ? 'محفوظ لدى فريق الجودة.' : 'بانتظار مراجعة فريق الجودة.') + '</div></section>'
@@ -293,10 +375,11 @@
           ? '<section class="glass-card delivery-card expired"><span class="delivery-icon">■</span><div class="delivery-copy"><h2>حالة التسليم</h2><strong>اكتملت مدة الاشتراك</strong><small>يمكنك استخدام خيار التجديد السريع أدناه لاستعادة الخدمة.</small></div></section>'
           : '<section class="glass-card delivery-card pending"><span class="delivery-icon">◷</span><div class="delivery-copy"><h2>الوقت المتوقع للتسليم والتفعيل</h2><strong>'+escapeHtml(deliveryEstimate)+'</strong><small>'+(order.created_at?'استلمنا طلبك في '+dateTime(order.created_at)+' — ':'')+'نتحقق من اكتمال التفعيل تلقائيًا كل 30 ثانية.</small></div></section>';
       const policyCard = acknowledged ? '<details class="policy-details"><summary>إقرار وسياسة المنتج الموثّق ببصمة الجهاز</summary><div class="policy-body"><ul class="ack-list">'+points.map(point=>'<li>'+escapeHtml(point)+'</li>').join('')+'</ul><div class="ack-stamp">✓ تم التوثيق بتاريخ '+date(order.acknowledged_at)+'</div></div></details>' : '<section class="ack-box"><h2>إقرار وسياسة المنتج</h2><ul class="ack-list">'+points.map(point=>'<li>'+escapeHtml(point)+'</li>').join('')+'</ul><div class="ack-control"><label class="ack-check"><input id="ackCheckbox" type="checkbox"> <span>أقرّ بقراءة وموافقة شروط وسياسة المنتج أعلاه</span></label><button id="ackButton" class="ack-button" type="button" disabled>تأكيد الإقرار وعرض تفاصيل الاشتراك</button><p id="ackMessage" class="ack-message" role="status"></p></div></section>';
-      const identityCard = '<section class="glass-card identity-card"><div class="identity-top"><div><span class="order-number copy-inline">طلب #'+escapeHtml(order.order_number)+' '+copyButton(order.order_number,'نسخ الرقم')+'</span><h1>'+escapeHtml(productName)+'</h1></div><div class="identity-badges"><span class="salla-verified">تم التحقق من متجر سلة ✓</span><span class="state-badge '+statusClass+'"><i></i><span><strong>'+statusLabel+'</strong><small>'+state.detail+'</small></span></span></div></div>'+accountCard+trustedDeviceCard+(crunchyAction?'<div class="order-actions">'+crunchyAction+'</div>':'')+'</section>';
-      const statusCard = '<section class="glass-card status-card"><div class="status-head"><div><h2>الوقت المتبقي والضمان</h2><span>'+timingSummary+'</span></div><strong>'+(state.active?'متبقي '+remaining+' يوم من أصل '+escapeHtml(order.duration_days||30)+' يوم':state.expired?'انتهت مدة الاشتراك':'بانتظار بدء مدة الاشتراك')+'</strong></div><div class="progress" aria-label="نسبة المدة المتبقية"><i style="width:'+remainingProgress.toFixed(1)+'%"></i></div><section class="time-grid" style="margin-top:14px"><div class="time-cell"><span>'+(state.active?'تاريخ بداية السريان':'موعد بداية الاشتراك')+'</span><strong>'+(state.active?dateTime(order.starts_at):'عند اكتمال التنفيذ')+'</strong></div><div class="time-cell"><span>تاريخ الانتهاء</span><strong>'+(state.active||state.expired?date(order.expires_at):'يُحسب بعد التنفيذ')+'</strong></div><div class="time-cell"><span>المدة</span><strong>'+escapeHtml(order.duration_days||30)+' يوم</strong></div></section><section class="warranty-card '+warranty.cls+'"><h2>✦ '+warranty.title+'</h2><p>'+warranty.text+'</p></section>'+policyCard+renewalCard+'</section>';
-      const regularCards = acknowledged ? identityCard+deliveryCard+statusCard+upsellCard+referralCard+reminderCard+reviewCard : identityCard+deliveryCard+statusCard;
-      const compensationCards = identityCard+deliveryCard+statusCard+compensationCard;
+      const identityCard = '<section class="glass-card identity-card"><div class="identity-top"><div><span class="identity-label">تفاصيل اشتراكك</span><span class="order-number copy-inline">طلب #'+escapeHtml(order.order_number)+' '+copyButton(order.order_number,'نسخ الرقم ⧉')+'</span></div><h1>'+escapeHtml(productName)+'</h1><div class="identity-badges"><span class="salla-verified">تم التحقق من متجر سلة ✓</span><span class="state-badge '+statusClass+'"><i></i><span><strong>'+statusLabel+'</strong><small>'+state.detail+'</small></span></span></div></div>'+accountCard+(crunchyAction?'<div class="order-actions">'+crunchyAction+'</div>':'')+'</section>';
+      const infoGrid = '<div class="order-info-grid">'+trustedDeviceCard+deliveryCard+'</div>';
+      const statusCard = '<section class="glass-card status-card"><div class="status-head"><div><h2>الوقت المتبقي والضمان</h2><span>'+timingSummary+'</span></div><strong>'+(state.active?'متبقي '+remaining+' يوم':state.expired?'انتهت مدة الاشتراك':'بانتظار بدء الاشتراك')+'</strong></div><div class="progress" aria-label="نسبة المدة المتبقية"><i style="width:'+remainingProgress.toFixed(1)+'%"></i></div><section class="time-grid"><div class="time-cell"><span>بداية السريان</span><strong>'+(state.active?date(order.starts_at):'عند اكتمال التنفيذ')+'</strong></div><div class="time-cell"><span>تاريخ الانتهاء</span><strong>'+(state.active||state.expired?date(order.expires_at):'يُحسب بعد التنفيذ')+'</strong></div><div class="time-cell"><span>المدة الكلية</span><strong>'+escapeHtml(order.duration_days||30)+' يوم</strong></div></section><section class="warranty-card '+warranty.cls+'"><h2>✦ '+warranty.title+'</h2><p>'+warranty.text+'</p></section>'+policyCard+renewalCard+'</section>';
+      const regularCards = acknowledged ? identityCard+infoGrid+statusCard+upsellCard+referralCard+reminderCard+reviewCard : identityCard+infoGrid+statusCard;
+      const compensationCards = identityCard+infoGrid+statusCard+compensationCard;
       portal.innerHTML = '<main class="order-portal"><section class="track-hero"><header class="order-brand"><button id="switchOrder" class="switch-order-button" type="button"><span aria-hidden="true">⌕</span> استعلام عن طلب آخر ↺</button></header><div class="track-hero-copy"><span class="order-number">بوابة الطلب الآمنة</span><h1>تفاصيل اشتراكك</h1></div></section><section class="track-night"><div class="order-wrap"><div class="track-stack">'+(directCompensation?compensationCards:regularCards)+'</div>'+(!directCompensation?'<p class="compensation-link-line">واجهت مشكلة في الحساب؟ <a href="https://warranty.advpro.app/'+encodeURIComponent(token)+'">عندك مشكلة؟</a></p>':'')+'</div></section></main>';
       bindCopyButtons();
       clearTimeout(statusRefreshTimer);

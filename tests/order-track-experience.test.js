@@ -12,8 +12,12 @@ test('order tracking uses the split brand layout and explicit lifecycle labels',
   assert.match(source, /تم التسليم والتفعيل بنجاح ✓/);
   assert.match(source, /defaultDeliveryEstimate/);
   assert.match(source, /setTimeout\(\(\) => loadOrder\(\)\.then\(render\)/);
-  assert.match(source, /تاريخ بداية السريان/);
+  assert.match(source, /بداية السريان/);
   assert.match(source, /بصمة الجهاز الفيزيائية/);
+  assert.match(source, /order-info-grid/);
+  assert.match(source, /grid-template-columns:repeat\(3,minmax\(0,1fr\)\)/);
+  assert.match(source, /referral-title-row/);
+  assert.doesNotMatch(source, /أصدقاء مكتملين/);
 });
 
 test('order tracking reveals the order through three secure progressive stages', async () => {
