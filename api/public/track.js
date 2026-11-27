@@ -5,7 +5,7 @@ import { sendReminderConfirmation } from '../../lib/renewal-email.js';
 import { blockForMaintenance } from '../../lib/maintenance-mode.js';
 import { decryptPassword } from '../../lib/account-credentials.js';
 import { isCrunchyrollOrder } from '../../lib/service-product.js';
-import { inspectBinding } from '../../lib/device-binding.js';
+import { detailsBinding } from '../../lib/device-binding.js';
 
 const buckets = new Map();
 const clientIp = request => String(request.headers['x-forwarded-for'] || request.headers['x-real-ip'] || 'unknown').split(',')[0].trim().slice(0, 128);
@@ -77,8 +77,9 @@ export default async function handler(request, response) {
   let portalSettingsResponse = await database(`system_settings?select=${settingsSelect}&singleton=eq.true&limit=1`);
   if (!portalSettingsResponse.ok) portalSettingsResponse = await database('system_settings?select=renewal_store_url,salla_review_url,support_whatsapp,upsell_enabled,upsell_title,upsell_description,upsell_url,upsell_duration_minutes&singleton=eq.true&limit=1');
   const portalSettings = portalSettingsResponse.ok ? (await portalSettingsResponse.json())[0] || {} : {};
-  const strictBinding = inspectBinding(request, order), verifiedSession = strictBinding.legacy ? deviceSession(request, order.id) : strictBinding.ok ? { physicalHash: order.locked_device_fingerprint_hash } : null, deviceVerified = Boolean(verifiedSession);
+  const strictBinding = detailsBinding(request, response, order), verifiedSession = strictBinding.legacy ? deviceSession(request, order.id) : strictBinding.ok ? { physicalHash: order.locked_device_fingerprint_hash } : null, deviceVerified = Boolean(verifiedSession);
 
+  if (strictBinding.handoffRejected) return response.status(403).setHeader('Cache-Control', 'private, no-store').json({ code:'DETAILS_HANDOFF_REJECTED' });
   if (request.method === 'POST' && !deviceVerified) return response.status(403).json({ message: 'يجب التحقق من الجهاز قبل توثيق الإقرار.' });
 
   if (request.method === 'POST' && request.query?._route === 'review') {
@@ -148,8 +149,10 @@ export default async function handler(request, response) {
   const credentialAccess = Boolean(order.acknowledged_at && deviceVerified && reauthActive);
   const accountEmail = credentialAccess ? assignedAccount?.mailbox_alias || null : null;
   const accountPassword = credentialAccess ? decryptPassword(assignedAccount?.encrypted_connection?.password) : null;
-  const reviewResponse = order.acknowledged_at && deviceVerified ? await database(`order_reviews?select=status&order_id=eq.${encodeURIComponent(order.id)}&limit=1`) : null;
-  const referralResponse = deviceVerified ? await database(`referral_rewards?select=id&referrer_order_id=eq.${encodeURIComponent(order.id)}&limit=100`) : null;
+  const [reviewResponse, referralResponse] = await Promise.all([
+    order.acknowledged_at && deviceVerified ? database(`order_reviews?select=status&order_id=eq.${encodeURIComponent(order.id)}&limit=1`) : null,
+    deviceVerified ? database(`referral_rewards?select=id&referrer_order_id=eq.${encodeURIComponent(order.id)}&limit=100`) : null,
+  ]);
   const [existingReview] = reviewResponse?.ok ? await reviewResponse.json() : [];
   const referralCount = referralResponse?.ok ? (await referralResponse.json()).length : 0;
   if (accountEmail) await database('portal_activity_events', { method: 'POST', body: JSON.stringify({ order_id: order.id, activity_type: 'account_details_viewed', physical_core_hash: verifiedSession.physicalHash }) });

@@ -13,9 +13,6 @@ html[data-order-progress] .order-stage-layout > :not(#orderProgress,[data-order-
 html[data-order-progress] :is(body,.single-home,.split-bottom,.service-shell,.track-night) {
   background: #07172e !important;
 }
-html[data-order-progress] :is(.split-top,.service-shell .hero,.track-hero) {
-  background: linear-gradient(150deg,#10294b,#07172e 82%) !important;
-}
 .verification-card, .verification-card [hidden], .verification-card [data-verification-view],
 .verification-loading, .verification-success, .verification-search, .verification-check, .verification-details, .verification-confirm {
   display: none;
@@ -81,7 +78,13 @@ html[data-order-progress="success"] .verification-success { display: block; }
 .verification-device-pill { max-width: 100%; overflow-wrap: anywhere; }
 .verification-confirm { display: none; color: #86efac; background: #064e3b4d; border: 1px solid #34d39960; box-shadow: 0 0 26px #10b98138; font-size: 24px; }
 html[data-order-progress="success"] .verification-confirm { display: grid; }
-html:is([data-order-progress="success"],[data-order-progress="details"]) :is(.verification-orbit,.verification-device-pill) { display: none; }
+html[data-order-progress="success"] :is(.verification-orbit,.verification-device-pill),
+html[data-order-progress="details"] .verification-device-pill { display: none; }
+html[data-order-progress="details"] .verification-details {
+  color: #f8fafc;
+  font-size: 17px;
+  font-weight: 800;
+}
 .verification-success { color: #bbf7d0; }
 .verification-card button {
   min-height: 48px;
@@ -103,12 +106,8 @@ html[data-order-progress="mismatch"] #orderProgress { border-color: #ef444459; }
 .verification-actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; width: 100%; }
 .verification-actions button { flex: 1 1 155px; }
 .track-verification-stage { display: none; }
-html.current-track[data-order-progress] .track-verification-stage:has(> #orderProgress) {
-  display: grid;
-  width: min(620px, calc(100% - 28px));
-  margin-inline: auto;
-  padding-block: clamp(74px, 17vh, 170px) 36px;
-}
+html.current-track[data-order-progress] .track-verification-stage:has(#orderProgress) { display: block; }
+.single-home .order-stage-layout { min-height: 320px; }
 html.current-track[data-order-progress] #portal:not(:has(#orderProgress)) { display: none; }
 .verification-reveal { animation: verification-reveal 220ms cubic-bezier(.2,.7,.2,1) both; }
 @keyframes verification-spin { to { transform: rotate(360deg); } }

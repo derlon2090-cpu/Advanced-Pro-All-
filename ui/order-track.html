@@ -470,24 +470,25 @@
       }
     };
     const shell = content => '<main class="order-portal"><section class="track-hero"><header class="order-brand"><button id="switchOrder" class="switch-order-button" type="button"><span aria-hidden="true">⌕</span> استعلام عن طلب آخر ↺</button></header><div class="track-hero-copy"><span class="order-number">تحقق أمني صامت</span><h1>التحقق الأمني من الجهاز</h1></div></section><section class="track-night"><div class="order-wrap">'+content+'</div></section></main>';
+    const orderEndpoint = trackingToken => '/api/public/track?token=' + encodeURIComponent(trackingToken);
+    const withDeliveryEstimate = async data => {
+      const settings = await window.apMaintenanceState;
+      data.defaultDeliveryEstimate = settings?.defaultDeliveryEstimate || 'فوري خلال 5 – 18 ساعة';
+      return data;
+    };
     const loadOrder = async (trackingToken = token) => {
-      const [orderResponse, settingsResponse] = await Promise.all([
-        fetch('/api/public/track?token=' + encodeURIComponent(trackingToken), { headers: await bindingHeaders(trackingToken, { accept: 'application/json' }) }),
-        fetch('/api/public/system-settings', { headers: { accept: 'application/json' } }).catch(() => null),
-      ]);
+      const orderResponse = await fetch(orderEndpoint(trackingToken), { headers: await bindingHeaders(trackingToken, { accept: 'application/json' }) });
       const data = await orderResponse.json().catch(() => ({}));
       if (!orderResponse.ok) throw new Error(data.message || 'تعذر تحميل الطلب.');
-      const settings = settingsResponse?.ok ? await settingsResponse.json().catch(() => ({})) : {};
-      data.defaultDeliveryEstimate = settings.defaultDeliveryEstimate || 'فوري خلال 5 – 18 ساعة';
-      return data;
+      return withDeliveryEstimate(data);
     };
     const enterVerified = payload => {
       if (!payload?.order?.device_verified) throw new Error('تعذر توثيق الجهاز لهذا الطلب.');
       render(payload);
     };
-    const loadVerifiedOrder = async (confirmed = false) => {
+    const loadVerifiedOrder = async (confirmed = false, resumed = null) => {
       try {
-        const payload = confirmed ? await revealVerified(loadOrder) : await loadOrder();
+        const payload = resumed || (confirmed ? await revealVerified(loadOrder) : await loadOrder());
         enterVerified(payload);
         portal.firstElementChild?.classList.add('verification-reveal');
       } catch (error) {
@@ -503,8 +504,9 @@
       await loadVerifiedOrder(true);
     };
     try {
-      if (await resumeOrderDetails(token)) {
-        await loadVerifiedOrder();
+      const resumed = await resumeOrderDetails(token, orderEndpoint(token));
+      if (resumed) {
+        await loadVerifiedOrder(false, await withDeliveryEstimate(resumed));
       } else {
         setOrderProgress('search');
         await previewOrder(token);

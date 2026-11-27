@@ -104,7 +104,8 @@
     async function loadPortal() {
       clearInterval(countdown);
       try {
-        const resumed = await resumeOrderDetails(token);
+        const endpoint = '/api/public/track?token=' + encodeURIComponent(token);
+        const resumed = await resumeOrderDetails(token, endpoint);
         if (!resumed) {
           setOrderProgress('search');
           const order = await previewOrder(token);
@@ -114,8 +115,8 @@
           }
           if (!await verifyOrderDevice({ token, onOtherOrder: resetOrder })) return;
         }
-        const loadDetails = async () => json('/api/public/track?token='+encodeURIComponent(token), {headers:await bindingHeaders(token)});
-        portalData = resumed ? await loadDetails() : await revealVerified(loadDetails);
+        const loadDetails = async () => json(endpoint, {headers:await bindingHeaders(token)});
+        portalData = resumed || await revealVerified(loadDetails);
         if (!portalData.order?.device_verified) throw new Error('تعذر توثيق الجهاز لهذا الطلب.');
         if (!isChatgptOrder(portalData.order)) { location.replace('https://advpro.app'); return; }
         renderDashboard();

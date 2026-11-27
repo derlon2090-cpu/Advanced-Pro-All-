@@ -71,10 +71,11 @@
     }
     async function inspect() {
       try {
-        const resumed = await resumeOrderDetails(token);
+        const endpoint = '/api/public/compensate/' + encodeURIComponent(token);
+        const resumed = await resumeOrderDetails(token, endpoint);
         if (!resumed && !await verifyOrderDevice({ token, onOtherOrder: resetOrder })) return;
-        const loadDetails = async () => api('/api/public/compensate/'+encodeURIComponent(token),{headers:await bindingHeaders(token,{accept:'application/json'}),cache:'no-store'});
-        render(resumed ? await loadDetails() : await revealVerified(loadDetails));
+        const loadDetails = async () => api(endpoint,{headers:await bindingHeaders(token,{accept:'application/json'}),cache:'no-store'});
+        render(resumed || await revealVerified(loadDetails));
       } catch (error) {
         show('result');
         $('result').innerHTML = '<div class="outcome-head">'+switchMarkup+'</div><div class="notice danger"><strong>تعذر متابعة طلب التعويض</strong><br>'+esc(error.message)+'</div>';

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import verifyDevice from '../lib/verify-device-api.js';
-import { inspectBinding } from '../lib/device-binding.js';
+import { detailsBinding, inspectBinding } from '../lib/device-binding.js';
 
 test('verification binds the first browser automatically and rejects another browser or device', async t => {
   const token = 'fixture-autobind-order-0001';
@@ -75,6 +75,13 @@ test('verification binds the first browser automatically and rejects another bro
   const resumed = await resume(first.data.proof);
   assert.equal(resumed.code, 200);
   assert.equal(resumed.data.bindAnchor, first.data.bindAnchor);
+  const receivedHeaders = {};
+  const detailsResponse = { setHeader(name, value) { receivedHeaders[name] = value; } };
+  const detailsRequest = { method: 'GET', headers: { cookie, 'x-order-details-proof':first.data.proof } };
+  assert.equal(detailsBinding(detailsRequest, detailsResponse, order).ok, true);
+  assert.equal(receivedHeaders['x-device-bind-anchor'], first.data.bindAnchor);
+  assert.ok(detailsBinding({ ...detailsRequest, headers: { ...detailsRequest.headers, cookie:'' } }, detailsResponse, order).handoffRejected);
+  assert.equal(detailsBinding({ ...detailsRequest, method:'POST' }, detailsResponse, order).ok, false);
   assert.equal((await resume(first.data.proof, '')).code, 403);
   assert.equal((await resume(first.data.proof.replace(/[a-f0-9]$/, tail => tail === '0' ? '1' : '0'))).code, 403);
 

@@ -23,7 +23,7 @@ test('order tracking uses the split brand layout and explicit lifecycle labels',
 test('order tracking verifies automatically and opens details behind the verified session', async () => {
   const source = await readFile(new URL('../ui/order-track.html', import.meta.url), 'utf8');
   assert.match(source, /await previewOrder\(token\);\s+await showOrder\(\)/);
-  assert.match(source, /if \(await resumeOrderDetails\(token\)\) \{\s+await loadVerifiedOrder\(\)/);
+  assert.match(source, /const resumed = await resumeOrderDetails\(token, orderEndpoint\(token\)\);\s+if \(resumed\) \{\s+await loadVerifiedOrder\(false/);
   assert.match(source, /if \(!await verifyOrderDevice\([\s\S]*?\)\) return;\s+await loadVerifiedOrder\(true\)/);
   assert.doesNotMatch(source, /ackCheckbox|stageAckCheckbox|confirmOrderFound|journey-stepper|journey-step/);
   assert.match(source, /confirmed \? await revealVerified\(loadOrder\)/);
@@ -100,6 +100,7 @@ test('track routes use a dedicated secure loading document without homepage flas
   assert.doesNotMatch(html, /جارِ تجهيز تفاصيل طلبك/);
   assert.doesNotMatch(html, /<form id="singleOrderLookup"/);
   assert.doesNotMatch(html, /id="premiumLookup"/);
+  assert.match(html, /class="track-verification-stage single-home">\s*<section class="split-top">/);
   assert.doesNotMatch(html, /نظام الضمان والمتابعة الذكي/);
   assert.ok(config.rewrites.some(route => route.source === '/track/:path*' && route.destination === '/track.html'));
   assert.ok(config.redirects.some(route => route.source === '/compensate/:path*' && route.destination === 'https://warranty.advpro.app/:path*'));

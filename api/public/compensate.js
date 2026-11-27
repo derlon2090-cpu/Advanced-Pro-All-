@@ -4,7 +4,7 @@ import { blockForMaintenance } from '../../lib/maintenance-mode.js';
 import { sendOperationalEmail } from '../../lib/operational-email.js';
 import { decryptPassword } from '../../lib/account-credentials.js';
 import { portalForOrder } from '../../lib/service-product.js';
-import { inspectBinding } from '../../lib/device-binding.js';
+import { detailsBinding } from '../../lib/device-binding.js';
 
 const db = (path, options = {}) => {
   const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -36,11 +36,12 @@ export default async function handler(request, response) {
   if (!['GET', 'POST'].includes(request.method)) return response.status(405).json({ message: 'الطريقة غير مسموحة.' });
   const token = cleanToken(request.query?.token || request.body?.token);
   if (!token || !(process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL) || !process.env.SUPABASE_SERVICE_ROLE_KEY) return response.status(400).json({ message: 'رابط الطلب غير صالح.' });
-  const orderResult = await db(`orders?select=id,store_id,order_number,product_name,service_type,payment_status,customer_phone,customer_email,reminder_email,security_strikes,has_warranty,expires_at,warranty_expires_at,renewal_url,status,locked_device_name,locked_device_fingerprint_hash,device_bind_token_hash,locked_browser_fingerprint_hash,locked_browser_family,locked_os_name,customers(name)&tracking_token=eq.${encodeURIComponent(token)}&limit=1`);
+  const orderResult = await db(`orders?select=id,store_id,order_number,product_name,service_type,payment_status,customer_phone,customer_email,reminder_email,security_strikes,has_warranty,expires_at,warranty_expires_at,renewal_url,status,locked_device_name,locked_device_fingerprint_hash,device_bind_token_hash,locked_browser_fingerprint_hash,locked_browser_family,locked_os_name,registered_country_code,customers(name)&tracking_token=eq.${encodeURIComponent(token)}&limit=1`);
   if (!orderResult.ok) return response.status(502).json({ message: 'تعذر التحقق من الطلب.' });
   const [order] = await orderResult.json();
   if (!order) return response.status(404).json({ message: 'الطلب غير موجود.' });
-  const binding = inspectBinding(request, order), deviceAllowed = binding.legacy ? verifiedDevice(request, order.id) : binding.ok;
+  const binding = detailsBinding(request, response, order), deviceAllowed = binding.legacy ? verifiedDevice(request, order.id) : binding.ok;
+  if (binding.handoffRejected) return response.status(403).setHeader('Cache-Control', 'private, no-store').json({ code:'DETAILS_HANDOFF_REJECTED' });
   if (!deviceAllowed) {
     if (request.method === 'POST') await Promise.allSettled([
         db('mail_security_events', { method: 'POST', body: JSON.stringify({ provider_message_id: `compensation-device-${randomUUID()}`, event_type: 'compensation_wrong_device', suspected_order_id: order.id, attribution_basis: 'unverified_device_attempt' }) }),

@@ -41,7 +41,7 @@ test('credentials and approval endpoints are guarded by strict binding and re-au
     readFile(new URL('../api/public/chatgpt.js', import.meta.url), 'utf8'),
     readFile(new URL('../supabase/migrations/029_strict_browser_binding_and_reauth.sql', import.meta.url), 'utf8'),
   ]);
-  assert.match(track, /inspectBinding/);
+  assert.match(track, /detailsBinding/);
   assert.match(track, /x-reauth-window/);
   assert.match(crunchy, /handleStartReauth/);
   assert.match(crunchy, /service_reauth_sessions/);

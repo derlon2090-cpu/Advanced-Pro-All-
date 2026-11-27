@@ -122,7 +122,7 @@
     async function fetchOrder(reauth=false){const headers=await bindingHeaders(token,{accept:'application/json',...(reauth?{'x-reauth-window':'1'}:{})}),response=await fetch('/api/public/track?token='+encodeURIComponent(token),{headers,cache:'no-store'}),result=await response.json().catch(()=>({}));if(!response.ok)throw new Error(result.message||'تعذر تحميل بيانات الاشتراك.');return result}
     async function openPortal() {
       try {
-        const resumed = await resumeOrderDetails(token);
+        const resumed = await resumeOrderDetails(token, '/api/public/track?token=' + encodeURIComponent(token));
         if (!resumed) {
           setOrderProgress('search');
           const preview = await previewOrder(token);
@@ -132,7 +132,7 @@
           }
           if (!await verifyOrderDevice({ token, onOtherOrder: resetOrder })) return;
         }
-        const payload = resumed ? await fetchOrder() : await revealVerified(fetchOrder);
+        const payload = resumed || await revealVerified(fetchOrder);
         if (!payload.order?.device_verified) throw new Error('تعذر توثيق الجهاز لهذا الطلب.');
         if (!isCrunchyrollOrder(payload.order)) { location.replace('https://advpro.app'); return; }
         renderDashboard(payload);

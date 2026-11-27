@@ -37,6 +37,8 @@ const singleOrderHome = await readFile(resolve(root, "ui/single-order-home.html"
 const singleOrderHomeShell = await readFile(resolve(root, "ui/single-order-home-shell.html"), "utf8");
 const orderTrack = await readFile(resolve(root, "ui/order-track.html"), "utf8");
 const orderTrackShell = await readFile(resolve(root, "ui/order-track-shell.html"), "utf8");
+const lookupHero = singleOrderHomeShell.match(/<section class="split-top">[\s\S]*?<\/section>/)?.[0];
+if (!lookupHero) throw new Error("Missing lookup hero");
 const orderProgress = await readFile(resolve(root, "ui/order-progress.html"), "utf8");
 const orderProgressStyle = `<style>${await readFile(resolve(root, "ui/order-progress.css"), "utf8")}</style>`;
 const crunchyrollPortal = await readFile(resolve(root, "ui/crunchyroll-portal.html"), "utf8");
@@ -58,7 +60,8 @@ await mkdir(publicDir, { recursive: true });
 await cp(resolve(root, "assets"), resolve(publicDir, "assets"), { recursive: true });
 await cp(resolve(root, "lib"), resolve(publicDir, "lib"), { recursive: true });
 const currentPage = page[1].replace(/<main id="portal">[\s\S]*?<\/main>/, singleOrderHomeShell);
-const trackPage = page[1].replace(/<main id="portal">[\s\S]*?<\/main>/, orderTrackShell);
+const trackPage = page[1].replace(/<main id="portal">[\s\S]*?<\/main>/,
+  () => orderTrackShell.replace("<!--lookup-hero-->", () => lookupHero));
 const adminPage = page[1]
   .replace("path=location.pathname", "path='/admin'")
   .replaceAll("location.href='/admin'", "location.href='/'");
