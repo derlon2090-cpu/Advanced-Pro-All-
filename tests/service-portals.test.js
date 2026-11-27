@@ -96,5 +96,6 @@ test('service portals can switch to another order without reloading', async () =
     assert.match(page, /history\.replaceState/);
     assert.match(page, /orderNumber[^\n]+\.focus\(\)/);
     assert.match(page, /border-radius:999px/);
+    assert.doesNotMatch(page, /flow-steps|flow-step|flowSteps/);
   }
 });

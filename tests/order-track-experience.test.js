@@ -23,7 +23,7 @@ test('order tracking reveals the order through three secure progressive stages',
   assert.match(source, /جارٍ التحقق من أمان الجهاز/);
   assert.match(source, /أوافق وأُوثّق جهازي الآن/);
   assert.match(source, /تم التحقق من جهازك بنجاح/);
-  assert.match(source, /journey-stepper/);
+  assert.doesNotMatch(source, /journey-stepper|journey-step/);
   assert.match(source, /setTimeout\(proceed,1800\)/);
   assert.match(source, /render\(await loadOrder\(\)\)/);
   assert.match(source, /retryOrderDetails/);
