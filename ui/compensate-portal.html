@@ -47,10 +47,10 @@
       <div id="entry" class="panel" data-order-entry><div class="panel-head"><div><h2>فحص أهلية طلبك</h2><p>نتعرّف على الرمز # والأرقام العربية تلقائيًا.</p></div><span class="badge">فحص آمن</span></div><form id="orderForm" class="order-form"><div class="field-shell"><input id="orderNumber" inputmode="numeric" autocomplete="off" required aria-label="رقم الطلب" placeholder="مثال: #12345"><button id="pasteButton" class="paste" type="button">لصق</button></div><button id="checkButton" class="primary" type="submit">فحص أهلية التعويض ←</button></form><p id="entryMessage" class="message" role="status"></p></div>
       <div id="result" class="panel" hidden></div>
     </section>
+    <!--lookup-footer-->
   </main>
-  <footer class="footer">بوابة أدفانسد برو · معالجة آمنة ومخصصة لطلبات الضمان</footer>
   <script type="module">
-    import { setOrderProgress, verifyOrderDevice, revealVerified, openOrderDetails, resumeOrderDetails } from '/lib/order-progress.js';
+    import { setOrderProgress, verifyOrderDevice, revealVerified, openOrderDetails, resumeOrderDetails, returnToOrderLookup } from '/lib/order-progress.js';
     import { bindingHeaders } from '/lib/device-bind-client.js';
     const $=id=>document.getElementById(id),digits=value=>String(value||'').replace(/[٠-٩]/g,d=>String(d.charCodeAt(0)-1632)).replace(/[۰-۹]/g,d=>String(d.charCodeAt(0)-1776)),cleanOrder=value=>digits(value).replace(/[^0-9]/g,'');
     let token='',evidenceData='';
@@ -58,7 +58,7 @@
     const esc=value=>String(value==null?'':value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
     const show=name=>{['entry','result'].forEach(id=>{const view=$(id),visible=id===name;view.hidden=!visible;if(visible){view.classList.remove('flow-view-enter');requestAnimationFrame(()=>view.classList.add('flow-view-enter'))}});$('switchOrder').hidden=name!=='result'};
     const resetOrder=()=>{token='';evidenceData='';history.replaceState({},'',location.hostname==='warranty.advpro.app'?'/':'/compensate');$('orderNumber').value='';$('entryMessage').textContent='';$('result').innerHTML='';$('checkButton').disabled=false;$('checkButton').textContent='فحص أهلية التعويض ←';show('entry');$('orderNumber').focus()};
-    const bindSwitch=()=>{const button=$('switchOrder');if(button)button.onclick=resetOrder};
+    const bindSwitch=()=>{const button=$('switchOrder');if(button)button.onclick=() => returnToOrderLookup(location.hostname === 'warranty.advpro.app' ? '/' : '/compensate')};
     const copyValue=async(value,button)=>{try{await navigator.clipboard.writeText(value);navigator.vibrate?.(25);const label=button.textContent;button.textContent='تم النسخ ✓';button.classList.add('copy-success');setTimeout(()=>{button.textContent=label;button.classList.remove('copy-success')},2000)}catch{button.textContent='تعذر النسخ'}};
     const statusText=item=>item.status==='approved'?'تم التعويض':item.status==='rejected'?'مرفوض'+(item.reason?' — '+item.reason:''):'قيد المراجعة';
     $('pasteButton').onclick=async()=>{try{$('orderNumber').value=await navigator.clipboard.readText();$('orderNumber').dispatchEvent(new Event('input'));$('orderNumber').focus()}catch{$('entryMessage').textContent='تعذر الوصول إلى الحافظة. الصق الرقم يدويًا.'}};

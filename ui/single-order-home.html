@@ -125,31 +125,6 @@
     font-size: .72rem;
   }
   .security-note i { color: #fb923c; font-style: normal; }
-  .clean-footer { margin-top: 17px; text-align: center; }
-  .support-line {
-    display: inline-flex;
-    align-items: center;
-    gap: 7px;
-    color: #94a3b8;
-    font-size: .82rem;
-    font-weight: 700;
-    text-decoration: none;
-    transition: color .2s, transform .2s;
-  }
-  .support-line strong { color: #22c55e; font-weight: 900; }
-  .support-line svg { width: 17px; height: 17px; color: #22c55e; }
-  .support-line:hover { color: #cbd5e1; transform: translateY(-1px); }
-  .support-line:hover strong, .support-line:hover svg { color: #4ade80; }
-  .footer-mark {
-    display: grid;
-    place-items: center;
-    width: 42px;
-    height: 42px;
-    margin: 15px auto 0;
-  }
-  .footer-mark img { width: 34px; height: 34px; object-fit: contain; display: block; }
-  .copyright { margin-top: 13px; color: #64748b; font-size: .72rem; }
-  .social-proof{margin-top:15px;padding:13px;border:1px solid #1e3a5f;border-radius:14px;background:#081a35;overflow:hidden}.social-proof h2{margin:0 0 9px;color:#fdba74;font-size:.78rem;text-align:center}.proof-track{display:flex;gap:10px;overflow:auto;scrollbar-width:none}.proof-item{min-width:210px;padding:10px;border-radius:10px;background:#06152d}.proof-stars{color:#fb923c;letter-spacing:1px}.proof-item strong,.proof-item small{display:block}.proof-item strong{margin-top:5px;font-size:.72rem}.proof-item small{margin-top:3px;color:#94a3b8;font-size:.64rem}.proof-item p{margin:6px 0 0;color:#cbd5e1;font-size:.66rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   @media (max-width: 650px) {
     .lookup-pair { grid-template-columns: 1fr; }
     .split-top { min-height: 43vh; padding: 52px 16px 132px; }
@@ -170,8 +145,6 @@
     if (!form) return;
     const orderInput = document.getElementById('singleOrderNumber');
     const incomingRef=new URLSearchParams(location.search).get('ref');if(/^[A-Z0-9]{8,32}$/i.test(incomingRef||''))localStorage.setItem('advpro_referral',incomingRef.toUpperCase());
-    const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-    fetch('/api/public/reviews').then(r=>r.json()).then(data=>{if(!data.reviews?.length)return;document.getElementById('proofTrack').innerHTML=data.reviews.map(r=>'<article class="proof-item"><span class="proof-stars">★★★★★</span><strong>'+escapeHtml(r.customer_name)+'</strong><small>'+escapeHtml(r.product_name)+'</small>'+(r.comment?'<p>'+escapeHtml(r.comment)+'</p>':'')+'</article>').join('');document.getElementById('socialProof').hidden=false}).catch(()=>{});
     const message = document.getElementById('singleLookupMessage');
     const { normalizeOrderNumber } = await import('/lib/order-number.js');
     const { setOrderProgress, openOrderDetails } = await import('/lib/order-progress.js');

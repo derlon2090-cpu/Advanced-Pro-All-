@@ -74,11 +74,11 @@
         <a id="helpLink" class="help" href="#">تعذّر الدخول تمامًا؟ انتقل لبوابة الضمان</a>
       </div>
     </section>
+    <!--lookup-footer-->
   </main>
   <div id="guideModal" class="guide-modal" hidden><div class="guide-dialog"><button id="closeGuide" aria-label="إغلاق">×</button><h3>طريقة الدخول السريعة</h3><ol><li>اضغط «تم تسجيل خروجي» وانسخ البريد وكلمة المرور.</li><li>سجّل الدخول في موقع أو تطبيق Crunchyroll من جهازك الموثّق.</li><li>ارجع هنا واضغط «اعتماد جهازي» عند ظهور الرسالة.</li></ol></div></div>
-  <footer class="footer">بوابة أدفانسد برو · وصول محمي ومخصص لعملاء Crunchyroll</footer>
   <script type="module">
-    import { setOrderProgress, previewOrder, verifyOrderDevice, revealVerified, openOrderDetails, resumeOrderDetails } from '/lib/order-progress.js';
+    import { setOrderProgress, previewOrder, verifyOrderDevice, revealVerified, openOrderDetails, resumeOrderDetails, returnToOrderLookup } from '/lib/order-progress.js';
     import { isCrunchyrollOrder } from '/lib/service-product.js';
     import { bindingHeaders } from '/lib/device-bind-client.js';
     const $=id=>document.getElementById(id),arabicDigits=value=>String(value||'').replace(/[٠-٩]/g,d=>String(d.charCodeAt(0)-1632)).replace(/[۰-۹]/g,d=>String(d.charCodeAt(0)-1776)),cleanOrder=value=>arabicDigits(value).replace(/[^0-9]/g,'');
@@ -158,7 +158,7 @@
     $('quickGuide').onclick=()=>{$('guideModal').hidden=false};$('closeGuide').onclick=()=>{$('guideModal').hidden=true};$('guideModal').onclick=e=>{if(e.target===$('guideModal'))$('guideModal').hidden=true};
     document.querySelector('[data-quick-rating]').onclick=async()=>{const button=document.querySelector('[data-quick-rating]');button.disabled=true;try{const headers=await bindingHeaders(token,{'content-type':'application/json'}),response=await fetch('/api/public/track/'+encodeURIComponent(token)+'/review',{method:'POST',headers,body:JSON.stringify({rating:5,comment:'تم التفعيل بنجاح عبر بوابة كرانشي رول'})});if(!response.ok)throw new Error();button.textContent='شكرًا لتقييمك ★★★★★'}catch{button.textContent='تعذر إرسال التقييم الآن';button.disabled=false}};
     const resetOrder=()=>{token='';orderData=null;plainPassword='';clearInterval(autoTimer);clearTimeout(passwordMaskTimer);history.replaceState({},'',location.hostname==='anime.advpro.app'?'/':'/crunchyroll');$('orderNumber').value='';$('accessMessage').textContent='';show('entry');$('orderNumber').focus()};
-    $('switchOrder').onclick=resetOrder;
+    $('switchOrder').onclick=() => returnToOrderLookup(location.hostname === 'anime.advpro.app' ? '/' : '/crunchyroll');
     const segments=location.pathname.split('/').filter(Boolean),directToken=location.hostname==='anime.advpro.app'?segments[0]:segments[1],queryOrder=new URLSearchParams(location.search).get('order');if(directToken&&/^[a-zA-Z0-9_-]{16,128}$/.test(directToken)){token=directToken;openPortal()}else if(queryOrder){$('orderNumber').value='#'+cleanOrder(queryOrder);$('accessForm').requestSubmit()}
   </script>
 </body>

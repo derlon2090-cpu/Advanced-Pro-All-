@@ -40,6 +40,7 @@ const orderTrackShell = await readFile(resolve(root, "ui/order-track-shell.html"
 const lookupHero = singleOrderHomeShell.match(/<section class="split-top">[\s\S]*?<\/section>/)?.[0];
 if (!lookupHero) throw new Error("Missing lookup hero");
 const orderProgress = await readFile(resolve(root, "ui/order-progress.html"), "utf8");
+const lookupFooter = await readFile(resolve(root, "ui/lookup-footer.html"), "utf8");
 const orderProgressStyle = `<style>${await readFile(resolve(root, "ui/order-progress.css"), "utf8")}</style>`;
 const crunchyrollPortal = await readFile(resolve(root, "ui/crunchyroll-portal.html"), "utf8");
 const chatgptPortal = await readFile(resolve(root, "ui/chatgpt-portal.html"), "utf8");
@@ -53,7 +54,8 @@ const progressBoot = "document.documentElement.dataset.orderProgress=location.ha
 const trackSearchBoot = `<script>if(/^\\/(track|compensate)\\/[^/]+/.test(location.pathname))${progressBoot}</script>`;
 const withOrderProgress = (html, boot = "") => html
   .replace("</head>", () => orderProgressStyle + boot + "</head>")
-  .replace("<!--order-progress-->", () => orderProgress);
+  .replace("<!--order-progress-->", () => orderProgress)
+  .replace("<!--lookup-footer-->", () => lookupFooter);
 const serviceSearchBoot = (host, prefix) => `<script>if(new RegExp('^'+(location.hostname==='${host}'?'':'/${prefix}')+'/[a-zA-Z0-9_-]{16,128}/?$').test(location.pathname))${progressBoot}</script>`;
 const browserIcon = '<link rel="icon" type="image/png" sizes="any" href="/assets/bawaba-favicon.png"><link rel="apple-touch-icon" href="/assets/bawaba-favicon.png">';
 await mkdir(publicDir, { recursive: true });

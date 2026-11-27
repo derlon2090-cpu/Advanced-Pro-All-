@@ -270,12 +270,11 @@
 <script>
   document.addEventListener('DOMContentLoaded', async () => {
     if (!location.pathname.startsWith('/track/') && !location.pathname.startsWith('/compensate/')) return;
-    const { setOrderProgress, previewOrder, verifyOrderDevice, revealVerified, openOrderDetails, resumeOrderDetails } = await import('/lib/order-progress.js');
+    const { setOrderProgress, previewOrder, verifyOrderDevice, revealVerified, resumeOrderDetails, returnToOrderLookup } = await import('/lib/order-progress.js');
     const { bindingHeaders } = await import('/lib/device-bind-client.js');
     if (await window.apMaintenanceGate?.()) { setOrderProgress(); return; }
     const portal = document.getElementById('portal');
     if (!portal) return;
-    const progressCard = document.getElementById('orderProgress');
     document.body.classList.add('order-track-ready');
     let token = location.pathname.split('/').filter(Boolean)[1] || '';
     let statusRefreshTimer;
@@ -304,48 +303,8 @@
       if (['delivered','follow_up_complete','completed','active','تم التنفيذ'].includes(value)) return { label:'حالة الطلب: سارٍ ✓', detail:'تم تفعيل اشتراكك بنجاح ويعمل بكفاءة', cls:'active', active:true, expired:false };
       return { label:'حالة الطلب: تحت المراجعة والتجهيز ⏳', detail:'طلبك محفوظ ويجري تجهيزه للتفعيل', cls:'pending', active:false, expired:false };
     };
-    const cleanOrder=value=>String(value||'').replace(/[٠-٩]/g,d=>String(d.charCodeAt(0)-1632)).replace(/[۰-۹]/g,d=>String(d.charCodeAt(0)-1776)).replace(/[^0-9]/g,'').slice(0,30);
-    const clearOrderSession=()=>{try{localStorage.removeItem('advpro:order:session');sessionStorage.removeItem('advpro:order:session')}catch{}};
-    const showAnotherOrderLookup = () => {
-      clearTimeout(statusRefreshTimer);
-      clearOrderSession();
-      token = '';
-      history.replaceState({},'', '/');
-      portal.innerHTML = '<main class="order-portal"><section class="track-hero"><div class="track-hero-copy"><span class="order-number">استعلام آمن</span><h1>استعلام عن طلب آخر</h1></div></section><section class="track-night"><div class="order-wrap order-stage-layout" style="--verification-width:650px"><article class="glass-card another-order-card" data-order-entry><h2>أدخل رقم الطلب الجديد</h2><form id="anotherOrderForm" class="another-order-form"><input id="anotherOrderNumber" inputmode="numeric" autocomplete="off" required aria-label="رقم الطلب" placeholder="مثال: #12345"><button id="anotherOrderSubmit" type="submit">عرض الطلب ←</button></form><p id="anotherOrderMessage" class="another-order-message" role="status"></p></article></div></section></main>';
-      portal.querySelector('.order-stage-layout').prepend(progressCard);
-      const input = document.getElementById('anotherOrderNumber'), form = document.getElementById('anotherOrderForm');
-      const message = document.getElementById('anotherOrderMessage'), button = document.getElementById('anotherOrderSubmit');
-      input.oninput = () => { const value = cleanOrder(input.value); input.value = value ? '#' + value : ''; message.textContent = ''; };
-      form.onsubmit = async event => {
-        event.preventDefault();
-        const orderNumber = cleanOrder(input.value);
-        if (!orderNumber || button.disabled) return;
-        button.disabled = true;
-        message.textContent = '';
-        setOrderProgress('search');
-        let navigating = false;
-        try {
-          const response = await fetch('/api/public/lookup', { method:'POST', headers:{'content-type':'application/json'}, body:JSON.stringify({orderNumber}) });
-          const result = await response.json().catch(() => ({}));
-          if (!response.ok || !result.redirectTo) throw new Error(result.message || 'تعذر العثور على الطلب.');
-          navigating = await openOrderDetails({
-            token: result.trackingToken, destination: result.redirectTo,
-            onOtherOrder: () => { input.value = ''; },
-          });
-        } catch (error) {
-          message.textContent = error.message;
-        } finally {
-          if (!navigating) {
-            setOrderProgress();
-            input.focus();
-          }
-          button.disabled = false;
-        }
-      };
-      requestAnimationFrame(() => input.focus());
-    };
     portal.addEventListener('click', event => {
-      if (event.target.closest('#switchOrder')) showAnotherOrderLookup();
+      if (event.target.closest('#switchOrder')) returnToOrderLookup();
     });
     const render = payload => {
       const order = payload.order, actions = payload.actions || {}, review = payload.review || {};
@@ -500,7 +459,7 @@
       }
     };
     const showOrder = async () => {
-      if (!await verifyOrderDevice({ token, onOtherOrder: showAnotherOrderLookup, onMismatch: logCompensationMismatch })) return;
+      if (!await verifyOrderDevice({ token, onOtherOrder: returnToOrderLookup, onMismatch: logCompensationMismatch })) return;
       await loadVerifiedOrder(true);
     };
     try {

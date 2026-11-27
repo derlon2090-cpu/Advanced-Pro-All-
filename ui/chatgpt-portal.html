@@ -65,11 +65,12 @@
         <article class="card guide"><h2 class="section-title">إرشادات سريعة</h2><ul><li><strong>الالتزام بالجهاز الموثّق:</strong> هذا الاشتراك مربوط بجهازك الموثّق أعلاه فقط؛ تسجيل الدخول من جهاز آخر يعرّض الحساب للإيقاف ويلغي الضمان تلقائيًا.</li><li>لا تشارك الحساب أو رمز 2FA مع أي شخص.</li><li>لا تغيّر البريد أو كلمة المرور أو إعدادات الأمان.</li></ul></article>
       </div>
     </section>
+    <!--lookup-footer-->
   </main>
   <div id="guideModal" class="guide-modal hidden"><div class="guide-dialog"><button id="closeGuide" aria-label="إغلاق">×</button><h3>طريقة الدخول السريعة</h3><ol><li>انسخ البريد وكلمة المرور وسجّل الدخول إلى ChatGPT.</li><li>عند طلب رمز التحقق ارجع لهذه الصفحة.</li><li>انسخ كود 2FA الحي قبل انتهاء العداد.</li></ol></div></div>
   <footer id="footer" class="footer hidden">تواجه مشكلة؟ <a id="supportLink" href="#">افتح طلب تعويض أو مساعدة</a></footer>
   <script type="module">
-    import { setOrderProgress, previewOrder, verifyOrderDevice, revealVerified, openOrderDetails, resumeOrderDetails } from '/lib/order-progress.js';
+    import { setOrderProgress, previewOrder, verifyOrderDevice, revealVerified, openOrderDetails, resumeOrderDetails, returnToOrderLookup } from '/lib/order-progress.js';
     import { isChatgptOrder } from '/lib/service-product.js';
     import { bindingHeaders } from '/lib/device-bind-client.js';
     const $=id=>document.getElementById(id), views=['lookup','dashboard'];
@@ -138,7 +139,7 @@
     $('lookupForm').addEventListener('submit',openOrder);$('pasteButton').onclick=async()=>{try{$('orderNumber').value=cleanOrder(await navigator.clipboard.readText());$('orderNumber').focus()}catch{message('lookupMessage','اسمح بالوصول للحافظة أو الصق الرقم يدويًا.')}};$('togglePassword').onclick=()=>{if(!passwordVisible){passwordVisible=true;$('togglePassword').textContent='إخفاء';$('passwordValue').textContent=rawPassword;clearTimeout(passwordMaskTimer);passwordMaskTimer=setTimeout(maskPassword,60000)}else maskPassword()};document.querySelectorAll('[data-copy]').forEach(button=>button.onclick=()=>copyValue($(button.dataset.copy).textContent,button));document.querySelectorAll('[data-copy-secret]').forEach(button=>button.onclick=()=>copyValue(rawPassword,button));$('copyTotp').onclick=()=>{copyValue($('totpCode').dataset.code||'',$('copyTotp'));$('reviewPrompt').classList.remove('hidden')};
     $('quickGuide').onclick=()=>$('guideModal').classList.remove('hidden');$('closeGuide').onclick=()=>$('guideModal').classList.add('hidden');$('guideModal').onclick=e=>{if(e.target===$('guideModal'))$('guideModal').classList.add('hidden')};document.querySelector('[data-quick-rating]').onclick=async()=>{const button=document.querySelector('[data-quick-rating]');button.disabled=true;try{await json('/api/public/track/'+encodeURIComponent(token)+'/review',{method:'POST',headers:await bindingHeaders(token,{'content-type':'application/json'}),body:JSON.stringify({rating:5,comment:'تم التفعيل بنجاح عبر بوابة ChatGPT'})});button.textContent='شكرًا لتقييمك ★★★★★'}catch{button.textContent='تعذر إرسال التقييم الآن';button.disabled=false}};
     const resetOrder=()=>{token='';portalData=null;clearInterval(countdown);$('footer').classList.add('hidden');history.replaceState({},'',location.hostname==='gpt.advpro.app'?'/':'/chatgpt');$('orderNumber').value='';$('lookupMessage').textContent='';show('lookup');$('orderNumber').focus()};
-    $('switchOrder').onclick=resetOrder;
+    $('switchOrder').onclick=() => returnToOrderLookup(location.hostname === 'gpt.advpro.app' ? '/' : '/chatgpt');
     token=pathToken();const requestedOrder=new URLSearchParams(location.search).get('order');if(token){loadPortal()}else if(requestedOrder){show('lookup');$('orderNumber').value=cleanOrder(requestedOrder);openOrder()}else show('lookup');
   </script>
 </body>

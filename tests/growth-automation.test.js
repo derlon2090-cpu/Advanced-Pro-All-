@@ -61,9 +61,9 @@ test('Vercel Hobby deployment stays within the 12 serverless function limit',asy
   assert.ok(config.rewrites.some(route=>route.source==='/api/cron/daily-digest'&&route.destination.includes('/api/cron?job=')));
 });
 
-test('customer pages expose referral progress, coupon sharing, evidence and social proof',async()=>{
+test('customer pages expose referral progress, coupon sharing and compensation evidence',async()=>{
   const track=await readFile(new URL('../ui/order-track.html',import.meta.url),'utf8');
   const home=await readFile(new URL('../ui/single-order-home.html',import.meta.url),'utf8');
   assert.match(track,/offerCountdown/);assert.match(track,/referral-progress/);assert.match(track,/copyReferral/);assert.match(track,/coupon-unlocked/);assert.match(track,/compensationEvidence/);
-  assert.match(home,/api\/public\/reviews/);assert.match(home,/advpro_referral/);
+  assert.doesNotMatch(home,/api\/public\/reviews/);assert.match(home,/advpro_referral/);
 });

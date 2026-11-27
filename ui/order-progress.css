@@ -106,9 +106,9 @@ html[data-order-progress="mismatch"] #orderProgress { border-color: #ef444459; }
 .verification-actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; width: 100%; }
 .verification-actions button { flex: 1 1 155px; }
 .track-verification-stage { display: none; }
-html.current-track[data-order-progress] .track-verification-stage:has(#orderProgress) { display: block; }
+html.current-track[data-order-progress] .track-verification-stage { display: block; }
 .single-home .order-stage-layout { min-height: 320px; }
-html.current-track[data-order-progress] #portal:not(:has(#orderProgress)) { display: none; }
+html.current-track[data-order-progress] #portal { display: none; }
 .verification-reveal { animation: verification-reveal 220ms cubic-bezier(.2,.7,.2,1) both; }
 @keyframes verification-spin { to { transform: rotate(360deg); } }
 @keyframes verification-label { from { opacity: .35; } }
@@ -116,3 +116,29 @@ html.current-track[data-order-progress] #portal:not(:has(#orderProgress)) { disp
 @media (prefers-reduced-motion: reduce) {
   .verification-orbit::before, .verification-reveal, .verification-status .verification-detail { animation: none; }
 }
+
+.clean-footer { margin-top: 17px; text-align: center; }
+.support-line {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: #94a3b8;
+  font-size: .82rem;
+  font-weight: 700;
+  text-decoration: none;
+  transition: color .2s, transform .2s;
+}
+.support-line strong { color: #22c55e; font-weight: 900; }
+.support-line svg { width: 17px; height: 17px; color: #22c55e; }
+.support-line:hover { color: #cbd5e1; transform: translateY(-1px); }
+.support-line:hover strong, .support-line:hover svg { color: #4ade80; }
+.footer-mark {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  margin: 15px auto 0;
+}
+.footer-mark img { width: 34px; height: 34px; object-fit: contain; display: block; }
+.copyright { margin-top: 13px; color: #64748b; font-size: .72rem; }
+.service-shell .clean-footer { margin: 17px auto 32px; padding-inline: 14px; }

@@ -33,16 +33,14 @@ test('order tracking verifies automatically and opens details behind the verifie
   assert.doesNotMatch(source, /translateY\(-(?:48|58)px\)/);
 });
 
-test('order details switch to another lookup in place without a page reload', async () => {
+test('switching orders returns to the source portal using a known portal identifier', async () => {
   const source = await readFile(new URL('../ui/order-track.html', import.meta.url), 'utf8');
+  const progress = await readFile(new URL('../lib/order-progress.js', import.meta.url), 'utf8');
   assert.match(source, /استعلام عن طلب آخر/);
-  assert.match(source, /showAnotherOrderLookup/);
-  assert.match(source, /history\.replaceState\(\{\},'', '\/'\)/);
-  assert.match(source, /anotherOrderNumber/);
-  assert.match(source, /input\.focus\(\)/);
-  assert.match(source, /portal\.querySelector\('\.order-stage-layout'\)\.prepend\(progressCard\)/);
-  assert.match(source, /navigating = await openOrderDetails\(/);
-  assert.doesNotMatch(source, /switchOrder[^\n]+location\.(?:assign|replace|reload)/);
+  assert.match(source, /if \(event\.target\.closest\('#switchOrder'\)\) returnToOrderLookup\(\)/);
+  assert.doesNotMatch(source, /anotherOrderForm|anotherOrderNumber/);
+  assert.match(progress, /url\.searchParams\.set\('from', source\)/);
+  assert.match(progress, /lookupHosts\.get\(new URL\(location\.href\)\.searchParams\.get\('from'\)\)/);
 });
 
 test('home verifies on the lookup page before opening the details document', async () => {
@@ -113,6 +111,10 @@ test('all public portals serve a shared in-place loader and have no manual devic
     assert.equal(html.match(/تم التحقق من الطلب وتوثيق جهازك بنجاح ✓/g)?.length, 1, name);
     assert.match(html, /مطابقة بيانات الطلب…/);
     assert.match(html, /فحص بصمة المتصفح والجهاز…/);
+    assert.match(html, /class="clean-footer"/);
+    assert.match(html, /لا تجد رقم الطلب؟/);
+    assert.match(html, /© بوابة أدفانسد برو/);
+    assert.doesNotMatch(html, /آراء عملائنا المعتمدة|id="socialProof"|id="proofTrack"/);
     assert.doesNotMatch(html, /deviceBindingForm|أوافق على ربط الاشتراك|confirmOrderFound|id="continueToDevice"/);
     assert.equal(html.match(/<body\b/g)?.length, 1, name);
     if (name !== 'home') {
