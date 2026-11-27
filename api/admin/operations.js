@@ -1,5 +1,6 @@
-import { allowedAdmin, tokenFromRequest } from './_auth.js';
+import { allowedAdmin, tokenFromRequest } from '../../lib/admin-auth.js';
 import disputeReportHandler from '../../lib/dispute-report-api.js';
+import { handleAdminCompensation, handleAdminReview, handleSallaProductSync } from '../../lib/admin-extra-handlers.js';
 import { sendRenewalEmail } from '../../lib/renewal-email.js';
 import { createHash, randomBytes } from 'node:crypto';
 import { buildCustomerReputations } from '../../lib/customer-reputation.js';
@@ -24,6 +25,9 @@ async function db(path, options = {}) {
 export default async function handler(request, response) {
   if (request.query?._route === 'dispute-report') return disputeReportHandler(request, response);
   if (!(await requireAdmin(request))) return response.status(401).json({ message: 'جلسة غير صالحة.' });
+  if (request.query?._route === 'reviews') return handleAdminReview(request, response);
+  if (request.query?._route === 'compensations') return handleAdminCompensation(request, response);
+  if (request.query?._route === 'sync-salla') return handleSallaProductSync(request, response);
   if (request.query?._route === 'reset-device') {
     if (request.method !== 'POST') return response.status(405).json({ message: 'الطريقة غير مسموحة.' });
     const orderId = /^[0-9a-f-]{36}$/i.test(String(request.query?.orderId || '')) ? String(request.query.orderId) : null;

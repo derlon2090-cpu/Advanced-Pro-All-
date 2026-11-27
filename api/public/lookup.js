@@ -1,5 +1,6 @@
 import { createHmac, randomBytes } from 'node:crypto';
 import { blockForMaintenance } from '../../lib/maintenance-mode.js';
+import { handlePublicReviews, handlePublicSettings } from '../../lib/public-info-handlers.js';
 
 const ip = request => String(request.headers['x-forwarded-for'] || request.headers['x-real-ip'] || 'unknown').split(',')[0].trim().slice(0, 128);
 const normalizeOrder = value => String(value || '').trim().replace(/[٠-٩]/g, digit => String(digit.charCodeAt(0) - 1632)).replace(/[۰-۹]/g, digit => String(digit.charCodeAt(0) - 1776));
@@ -65,6 +66,8 @@ async function importFromSalla(orderNumber) {
 }
 
 export default async function handler(request, response) {
+  if (request.query?._route === 'reviews') return handlePublicReviews(request, response);
+  if (request.query?._route === 'system-settings') return handlePublicSettings(request, response);
   if (request.method !== 'POST') return response.status(405).json({ message: 'الطريقة غير مسموحة.' });
   if (await blockForMaintenance(response)) return;
   const order = normalizeOrder(request.body?.orderNumber || request.body?.order_number || request.body?.salla_reference_id);

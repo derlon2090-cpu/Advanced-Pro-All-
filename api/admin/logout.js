@@ -1,4 +1,4 @@
-import { clearSession } from "./_auth.js";
+import { clearSession } from "../../lib/admin-auth.js";
 
 export default function handler(request, response) {
   if (request.method !== "POST") return response.status(405).json({ message: "الطريقة غير مسموحة." });

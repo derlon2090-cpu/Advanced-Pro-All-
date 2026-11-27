@@ -6,7 +6,8 @@ alter table public.compensation_requests
   add column if not exists customer_email text;
 alter table public.order_reviews add column if not exists salla_shared_at timestamptz;
 
-create unique index if not exists compensation_evidence_hash_unique_idx
+drop index if exists public.compensation_evidence_hash_unique_idx;
+create index if not exists compensation_evidence_hash_lookup_idx
   on public.compensation_requests(evidence_image_hash) where evidence_image_hash is not null;
 
 alter table public.system_settings

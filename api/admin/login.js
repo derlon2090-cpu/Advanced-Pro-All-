@@ -1,4 +1,4 @@
-import { allowedAdmin, configured, setSession, supabaseConfig } from "./_auth.js";
+import { allowedAdmin, configured, setSession, supabaseConfig } from "../../lib/admin-auth.js";
 
 export default async function handler(request, response) {
   if (request.method !== "POST") return response.status(405).json({ message: "الطريقة غير مسموحة." });
