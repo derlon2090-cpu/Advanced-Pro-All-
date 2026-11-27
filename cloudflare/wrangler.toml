@@ -4,4 +4,4 @@ compatibility_date = "2025-01-01"
 workers_dev = false
 
 [vars]
-VERCEL_APP_URL = "https://ok-phi-ten.vercel.app"
+VERCEL_APP_URL = "https://advpro.app"

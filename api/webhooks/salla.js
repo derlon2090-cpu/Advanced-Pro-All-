@@ -21,8 +21,8 @@ async function assignmentPaused() {
 }
 async function sendWhatsApp({ phone, orderNumber, trackingToken }) {
   if (!process.env.WHATSAPP_API_URL || !process.env.WHATSAPP_API_TOKEN || !phone || !trackingToken) return false;
-  let baseUrl = 'https://ok-phi-ten.vercel.app';
-  try { baseUrl = new URL(process.env.APP_BASE_URL || baseUrl).origin; } catch {}
+  let baseUrl = 'https://advpro.app';
+  try { baseUrl = new URL(process.env.APP_BASE_URL || process.env.PUBLIC_APP_URL || process.env.NEXT_PUBLIC_APP_URL || baseUrl).origin; } catch {}
   const message = `أهلاً بك في بوابة أدفانسد برو ✨\nرقم طلبك: ${orderNumber}\nرابط المتابعة: ${baseUrl}/track/${trackingToken}\nتنبيه: الاشتراك مخصص لجهاز واحد.`;
   const response = await fetch(process.env.WHATSAPP_API_URL, {
     method: 'POST', headers: { authorization: `Bearer ${process.env.WHATSAPP_API_TOKEN}`, 'content-type': 'application/json' },

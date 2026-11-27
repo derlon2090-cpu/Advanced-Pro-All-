@@ -13,11 +13,27 @@ test('shared account passwords are encrypted and decryptable only with the serve
 
 test('growth migration includes referral reward and evidence deduplication safeguards', async()=>{
   const sql=await readFile(new URL('../supabase/migrations/021_growth_automation_and_compensation_evidence.sql',import.meta.url),'utf8');
-  assert.match(sql,/compensation_evidence_hash_lookup_idx/);
+  assert.match(sql,/create index if not exists idx_compensation_requests_evidence_image_hash\s+on public\.compensation_requests \(evidence_image_hash\)/i);
   assert.doesNotMatch(sql,/create unique index[^;]+evidence_image_hash/is);
   assert.match(sql,/reward_order_referral/);
   assert.match(sql,/interval '5 days'/);
   assert.match(sql,/admin_resolve_compensation/);
+});
+
+test('wrong-device compensation attempts are rejected and visible to administrators',async()=>{
+  const source=await readFile(new URL('../api/public/compensate.js',import.meta.url),'utf8');
+  assert.match(source,/device_mismatch_blocked:\s*true/);
+  assert.match(source,/status:\s*'rejected'/);
+  assert.match(source,/event_type:\s*'compensation_wrong_device'/);
+});
+
+test('official defaults use advpro.app for links and outbound email',async()=>{
+  const env=await readFile(new URL('../.env.example',import.meta.url),'utf8');
+  const email=await readFile(new URL('../lib/operational-email.js',import.meta.url),'utf8');
+  assert.match(env,/APP_BASE_URL=https:\/\/advpro\.app/);
+  assert.match(env,/PUBLIC_APP_URL=https:\/\/advpro\.app/);
+  assert.match(env,/RESEND_FROM_EMAIL=noreply@advpro\.app/);
+  assert.match(email,/noreply@advpro\.app/);
 });
 
 test('Vercel Hobby deployment stays within the 12 serverless function limit',async()=>{

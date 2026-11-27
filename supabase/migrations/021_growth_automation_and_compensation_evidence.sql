@@ -7,8 +7,9 @@ alter table public.compensation_requests
 alter table public.order_reviews add column if not exists salla_shared_at timestamptz;
 
 drop index if exists public.compensation_evidence_hash_unique_idx;
-create index if not exists compensation_evidence_hash_lookup_idx
-  on public.compensation_requests(evidence_image_hash) where evidence_image_hash is not null;
+drop index if exists public.compensation_evidence_hash_lookup_idx;
+create index if not exists idx_compensation_requests_evidence_image_hash
+  on public.compensation_requests (evidence_image_hash);
 
 alter table public.system_settings
   add column if not exists upsell_enabled boolean not null default false,

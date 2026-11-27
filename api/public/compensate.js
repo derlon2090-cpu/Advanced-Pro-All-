@@ -29,7 +29,10 @@ export default async function handler(request, response) {
   const [order] = await orderResult.json();
   if (!order) return response.status(404).json({ message: 'الطلب غير موجود.' });
   if (!verifiedDevice(request, order.id)) {
-    await db('mail_security_events', { method:'POST', body:JSON.stringify({ provider_message_id:`compensation-device-${randomUUID()}`, event_type:'compensation_wrong_device', suspected_order_id:order.id, attribution_basis:'unverified_device_attempt' }) }).catch(()=>null);
+    await Promise.allSettled([
+      db('mail_security_events', { method: 'POST', body: JSON.stringify({ provider_message_id: `compensation-device-${randomUUID()}`, event_type: 'compensation_wrong_device', suspected_order_id: order.id, attribution_basis: 'unverified_device_attempt' }) }),
+      db('compensation_requests', { method: 'POST', body: JSON.stringify({ order_id: order.id, reason: 'other', customer_note: 'محاولة تقديم طلب تعويض من جهاز غير معتمد.', status: 'rejected', review_mode: 'manual_review', strikes_at_request: Number(order.security_strikes || 0), device_mismatch_blocked: true, customer_email: order.reminder_email || order.customer_email || null, reviewed_at: new Date().toISOString() }) }),
+    ]);
     return response.status(403).json({ message: 'تنبيه أمني: لا يمكن تقديم طلب التعويض من هذا الجهاز. يرجى فتح الرابط من نفس جهازك الأصلي المعتمد في الطلب.' });
   }
   if (!order.has_warranty || !order.warranty_expires_at || new Date(order.warranty_expires_at) <= new Date()) return response.status(403).json({ message: 'الضمان غير سارٍ لهذا الطلب.' });
@@ -69,10 +72,10 @@ export default async function handler(request, response) {
   }) });
   if (!createdResult.ok) return response.status(502).json({ message: 'تعذر تسجيل طلب التعويض.' });
   const [created] = await createdResult.json();
-  if (!autoEligible) return response.status(202).json({ ok: true, status: 'manual_review', reputation });
+  if (!autoEligible) return response.status(202).json({ ok: true, status: 'manual_review', duplicateEvidence, message: duplicateEvidence ? 'تم استلام الطلب وتحويله للمراجعة البشرية لأن صورة الإثبات استُخدمت سابقًا.' : 'تم استلام الطلب وتحويله للمراجعة البشرية الإلزامية بناءً على سجل النزاهة التراكمي.', reputation });
   const replacement = await db('rpc/auto_replace_order_account', { method: 'POST', body: JSON.stringify({ p_request_id: created.id }) });
   if (!replacement.ok) return response.status(202).json({ ok: true, status: 'manual_review', reputation });
   const [decision] = await replacement.json();
-  if(decision?.approved){const to=String(request.body?.email||order.reminder_email||order.customer_email||'').trim();if(to){const portal=`${process.env.APP_BASE_URL||process.env.NEXT_PUBLIC_APP_URL||'https://ok-phi-ten.vercel.app'}/track/${encodeURIComponent(token)}`;await sendOperationalEmail({to,subject:`تم اعتماد تعويضك وتفعيل الحساب البديل — الطلب #${order.order_number}`,html:`<div dir="rtl"><h2>تم التعويض بنجاح ✓</h2><p>تم تفعيل حساب بديل لطلبك. افتح بطاقة الاشتراك من جهازك المعتمد لعرض البيانات الجديدة.</p><a href="${portal}">فتح بطاقة الاشتراك</a></div>`,text:`تم تفعيل حساب بديل للطلب #${order.order_number}. افتح بطاقتك: ${portal}`}).catch(()=>null)}}
+  if(decision?.approved){const to=String(request.body?.email||order.reminder_email||order.customer_email||'').trim();if(to){const portal=`${process.env.APP_BASE_URL||process.env.PUBLIC_APP_URL||process.env.NEXT_PUBLIC_APP_URL||'https://advpro.app'}/track/${encodeURIComponent(token)}`;await sendOperationalEmail({to,subject:`تم اعتماد تعويضك وتفعيل الحساب البديل — الطلب #${order.order_number}`,html:`<div dir="rtl"><h2>تم التعويض بنجاح ✓</h2><p>تم تفعيل حساب بديل لطلبك. افتح بطاقة الاشتراك من جهازك المعتمد لعرض البيانات الجديدة.</p><a href="${portal}">فتح بطاقة الاشتراك</a></div>`,text:`تم تفعيل حساب بديل للطلب #${order.order_number}. افتح بطاقتك: ${portal}`}).catch(()=>null)}}
   return response.status(decision?.approved ? 200 : 202).json({ ok: true, status: decision?.approved ? 'auto_approved' : 'manual_review', reason: decision?.reason, reputation });
 }

@@ -256,7 +256,7 @@
             const response = await fetch('/api/public/compensate/' + encodeURIComponent(token), { method:'POST', headers:{'content-type':'application/json'}, body:JSON.stringify({ reason, note, email, evidenceImage:evidenceData }) });
             const result = await response.json().catch(() => ({})); if (!response.ok) throw new Error(result.message || 'تعذر إرسال طلب التعويض.');
             compensationForm.hidden = true; resultBox.className = 'compensation-result' + (result.status === 'manual_review' ? ' manual' : '');
-            resultBox.textContent = result.status === 'auto_approved' ? 'تم التحقق من سجلك واعتماد التعويض آليًا! تم تفعيل حسابك البديل الآن.' : 'تم استلام طلبك وتحويله للمراجعة البشرية الإلزامية بناءً على سجل النزاهة التراكمي.';
+            resultBox.textContent = result.status === 'auto_approved' ? 'تم التحقق من سجلك واعتماد التعويض آليًا! تم تفعيل حسابك البديل الآن.' : (result.message || 'تم استلام طلبك وتحويله للمراجعة البشرية الإلزامية بناءً على سجل النزاهة التراكمي.');
           } catch (error) { resultBox.textContent = error.message; submit.disabled = false; submit.textContent = 'فحص الأهلية والاستبدال الآن'; }
         };
       }

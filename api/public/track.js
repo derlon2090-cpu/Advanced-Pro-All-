@@ -101,7 +101,7 @@ export default async function handler(request, response) {
     const customer = Array.isArray(order.customers) ? order.customers[0] : order.customers;
     order.customer_name = customer?.name;order.customer_email = email;order.renewal_store_url = portalSettings.renewal_store_url || null;
     const daysRemaining = order.expires_at ? Math.ceil((new Date(order.expires_at) - Date.now()) / 86400000) : 0;
-    try { await sendReminderConfirmation({ order, daysRemaining, baseUrl: process.env.APP_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://ok-phi-ten.vercel.app' }); }
+    try { await sendReminderConfirmation({ order, daysRemaining, baseUrl: process.env.APP_BASE_URL || process.env.PUBLIC_APP_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://advpro.app' }); }
     catch (error) { return response.status(502).json({ saved: true, message: 'تم حفظ البريد، لكن تعذر إرسال رسالة التأكيد حاليًا.' }); }
     return response.status(200).setHeader('Cache-Control', 'private, no-store').json({ ok: true, emailMasked: maskEmail(email), subscribedAt });
   }
