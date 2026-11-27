@@ -1,11 +1,11 @@
 <style>
-  body.split-home-ready { background: #071a35 !important; }
-  html.current-home body { background: #071a35 !important; }
+  body.split-home-ready { background: #050a18 !important; }
+  html.current-home body { background: #050a18 !important; }
   html.current-home .top, html.current-home .shell > .footer { display: none !important; }
   html.current-home .shell { max-width: none; padding: 0; }
   .split-home-ready .top, .split-home-ready > .footer, .split-home-ready .shell > .footer { display: none !important; }
   .split-home-ready .shell { max-width: none; padding: 0; }
-  .single-home { min-height: 100vh; background: #071a35; color: #f8fafc; overflow: hidden; }
+  .single-home { min-height: 100vh; background: #050a18; color: #f8fafc; overflow: hidden; }
   .split-top {
     position: relative;
     min-height: 45vh;
@@ -14,16 +14,15 @@
     justify-content: center;
     text-align: center;
     overflow: hidden;
-    background: linear-gradient(135deg, #9a3412 0%, #c2410c 55%, #ea580c 100%);
+    background: linear-gradient(135deg, #9a3412 0%, #ea580c 55%, #c2410c 100%);
   }
   .split-top::before {
     content: "";
     position: absolute;
     inset: 0;
     pointer-events: none;
-    background-image: radial-gradient(circle, rgba(255, 255, 255, .14) 0 1.5px, transparent 1.6px);
-    background-size: 26px 26px;
-    background-position: 13px 13px;
+    background-image: radial-gradient(rgba(255, 255, 255, .16) 1.5px, transparent 1.5px);
+    background-size: 24px 24px;
   }
   .split-copy { position: relative; z-index: 1; max-width: 760px; }
   .split-title {
@@ -34,15 +33,18 @@
     letter-spacing: -.045em;
   }
   .split-lead { margin: 0; color: #fff; opacity: .9; font-size: clamp(.95rem, 2vw, 1.08rem); }
-  .split-bottom { min-height: 55vh; padding: 0 20px 36px; background: #071a35; }
-  .floating-wrap { position: relative; z-index: 2; width: min(590px, 100%); margin: 0 auto; transform: translateY(-112px); }
+  .split-bottom { min-height: 55vh; padding: 0 20px 36px; background: #050a18; }
+  .floating-wrap { position: relative; z-index: 2; width: min(590px, 100%); margin: 0 auto; transform: translateY(-36px); }
   .single-card {
     padding: 28px;
     border: 1px solid rgba(255, 255, 255, .12);
     border-radius: 24px;
-    background: linear-gradient(145deg, rgba(11, 33, 66, .98), rgba(7, 24, 51, .98));
+    background: rgba(11, 18, 36, .92);
     box-shadow: 0 32px 80px rgba(0, 0, 0, .52), 0 14px 34px rgba(2, 6, 23, .58), inset 0 1px rgba(255, 255, 255, .04);
   }
+  .portal-health { position:absolute; z-index:2; top:24px; right:max(20px,calc((100% - 1120px)/2)); display:inline-flex; align-items:center; gap:9px; padding:9px 14px; border:1px solid #166534; border-radius:999px; color:#86efac; background:#052e20; font-size:.82rem; font-weight:800; }
+  .portal-health i { width:9px; height:9px; border-radius:50%; background:#22c55e; box-shadow:0 0 0 5px #22c55e1c,0 0 18px #22c55e; animation:healthPulse 1.8s infinite; }
+  @keyframes healthPulse { 50% { box-shadow:0 0 0 8px transparent,0 0 22px #22c55e; } }
   .single-label {
     display: block;
     margin-bottom: 12px;
@@ -158,7 +160,7 @@
     .split-top { min-height: 43vh; padding: 52px 16px 132px; }
     .split-title { font-size: 2.35rem; }
     .split-bottom { min-height: 57vh; padding-inline: 14px; }
-    .floating-wrap { transform: translateY(-88px); }
+    .floating-wrap { transform: translateY(-36px); }
     .single-card { padding: 19px 16px; border-radius: 20px; }
     .single-input { padding-inline: 48px 88px; font-size: 1.05rem; }
   }

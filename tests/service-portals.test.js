@@ -37,3 +37,24 @@ test('customer portals display the verified device and hide pending credentials'
   assert.match(crunchyroll, /mailMatchHint/);
   assert.match(crunchyroll, /مطابق لجهازك/);
 });
+
+test('all customer portals share the dark glass theme and clean dot-matrix hero', async () => {
+  const files = [
+    '../ui/single-order-home.html',
+    '../ui/order-track.html',
+    '../ui/crunchyroll-portal.html',
+    '../ui/chatgpt-portal.html',
+    '../ui/compensate-portal.html',
+  ];
+  const pages = await Promise.all(files.map(file => readFile(new URL(file, import.meta.url), 'utf8')));
+  for (const page of pages) {
+    assert.match(page, /#050a18/i);
+    assert.match(page, /#9a3412 0%,\s*#ea580c 55%,\s*#c2410c 100%/i);
+    assert.match(page, /radial-gradient\(rgba\(255,\s*255,\s*255,\s*\.16\)\s*1\.5px,\s*transparent\s+1\.5px\)/i);
+    assert.match(page, /background-size:\s*24px 24px/i);
+  }
+  for (const file of ['../ui/single-order-home-shell.html', '../ui/order-track-shell.html']) {
+    const shell = await readFile(new URL(file, import.meta.url), 'utf8');
+    assert.match(shell, /النظام يعمل بكفاءة/);
+  }
+});

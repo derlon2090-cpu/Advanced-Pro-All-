@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 
 test('order tracking uses the split brand layout and explicit lifecycle labels', async () => {
   const source = await readFile(new URL('../ui/order-track.html', import.meta.url), 'utf8');
-  assert.match(source, /linear-gradient\(135deg, #7c2d12 0%, #c2410c 50%, #ea580c 100%\)/);
+  assert.match(source, /linear-gradient\(135deg, #9a3412 0%, #ea580c 55%, #c2410c 100%\)/);
   assert.match(source, /حالة الطلب: سارٍ ✓/);
   assert.match(source, /حالة الطلب: تحت المراجعة والتجهيز ⏳/);
   assert.match(source, /حالة الطلب: منتهي/);
@@ -39,11 +39,11 @@ test('home lookup shows a branded transition before navigation', async () => {
   assert.match(source, /جارِ فتح تفاصيل الاشتراك بأمان/);
   assert.match(source, /normalizeOrderNumber/);
   assert.match(source, /\.order-input-wrap:focus-within/);
-  assert.match(source, /background: #071a35/);
+  assert.match(source, /background: #050a18/);
   assert.match(source, /form\.querySelector\('\.single-action'\)/);
   assert.match(shell, /id="pasteOrderNumber"/);
   assert.match(shell, /id="clearOrderNumber"/);
-  assert.doesNotMatch(shell, /النظام يعمل بكفاءة/);
+  assert.match(shell, /النظام يعمل بكفاءة/);
   assert.match(shell, /عرض بيانات الاشتراك ←/);
 });
 
