@@ -18,6 +18,12 @@ test('home lookup shows a branded transition before navigation', async () => {
   assert.match(source, /جارِ فتح تفاصيل الاشتراك بأمان/);
 });
 
+test('home page renders immediately without the orange split boot screen', async () => {
+  const build = await readFile(new URL('../scripts/build.mjs', import.meta.url), 'utf8');
+  assert.doesNotMatch(build, /split-boot/);
+  assert.doesNotMatch(build, /body\{opacity:0!important\}/);
+});
+
 test('fulfillment migration resets subscription and warranty start dates', async () => {
   const sql = await readFile(new URL('../supabase/migrations/018_subscription_starts_on_fulfillment.sql', import.meta.url), 'utf8');
   assert.match(sql, /starts_at = v_started_at/);
