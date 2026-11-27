@@ -42,11 +42,12 @@ test('order details switch to another lookup in place without a page reload', as
   assert.doesNotMatch(source, /switchOrder[^\n]+location\.(?:assign|replace|reload)/);
 });
 
-test('home lookup shows a branded transition before navigation', async () => {
+test('home lookup keeps the search state until the tracking page confirms the order', async () => {
   const source = await readFile(new URL('../ui/single-order-home.html', import.meta.url), 'utf8');
   const shell = await readFile(new URL('../ui/single-order-home-shell.html', import.meta.url), 'utf8');
   assert.match(source, /order-transition/);
-  assert.match(source, /جارِ فتح تفاصيل الاشتراك بأمان/);
+  assert.match(source, /جارِ البحث عن طلبك/);
+  assert.doesNotMatch(source, /<strong>تم العثور على طلبك<\/strong>/);
   assert.match(source, /normalizeOrderNumber/);
   assert.match(source, /\.order-input-wrap:focus-within/);
   assert.match(source, /background: #071a35/);

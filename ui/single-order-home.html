@@ -229,7 +229,7 @@
         const data = await result.json().catch(() => ({}));
         if (result.ok && data.redirectTo) {
           localStorage.removeItem('advpro_referral');
-          var transition=document.createElement('div');transition.className='order-transition';transition.innerHTML='<div><i></i><strong>تم العثور على طلبك</strong><small>جارِ فتح تفاصيل الاشتراك بأمان…</small></div>';document.body.append(transition);requestAnimationFrame(function(){transition.classList.add('show')});setTimeout(function(){location.assign(data.redirectTo)},320);return;
+          var transition=document.createElement('div');transition.className='order-transition';transition.innerHTML='<div><i></i><strong>جارِ البحث عن طلبك…</strong><small>لحظات ونجهز رحلة التحقق الآمنة</small></div>';document.body.append(transition);requestAnimationFrame(function(){transition.classList.add('show')});setTimeout(function(){location.assign(data.redirectTo)},320);return;
         }
         message.textContent = result.status === 503
           ? 'خدمة الاستعلام غير متاحة مؤقتًا. يرجى المحاولة بعد قليل.'
