@@ -1,5 +1,8 @@
 <style>
   body.order-track-ready { background: #050a18 !important; }
+  html.current-track body { background: #050a18 !important; }
+  html.current-track .top, html.current-track .shell > .footer { display: none !important; }
+  html.current-track .shell { max-width: none; padding: 0; }
   .order-track-ready .top, .order-track-ready > .footer, .order-track-ready .shell > .footer { display: none !important; }
   .order-track-ready .shell { max-width: none; padding: 0; }
   .order-portal { min-height: 100vh; color: #f8fafc; background: #050a18; }

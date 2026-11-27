@@ -35,6 +35,18 @@ test('built homepage contains only the current lookup design and disables docume
   assert.ok(config.headers.some(rule => rule.source === '/' && rule.headers.some(header => header.key === 'Cache-Control' && header.value.includes('no-store'))));
 });
 
+test('track routes use a dedicated secure loading document without homepage flashes', async () => {
+  const html = await readFile(new URL('../public/track.html', import.meta.url), 'utf8');
+  const config = JSON.parse(await readFile(new URL('../vercel.json', import.meta.url), 'utf8'));
+  assert.match(html, /<span class="order-number">بوابة الطلب الآمنة<\/span>/);
+  assert.match(html, /جارِ تجهيز تفاصيل طلبك/);
+  assert.doesNotMatch(html, /<form id="singleOrderLookup"/);
+  assert.doesNotMatch(html, /id="premiumLookup"/);
+  assert.doesNotMatch(html, /نظام الضمان والمتابعة الذكي/);
+  assert.ok(config.rewrites.some(route => route.source === '/track/:path*' && route.destination === '/track.html'));
+  assert.ok(config.rewrites.some(route => route.source === '/compensate/:path*' && route.destination === '/track.html'));
+});
+
 test('fulfillment migration resets subscription and warranty start dates', async () => {
   const sql = await readFile(new URL('../supabase/migrations/018_subscription_starts_on_fulfillment.sql', import.meta.url), 'utf8');
   assert.match(sql, /starts_at = v_started_at/);
