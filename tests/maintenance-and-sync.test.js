@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { blockForMaintenance, getMaintenanceMode, maintenanceAppliesTo } from '../lib/maintenance-mode.js';
+import { blockForMaintenance, getMaintenanceMode, maintenanceAppliesTo, normalizeMaintenanceSettings } from '../lib/maintenance-mode.js';
 import { insertUnknownSallaProduct, normalizeSallaProduct, upsertSallaProducts } from '../lib/salla-products.js';
 
 test('maintenance blocks public APIs but excludes admin and Salla webhooks', () => {
@@ -22,6 +22,11 @@ test('maintenance state returns 503 with the configured customer message', async
   assert.equal(output.statusCode, 503);assert.equal(output.body.maintenance, true);assert.equal(output.body.message, 'صيانة مجدولة');
   if (previousUrl === undefined) delete process.env.SUPABASE_URL; else process.env.SUPABASE_URL = previousUrl;
   if (previousKey === undefined) delete process.env.SUPABASE_SERVICE_ROLE_KEY; else process.env.SUPABASE_SERVICE_ROLE_KEY = previousKey;
+});
+
+test('maintenance remains usable before migration 017 through legacy banner fields', () => {
+  assert.deepEqual(normalizeMaintenanceSettings({ banner_active: true, banner_message: 'تحديث سريع' }), { enabled: true, message: 'تحديث سريع' });
+  assert.deepEqual(normalizeMaintenanceSettings({ maintenance_enabled: false, maintenance_message: 'حديث', banner_active: true }), { enabled: false, message: 'حديث' });
 });
 
 test('a new Salla order product is normalized and inserted with safe defaults', async () => {

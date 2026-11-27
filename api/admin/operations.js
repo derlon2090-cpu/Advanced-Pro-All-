@@ -153,6 +153,16 @@ export default async function handler(request, response) {
       if (typeof settings?.renewal_reminders_enabled === 'boolean') settingsUpdate.renewal_reminders_enabled = settings.renewal_reminders_enabled;
       if (Array.isArray(settings?.renewal_reminder_days)) settingsUpdate.renewal_reminder_days = [...new Set(settings.renewal_reminder_days.map(Number).filter(day => day >= 1 && day <= 30))].sort((a, b) => b - a).slice(0, 5);
       result = await db('system_settings?singleton=eq.true', { method: 'PATCH', body: JSON.stringify(settingsUpdate) });
+      if (!result.ok) {
+        const failure = await result.clone().json().catch(() => ({}));
+        const missingMaintenanceColumns = /maintenance_(enabled|message)/i.test(String(failure.message || failure.details || '')) || failure.code === 'PGRST204';
+        if (missingMaintenanceColumns) {
+          const { maintenance_enabled, maintenance_message, ...legacyUpdate } = settingsUpdate;
+          legacyUpdate.banner_active = maintenance_enabled;
+          legacyUpdate.banner_message = maintenance_message;
+          result = await db('system_settings?singleton=eq.true', { method: 'PATCH', body: JSON.stringify(legacyUpdate) });
+        }
+      }
     } else if (action === 'bulk_import') {
       const aliases = String(bulk?.entries || '').split(/\r?\n/).map(line => line.trim().split(/[,:]/)[0].trim().toLowerCase()).filter(value => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(value));
       if (!bulk?.storeId || !aliases.length) return response.status(400).json({ message: 'أدخل بريدًا صالحًا واحدًا على الأقل.' });
@@ -165,7 +175,9 @@ export default async function handler(request, response) {
       if (!emailAccountId) return response.status(400).json({ message: 'معرّف الحساب مطلوب.' });
       result = await db('rpc/confirm_password_rotation', { method: 'POST', body: JSON.stringify({ p_email_account_id: emailAccountId }) });
     }
-    return result.ok ? response.status(204).end() : response.status(502).json({ message: 'تعذر تأكيد التحديث.' });
+    if (result.ok) return response.status(204).end();
+    const failure = await result.json().catch(() => ({}));
+    return response.status(502).json({ message: failure.message ? `تعذر حفظ الإعدادات: ${String(failure.message).slice(0, 220)}` : 'تعذر تأكيد التحديث.' });
   }
   return response.status(405).json({ message: 'الطريقة غير مسموحة.' });
 }
