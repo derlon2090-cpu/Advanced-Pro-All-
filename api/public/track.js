@@ -159,8 +159,8 @@ export default async function handler(request, response) {
   order.trusted_device = trustedDevice;
   const compensationAvailable = Boolean(deviceVerified && order.acknowledged_at && order.has_warranty && order.warranty_expires_at && new Date(order.warranty_expires_at) > new Date());
   const compensationEligible = compensationAvailable && Number(order.security_strikes || 0) === 0;
-  const origin=`https://${String(request.headers.host||'').replace(/[^a-zA-Z0-9.:-]/g,'')}`;
-  const referralUrl=deviceVerified&&order.referral_code?`${origin}/?ref=${encodeURIComponent(order.referral_code)}`:null;
+  const appBase=(process.env.APP_BASE_URL||process.env.PUBLIC_APP_URL||process.env.NEXT_PUBLIC_APP_URL||'https://advpro.app').replace(/\/$/,'');
+  const referralUrl=deviceVerified&&order.referral_code?`${appBase}/?ref=${encodeURIComponent(order.referral_code)}`:null;
   const referralTarget=Math.min(Math.max(Number(portalSettings.referral_coupon_target)||5,1),100);
   const referralProgram=referralUrl?{url:referralUrl,count:referralCount,target:referralTarget,enabled:portalSettings.referral_coupon_enabled!==false,discountLabel:portalSettings.referral_coupon_discount_label||'خصم خاص 25% لعملائنا السفراء',coupon:order.referral_coupon_unlocked_at&&order.referral_assigned_coupon?order.referral_assigned_coupon:null,storeUrl:publicUrl(portalSettings.renewal_store_url)}:null;
   const offerMinutes=Math.min(Math.max(Number(portalSettings.upsell_duration_minutes)||30,1),1440),offerExpiresAt=order.acknowledged_at?new Date(new Date(order.acknowledged_at).getTime()+offerMinutes*60000):null;
@@ -170,8 +170,8 @@ export default async function handler(request, response) {
   return response.status(200).setHeader('Cache-Control', 'private, no-store').json({
     order,
     actions: {
-      crunchyrollPortalUrl: deviceVerified && isCrunchyrollOrder(order) ? publicUrl(process.env.PUBLIC_CRUNCHYROLL_PORTAL_URL || portalSettings.crunchyroll_portal_url || 'https://advpro.app/crunchyroll') : null,
-      chatgptPortalUrl: deviceVerified && order.service_type === 'chatgpt' ? portalUrl(process.env.PUBLIC_CHATGPT_PORTAL_URL || portalSettings.chatgpt_portal_url || '/chatgpt') : null,
+      crunchyrollPortalUrl: deviceVerified && isCrunchyrollOrder(order) ? publicUrl(process.env.CR_PORTAL_URL || process.env.CRUNCHYROLL_PORTAL_URL || process.env.PUBLIC_CRUNCHYROLL_PORTAL_URL || portalSettings.crunchyroll_portal_url || 'https://anime.advpro.app') : null,
+      chatgptPortalUrl: deviceVerified && order.service_type === 'chatgpt' ? portalUrl(process.env.GPT_PORTAL_URL || process.env.CHATGPT_PORTAL_URL || process.env.PUBLIC_CHATGPT_PORTAL_URL || portalSettings.chatgpt_portal_url || 'https://gpt.advpro.app') : null,
       supportWhatsapp: deviceVerified ? String(process.env.PUBLIC_SUPPORT_WHATSAPP || '').replace(/\D/g, '').slice(0, 20) || null : null,
       sallaReviewUrl: deviceVerified ? publicUrl(process.env.PUBLIC_SALLA_REVIEW_URL || portalSettings.salla_review_url) : null,
       renewalStoreUrl: deviceVerified ? publicUrl(portalSettings.renewal_store_url) : null,

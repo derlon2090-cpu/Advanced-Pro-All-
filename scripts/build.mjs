@@ -19,7 +19,7 @@ await cp(resolve(root, ".openai/hosting.json"), resolve(dist, ".openai/hosting.j
 const workerSource = await readFile(resolve(root, "worker/index.js"), "utf8");
 const page = workerSource.match(/const page\s*=\s*`([\s\S]*?)`;\r?\n(?:const|export)/);
 if (!page) throw new Error("Could not extract the HTML page from worker/index.js");
-// The Vercel target serves public/index.html, while the Cloudflare target
+// The Vercel target serves host-specific static documents, while the Cloudflare target
 // renders the Worker response. Keep customer-facing enhancements identical
 // in both targets by extracting the same HTML fragments at build time.
 const fragments = ["settingsUi"]
@@ -51,14 +51,23 @@ await cp(resolve(root, "assets"), resolve(publicDir, "assets"), { recursive: tru
 await cp(resolve(root, "lib"), resolve(publicDir, "lib"), { recursive: true });
 const currentPage = page[1].replace(/<main id="portal">[\s\S]*?<\/main>/, singleOrderHomeShell);
 const trackPage = page[1].replace(/<main id="portal">[\s\S]*?<\/main>/, orderTrackShell);
+const adminPage = page[1]
+  .replace("path=location.pathname", "path='/admin'")
+  .replaceAll("location.href='/admin'", "location.href='/'");
 const additions = fragments + maintenanceMode + singleOrderHome + orderTrack + adminDashboard;
-const finishPage = (source, boot) => source
+const adminAdditions = adminDashboard
+  .replaceAll("location.pathname.startsWith('/admin')", "true")
+  .replaceAll("location.pathname==='/admin'", "true")
+  .replaceAll("location.href='/admin'", "location.href='/'");
+const finishPage = (source, boot, injected = additions) => source
   .replace("</head>", browserIcon + boot + palette + "</head>")
-  .replace("</body>", additions + "</body>")
+  .replace("</body>", injected + "</body>")
   .replace(/__STORE_URL__/g, process.env.PUBLIC_STORE_URL || "https://salla.sa");
-await writeFile(resolve(publicDir, "index.html"), finishPage(currentPage, currentHomeBoot), "utf8");
+await writeFile(resolve(publicDir, "home.html"), finishPage(currentPage, currentHomeBoot), "utf8");
+await writeFile(resolve(publicDir, "admin.html"), finishPage(adminPage, "", adminAdditions), "utf8");
 await writeFile(resolve(publicDir, "track.html"), finishPage(trackPage, currentTrackBoot), "utf8");
 await writeFile(resolve(publicDir, "crunchyroll.html"), crunchyrollPortal, "utf8");
 await writeFile(resolve(publicDir, "chatgpt.html"), chatgptPortal, "utf8");
 await writeFile(resolve(publicDir, "compensate.html"), compensatePortal, "utf8");
+await writeFile(resolve(publicDir, "404.html"), '<!doctype html><html lang="ar" dir="rtl"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>404 | أدفانسد برو</title><style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#071a35;color:#f8fafc;font-family:Tahoma,Arial,sans-serif;text-align:center}h1{font-size:4rem;margin:0;color:#ea580c}p{color:#cbd5e1}</style><main><h1>404</h1><p>الصفحة غير موجودة.</p></main></html>', "utf8");
 console.log(`Built ${dist} and ${publicDir}`);

@@ -69,12 +69,12 @@ test('home page renders immediately without the orange split boot screen', async
 });
 
 test('built homepage contains only the current lookup design and disables document caching', async () => {
-  const html = await readFile(new URL('../public/index.html', import.meta.url), 'utf8');
+  const html = await readFile(new URL('../public/home.html', import.meta.url), 'utf8');
   const config = JSON.parse(await readFile(new URL('../vercel.json', import.meta.url), 'utf8'));
   assert.match(html, /<form id="singleOrderLookup"/);
   assert.doesNotMatch(html, /<section class="hero"><span class="chip">نظام الضمان والمتابعة الذكي/);
   assert.doesNotMatch(html, /id="premiumLookup"/);
-  assert.ok(config.headers.some(rule => rule.source === '/' && rule.headers.some(header => header.key === 'Cache-Control' && header.value.includes('no-store'))));
+  assert.ok(config.headers.some(rule => rule.source === '/:path*' && rule.headers.some(header => header.key === 'Cache-Control' && header.value.includes('no-store'))));
 });
 
 test('track routes use a dedicated secure loading document without homepage flashes', async () => {
@@ -86,7 +86,7 @@ test('track routes use a dedicated secure loading document without homepage flas
   assert.doesNotMatch(html, /id="premiumLookup"/);
   assert.doesNotMatch(html, /نظام الضمان والمتابعة الذكي/);
   assert.ok(config.rewrites.some(route => route.source === '/track/:path*' && route.destination === '/track.html'));
-  assert.ok(config.rewrites.some(route => route.source === '/compensate/:path*' && ['/track.html', '/compensate.html'].includes(route.destination)));
+  assert.ok(config.redirects.some(route => route.source === '/compensate/:path*' && route.destination === 'https://warranty.advpro.app/:path*'));
 });
 
 test('fulfillment migration resets subscription and warranty start dates', async () => {

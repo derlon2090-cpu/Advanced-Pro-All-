@@ -45,7 +45,8 @@ async function handleAccess(request, response) {
   if (order.status === 'suspended_security') return response.status(403).json({ message: 'الوصول موقوف للمراجعة الأمنية. تواصل مع الدعم.' });
   if (order.expires_at && new Date(order.expires_at) <= new Date()) return response.status(410).json({ message: 'انتهت صلاحية هذا الاشتراك.' });
   if (!order.tracking_token) return response.status(409).json({ message: 'الطلب قيد التجهيز. حاول بعد قليل.' });
-  return response.status(200).setHeader('Cache-Control', 'private, no-store').json({ token: order.tracking_token, redirectTo: `/chatgpt/${encodeURIComponent(order.tracking_token)}` });
+  const portal = process.env.GPT_PORTAL_URL || process.env.CHATGPT_PORTAL_URL || process.env.PUBLIC_CHATGPT_PORTAL_URL || 'https://gpt.advpro.app';
+  return response.status(200).setHeader('Cache-Control', 'private, no-store').json({ token: order.tracking_token, redirectTo: `${portal.replace(/\/$/, '')}/${encodeURIComponent(order.tracking_token)}` });
 }
 
 async function handleTotp(request, response) {

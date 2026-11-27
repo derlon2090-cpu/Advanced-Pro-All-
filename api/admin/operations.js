@@ -7,6 +7,7 @@ import { buildCustomerReputations } from '../../lib/customer-reputation.js';
 import { encryptPassword } from '../../lib/account-credentials.js';
 import { generateTotp, normalizeTotpSecret } from '../../lib/totp.js';
 import { htmlEscape, sendOperationalEmail } from '../../lib/operational-email.js';
+import { enforceAdminHost } from '../../lib/host-routing.js';
 
 async function requireAdmin(request) {
   const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL, anon = process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY, token = tokenFromRequest(request);
@@ -24,6 +25,7 @@ async function db(path, options = {}) {
 }
 
 export default async function handler(request, response) {
+  if (enforceAdminHost(request, response)) return;
   if (request.query?._route === 'dispute-report') return disputeReportHandler(request, response);
   if (!(await requireAdmin(request))) return response.status(401).json({ message: 'جلسة غير صالحة.' });
   if (request.query?._route === 'reviews') return handleAdminReview(request, response);
@@ -173,7 +175,7 @@ export default async function handler(request, response) {
         sallaReviewUrl = optionalHttps(settings?.salla_review_url, 'رابط تقييم سلة');
         renewalStoreUrl = optionalHttps(settings?.renewal_store_url, 'رابط المتجر');
         crunchyrollPortalUrl = optionalHttps(settings?.crunchyroll_portal_url, 'رابط بوابة كرانشي رول');
-        chatgptPortalUrl = portalUrl(settings?.chatgpt_portal_url, 'رابط بوابة ChatGPT', '/chatgpt');
+        chatgptPortalUrl = portalUrl(settings?.chatgpt_portal_url, 'رابط بوابة ChatGPT', 'https://gpt.advpro.app');
         upsellUrl = optionalHttps(settings?.upsell_url, 'رابط عرض الترقية');
       } catch (error) { return response.status(400).json({ message: error.message }); }
       const digestEmail=String(settings?.digest_email||'').trim().toLowerCase();if(digestEmail&&!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(digestEmail))return response.status(400).json({message:'بريد التقرير اليومي غير صالح.'});

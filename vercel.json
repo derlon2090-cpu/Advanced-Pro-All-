@@ -1,52 +1,30 @@
 {
+  "$schema": "https://openapi.vercel.sh/vercel.json",
   "buildCommand": "npm run build",
   "outputDirectory": "public",
-  "headers": [
-    {
-      "source": "/",
-      "headers": [
-        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
-      ]
-    },
-    {
-      "source": "/index.html",
-      "headers": [
-        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
-      ]
-    },
-    {
-      "source": "/track/:path*",
-      "headers": [
-        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
-      ]
-    },
-    {
-      "source": "/compensate/:path*",
-      "headers": [
-        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
-      ]
-    },
-    {
-      "source": "/crunchyroll/:path*",
-      "headers": [
-        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
-      ]
-    },
-    {
-      "source": "/chatgpt/:path*",
-      "headers": [
-        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
-      ]
-    },
-    {
-      "source": "/(.*)",
-      "headers": [
-        { "key": "X-Content-Type-Options", "value": "nosniff" },
-        { "key": "X-Frame-Options", "value": "DENY" },
-        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
-        { "key": "Strict-Transport-Security", "value": "max-age=63072000; includeSubDomains; preload" }
-      ]
-    }
+  "headers": [{
+    "source": "/:path*",
+    "headers": [
+      { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" },
+      { "key": "X-Content-Type-Options", "value": "nosniff" },
+      { "key": "X-Frame-Options", "value": "DENY" },
+      { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
+      { "key": "Strict-Transport-Security", "value": "max-age=63072000; includeSubDomains; preload" }
+    ]
+  }],
+  "redirects": [
+    { "source": "/:path*", "has": [{ "type": "host", "value": "www.advpro.app" }], "destination": "https://advpro.app/:path*", "statusCode": 301 },
+    { "source": "/admin/:path*", "has": [{ "type": "host", "value": "waleed.advpro.app" }], "destination": "https://waleed.advpro.app/", "statusCode": 301 },
+    { "source": "/admin", "has": [{ "type": "host", "value": "waleed.advpro.app" }], "destination": "https://waleed.advpro.app/", "statusCode": 301 },
+    { "source": "/crunchyroll/:path*", "has": [{ "type": "host", "value": "advpro.app" }], "destination": "https://anime.advpro.app/:path*", "statusCode": 301 },
+    { "source": "/crunchyroll", "has": [{ "type": "host", "value": "advpro.app" }], "destination": "https://anime.advpro.app/", "statusCode": 301 },
+    { "source": "/chatgpt/:path*", "has": [{ "type": "host", "value": "advpro.app" }], "destination": "https://gpt.advpro.app/:path*", "statusCode": 301 },
+    { "source": "/chatgpt", "has": [{ "type": "host", "value": "advpro.app" }], "destination": "https://gpt.advpro.app/", "statusCode": 301 },
+    { "source": "/compensate/:path*", "has": [{ "type": "host", "value": "advpro.app" }], "destination": "https://warranty.advpro.app/:path*", "statusCode": 301 },
+    { "source": "/compensate", "has": [{ "type": "host", "value": "advpro.app" }], "destination": "https://warranty.advpro.app/", "statusCode": 301 },
+    { "source": "/:path*", "has": [{ "type": "host", "value": "crunchyroll.advpro.app" }], "destination": "https://anime.advpro.app/:path*", "statusCode": 301 },
+    { "source": "/:path*", "has": [{ "type": "host", "value": "chatgpt.advpro.app" }], "destination": "https://gpt.advpro.app/:path*", "statusCode": 301 },
+    { "source": "/:path*", "has": [{ "type": "host", "value": "compensate.advpro.app" }], "destination": "https://warranty.advpro.app/:path*", "statusCode": 301 }
   ],
   "rewrites": [
     { "source": "/api/public/activity", "destination": "/api/public/track?_route=activity" },
@@ -64,19 +42,27 @@
     { "source": "/api/admin/reviews/:id", "destination": "/api/admin/operations?_route=reviews&id=:id" },
     { "source": "/api/admin/compensations/:id", "destination": "/api/admin/operations?_route=compensations&id=:id" },
     { "source": "/api/admin/products/sync-salla", "destination": "/api/admin/operations?_route=sync-salla" },
+    { "source": "/api/admin/dispute-report", "destination": "/api/admin/operations?_route=dispute-report" },
+    { "source": "/api/admin/orders/:id/reset-device", "destination": "/api/admin/operations?_route=reset-device&orderId=:id" },
     { "source": "/api/cron/renewal-reminders", "destination": "/api/cron?job=renewal-reminders" },
     { "source": "/api/cron/mail-retention", "destination": "/api/cron?job=mail-retention" },
     { "source": "/api/cron/daily-digest", "destination": "/api/cron?job=daily-digest" },
-    { "source": "/api/admin/dispute-report", "destination": "/api/admin/operations?_route=dispute-report" },
-    { "source": "/api/admin/orders/:id/reset-device", "destination": "/api/admin/operations?_route=reset-device&orderId=:id" },
-    { "source": "/admin/:path*", "destination": "/index.html" },
-    { "source": "/track/:path*", "destination": "/track.html" },
-    { "source": "/compensate", "destination": "/compensate.html" },
-    { "source": "/compensate/:path*", "destination": "/compensate.html" }
-    ,{ "source": "/crunchyroll", "destination": "/crunchyroll.html" }
-    ,{ "source": "/crunchyroll/:path*", "destination": "/crunchyroll.html" }
-    ,{ "source": "/chatgpt", "destination": "/chatgpt.html" }
-    ,{ "source": "/chatgpt/:path*", "destination": "/chatgpt.html" }
+    {
+      "source": "/admin/:path*",
+      "has": [{ "type": "host", "value": { "re": "^(advpro\\.app|anime\\.advpro\\.app|gpt\\.advpro\\.app|warranty\\.advpro\\.app)$" } }],
+      "destination": "/404.html"
+    },
+    {
+      "source": "/admin",
+      "has": [{ "type": "host", "value": { "re": "^(advpro\\.app|anime\\.advpro\\.app|gpt\\.advpro\\.app|warranty\\.advpro\\.app)$" } }],
+      "destination": "/404.html"
+    },
+    { "source": "/:path((?!api/|assets/|lib/).*)", "has": [{ "type": "host", "value": "waleed.advpro.app" }], "destination": "/admin.html" },
+    { "source": "/:path((?!api/|assets/|lib/).*)", "has": [{ "type": "host", "value": "anime.advpro.app" }], "destination": "/crunchyroll.html" },
+    { "source": "/:path((?!api/|assets/|lib/).*)", "has": [{ "type": "host", "value": "gpt.advpro.app" }], "destination": "/chatgpt.html" },
+    { "source": "/:path((?!api/|assets/|lib/).*)", "has": [{ "type": "host", "value": "warranty.advpro.app" }], "destination": "/compensate.html" },
+    { "source": "/", "has": [{ "type": "host", "value": "advpro.app" }], "destination": "/home.html" },
+    { "source": "/track/:path*", "destination": "/track.html" }
   ],
   "crons": [
     { "path": "/api/cron/renewal-reminders", "schedule": "0 13 * * *" },

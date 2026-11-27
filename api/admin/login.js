@@ -1,6 +1,8 @@
 import { allowedAdmin, configured, setSession, supabaseConfig } from "../../lib/admin-auth.js";
+import { enforceAdminHost } from "../../lib/host-routing.js";
 
 export default async function handler(request, response) {
+  if (enforceAdminHost(request, response)) return;
   if (request.method !== "POST") return response.status(405).json({ message: "الطريقة غير مسموحة." });
   if (!configured()) return response.status(503).json({ message: "لم تُضبط بيانات Supabase أو قائمة المشرفين بعد." });
   const { email, password } = request.body || {};

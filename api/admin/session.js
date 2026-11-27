@@ -1,6 +1,8 @@
 import { allowedAdmin, configured, tokenFromRequest, supabaseConfig } from "../../lib/admin-auth.js";
+import { enforceAdminHost } from "../../lib/host-routing.js";
 
 export default async function handler(request, response) {
+  if (enforceAdminHost(request, response)) return;
   if (request.method !== "GET") return response.status(405).json({ message: "الطريقة غير مسموحة." });
   if (!configured()) return response.status(503).json({ message: "Supabase غير مهيأ." });
   const token = tokenFromRequest(request);

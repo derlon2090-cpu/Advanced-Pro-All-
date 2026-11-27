@@ -6,7 +6,7 @@ import { isChatgptOrder, isCrunchyrollOrder, portalForOrder, wrongProductMessage
 test('strict service isolation rejects a mislabeled Gemini order', () => {
   const mislabeled = { service_type: 'crunchyroll', product_name: 'Google Gemini – رابط تفعيل عرض 18 شهرًا' };
   assert.equal(isCrunchyrollOrder(mislabeled), false);
-  assert.equal(portalForOrder(mislabeled), '/');
+  assert.equal(portalForOrder(mislabeled), 'https://advpro.app');
   assert.match(wrongProductMessage(mislabeled, 'Crunchyroll'), /Google Gemini/);
 });
 
@@ -15,8 +15,8 @@ test('strict service isolation routes only matching products to their portals', 
   const chatgpt = { service_type: 'chatgpt', product_name: 'ChatGPT Plus' };
   assert.equal(isCrunchyrollOrder(crunchyroll), true);
   assert.equal(isChatgptOrder(chatgpt), true);
-  assert.equal(portalForOrder(crunchyroll, 'token_1234567890123456'), '/crunchyroll/token_1234567890123456');
-  assert.equal(portalForOrder(chatgpt, 'token_1234567890123456'), '/chatgpt/token_1234567890123456');
+  assert.equal(portalForOrder(crunchyroll, 'token_1234567890123456'), 'https://anime.advpro.app/token_1234567890123456');
+  assert.equal(portalForOrder(chatgpt, 'token_1234567890123456'), 'https://gpt.advpro.app/token_1234567890123456');
 });
 
 test('customer portals display the verified device and hide pending credentials', async () => {

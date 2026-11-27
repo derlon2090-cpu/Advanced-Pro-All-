@@ -11,12 +11,13 @@ test('standalone compensation portal exposes secure token and order-number entry
     read('vercel.json'),
   ]);
   assert.match(page, /بوابة التعويض والاستبدال الفوري/);
-  assert.ok(page.includes("location.pathname.match(/^\\/compensate\\/([a-zA-Z0-9_-]{16,128})"));
+  assert.match(page, /warranty\.advpro\.app/);
+  assert.match(page, /tokenPattern/);
   assert.match(page, /URLSearchParams\(location\.search\)\.get\('order'\)/);
   assert.match(page, /collectDeviceDna/);
   assert.match(page, /image\/png,image\/jpeg,image\/webp/);
   assert.match(build, /compensate\.html/);
-  assert.match(vercel, /"source": "\/compensate"/);
+  assert.match(vercel, /https:\/\/warranty\.advpro\.app/);
 });
 
 test('compensation API deduplicates evidence and returns immediate replacement credentials', async () => {
@@ -41,5 +42,5 @@ test('all customer portals link to compensation by tracking token', async () => 
     read('ui/crunchyroll-portal.html'),
     read('ui/chatgpt-portal.html'),
   ]);
-  for (const page of pages) assert.match(page, /\/compensate\/'/);
+  for (const page of pages) assert.match(page, /https:\/\/warranty\.advpro\.app\//);
 });
