@@ -57,13 +57,13 @@
   <main class="service-shell">
     <button id="switchOrder" class="switch-order hero-switch-order" type="button" hidden><span aria-hidden="true">⌕</span> استعلام عن طلب آخر ↺</button>
     <section class="hero"><div class="hero-art anime-art" aria-hidden="true"><svg viewBox="0 0 1200 360" preserveAspectRatio="xMidYMid slice"><circle class="glow" cx="110" cy="95" r="78"/><circle class="glow" cx="1090" cy="255" r="92"/><g transform="translate(32 24)"><path class="fill" opacity=".56" d="M62 292c8-57 22-92 60-112-14-20-18-45-9-70 11-31 35-50 70-54l-18-32 43 26 29-25 2 36c29 13 45 38 43 72-2 31-15 52-37 65 34 21 52 52 62 94H62Z"/><path class="line" d="M116 130c24-7 47-4 67 9m49-54c-16 11-27 27-33 48m-59 57c21 13 51 15 76-1m-99 28 46 46 72-62"/><path class="line" opacity=".7" d="m75 287 55-70m128-5 36 73"/></g><g transform="translate(905 30) scale(.9)"><path class="fill" opacity=".5" d="M15 300c11-63 31-101 72-122-10-24-8-53 5-78 15-29 42-45 77-45l15-39 22 42 43-19-19 39c26 17 39 43 35 76-4 32-19 55-43 68 35 20 58 49 74 78H15Z"/><path class="line" d="M101 122c21-12 44-15 68-7m43-37c-9 18-11 38-5 59m-103 54c22 15 56 14 82-3m-93 32 57 55 66-70"/><path class="line" opacity=".65" d="m43 297 57-78m119-5 51 82"/></g><path class="line" opacity=".45" d="M7 318c92-44 164-42 241 7m725-1c83-50 153-49 224-7"/></svg></div><div class="hero-copy"><span class="eyebrow">Advanced Pro × Crunchyroll</span><h1>بوابة تفعيل وإدارة اشتراك Crunchyroll</h1><p>بيانات اشتراكك ورسائل الموافقة ورموز التحقق في مساحة واحدة سريعة، محمية بطلبك وبصمة جهازك الموثّق.</p></div></section>
-    <section class="stage">
-      <div id="entry" class="panel entry">
+    <section class="stage order-stage-layout" style="--verification-width:760px">
+      <!--order-progress-->
+      <div id="entry" class="panel entry" data-order-entry>
         <div class="panel-head"><div><h2>افتح بوابة اشتراكك</h2><p>أدخل رقم الطلب المسجل في سلة للتحقق من أهلية الاشتراك.</p></div><span class="badge">دخول آمن</span></div>
         <form id="accessForm" class="order-form"><div class="field-shell"><input id="orderNumber" inputmode="numeric" autocomplete="off" required aria-label="رقم الطلب" placeholder="مثال: #12345"><button id="pasteButton" class="paste" type="button">لصق</button></div><button id="accessButton" class="primary" type="submit">فتح بوابة الاشتراك ←</button></form>
         <p id="accessMessage" class="message" role="status"></p><p class="hint">يتم التحقق من نوع المنتج، صلاحية الطلب، والجهاز الموثّق قبل عرض أي بيانات حساسة.</p>
       </div>
-      <div id="ack" class="panel ack" hidden><div class="panel-head"><div><h2>إقرار الضمان وتوثيق الجهاز</h2><p>هذه أول زيارة لهذا الطلب. راجع الشروط ثم وثّق جهازك للمتابعة.</p></div><span class="badge">خطوة واحدة</span></div><ul id="ackPoints"></ul><label class="ack-check"><input id="ackCheckbox" type="checkbox"><span>أقرّ بقراءة الشروط وأوافق على ربط الوصول بهذا الجهاز.</span></label><button id="ackButton" class="primary" disabled>تأكيد الإقرار وفتح الاشتراك</button><p id="ackMessage" class="message" role="status"></p></div>
       <div id="dashboard" class="dashboard" hidden>
         <div class="dashboard-head"><div><span id="dashboardOrder">طلب #—</span><strong id="dashboardStatus">اشتراك سارٍ ✓</strong></div><button id="quickGuide" class="soft" type="button">طريقة الدخول السريعة ؟</button></div>
         <div class="dash-grid">
@@ -78,13 +78,12 @@
   <div id="guideModal" class="guide-modal" hidden><div class="guide-dialog"><button id="closeGuide" aria-label="إغلاق">×</button><h3>طريقة الدخول السريعة</h3><ol><li>اضغط «تم تسجيل خروجي» وانسخ البريد وكلمة المرور.</li><li>سجّل الدخول في موقع أو تطبيق Crunchyroll من جهازك الموثّق.</li><li>ارجع هنا واضغط «اعتماد جهازي» عند ظهور الرسالة.</li></ol></div></div>
   <footer class="footer">بوابة أدفانسد برو · وصول محمي ومخصص لعملاء Crunchyroll</footer>
   <script type="module">
-    import { collectDeviceDna } from '/lib/device-dna.js';
-    import { setOrderProgress, confirmOrderFound } from '/lib/order-progress.js';
-    import { getBindAnchor, saveBindAnchor, bindingHeaders } from '/lib/device-bind-client.js';
+    import { setOrderProgress, previewOrder, verifyOrderDevice, revealVerified } from '/lib/order-progress.js';
+    import { bindingHeaders } from '/lib/device-bind-client.js';
     const $=id=>document.getElementById(id),arabicDigits=value=>String(value||'').replace(/[٠-٩]/g,d=>String(d.charCodeAt(0)-1632)).replace(/[۰-۹]/g,d=>String(d.charCodeAt(0)-1776)),cleanOrder=value=>arabicDigits(value).replace(/[^0-9]/g,'');
     let token='',orderData=null,plainPassword='',autoTimer=null,autoStopsAt=0,passwordMaskTimer=null,trustedDeviceLabel='جهازك الموثّق';
     const sessionKey='advpro:anime:session',sessionTtl=30*60*1000;
-    const show=name=>{['entry','ack','dashboard'].forEach(id=>{const view=$(id),visible=id===name;view.hidden=!visible;if(visible){view.classList.remove('flow-view-enter');requestAnimationFrame(()=>view.classList.add('flow-view-enter'))}});$('switchOrder').hidden=name!=='dashboard'};
+    const show=name=>{['entry','dashboard'].forEach(id=>{const view=$(id),visible=id===name;view.hidden=!visible;if(visible){view.classList.remove('flow-view-enter');requestAnimationFrame(()=>view.classList.add('flow-view-enter'))}});$('switchOrder').hidden=name!=='dashboard'};
     const saveSession=()=>{try{localStorage.setItem(sessionKey,JSON.stringify({token,expiresAt:Date.now()+sessionTtl}))}catch{}};
     const forgetSession=()=>{try{localStorage.removeItem(sessionKey)}catch{}};
     const restoreSession=()=>{try{const saved=JSON.parse(localStorage.getItem(sessionKey)||'null');if(saved?.token&&saved.expiresAt>Date.now())return saved.token;forgetSession()}catch{forgetSession()}return''};
@@ -117,7 +116,7 @@
         history.replaceState({},'',result.redirectTo);
         token = result.token;
         saveSession();
-        await openPortal(true);
+        await openPortal();
       } catch {
         message.textContent = 'تعذر الاتصال بالخدمة. حاول بعد قليل.';
       } finally {
@@ -125,29 +124,18 @@
         button.disabled = false;
       }
     };
-    async function deviceVerify(action='verify'){const challengeResponse=await fetch('/api/public/verify-device',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({token,action:'challenge'})}),challengeData=await challengeResponse.json().catch(()=>({}));if(!challengeResponse.ok)throw new Error(challengeData.message||'تعذر بدء التحقق الأمني.');const dna=await collectDeviceDna(),bindAnchor=await getBindAnchor(token),response=await fetch('/api/public/verify-device',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({token,action,bindAnchor,challenge:challengeData.challenge,...dna})}),result=await response.json().catch(()=>({}));if(!response.ok)throw new Error(result.message||'هذا الاشتراك مربوط بمتصفح وجهاز آخر.');if(result.bindAnchor)await saveBindAnchor(token,result.bindAnchor);return result}
     async function fetchOrder(reauth=false){const headers=await bindingHeaders(token,{accept:'application/json',...(reauth?{'x-reauth-window':'1'}:{})}),response=await fetch('/api/public/track?token='+encodeURIComponent(token),{headers,cache:'no-store'}),result=await response.json().catch(()=>({}));if(!response.ok)throw new Error(result.message||'تعذر تحميل بيانات الاشتراك.');return result}
-    async function openPortal(orderConfirmed = false) {
+    async function openPortal() {
       setOrderProgress('search');
       try {
-        if (!orderConfirmed) {
-          const { order } = await fetchOrder();
-          if (order?.service_type !== 'crunchyroll' || !/crunchyroll|كرانشي\s*رول/i.test(String(order.product_name || ''))) {
-            location.replace('https://advpro.app');
-            return;
-          }
-        }
-        await confirmOrderFound();
-        setOrderProgress('verify');
-        await deviceVerify();
-        const payload = await fetchOrder(), order = payload.order;
-        if (!order?.device_verified) throw new Error('تعذر توثيق الجهاز لهذا الطلب.');
-        if (!order.acknowledged_at) {
-          orderData = payload;
-          $('ackPoints').innerHTML = String(order.acknowledgment_text || '').split(/\n+/).filter(Boolean).map(point => `<li>${point.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))}</li>`).join('');
-          show('ack');
+        const preview = await previewOrder(token);
+        if (preview.service_type !== 'crunchyroll' || !/crunchyroll|كرانشي\s*رول/i.test(String(preview.product_name || ''))) {
+          location.replace('https://advpro.app');
           return;
         }
+        if (!await verifyOrderDevice({ token, onOtherOrder: resetOrder })) return;
+        const payload = await revealVerified(fetchOrder);
+        if (!payload.order?.device_verified) throw new Error('تعذر توثيق الجهاز لهذا الطلب.');
         renderDashboard(payload);
       } catch (error) {
         show('entry');
@@ -156,8 +144,6 @@
         setOrderProgress();
       }
     }
-    $('ackCheckbox').onchange=e=>$('ackButton').disabled=!e.target.checked;
-    $('ackButton').onclick=async()=>{const button=$('ackButton');button.disabled=true;button.textContent='جارِ التوثيق…';$('ackMessage').textContent='';try{const headers=await bindingHeaders(token,{'content-type':'application/json'}),response=await fetch('/api/public/track?token='+encodeURIComponent(token),{method:'POST',headers,body:JSON.stringify({token,accepted:true})}),result=await response.json().catch(()=>({}));if(!response.ok)throw new Error(result.message||'تعذر حفظ الإقرار.');renderDashboard(result)}catch(error){$('ackMessage').textContent=error.message;button.disabled=false;button.textContent='تأكيد الإقرار وفتح الاشتراك'}};
     function currentBrowser(){const ua=navigator.userAgent;if(/Edg\//.test(ua))return'Edge';if(/CriOS|Chrome\//.test(ua))return'Chrome';if(/FxiOS|Firefox\//.test(ua))return'Firefox';if(/Safari\//.test(ua))return'Safari';return'Mobile'}
     function deviceIcon(name){return /iphone|android|mobile/i.test(name)?'▯':/ipad|tablet/i.test(name)?'▭':'▣'}
     function renderDashboard(payload){orderData=payload;const order=payload.order;plainPassword=order.account_password||'';$('orderLabel').textContent=order.product_name||'Crunchyroll';$('dashboardOrder').textContent=`طلب #${order.order_number}`;const days=order.expires_at?Math.max(0,Math.ceil((new Date(order.expires_at)-Date.now())/86400000)):0;$('dashboardStatus').textContent=`سارٍ ✓ · متبقي ${days} يوم`;const ready=Boolean(order.account_email&&plainPassword);$('reauthGate').hidden=ready;$('credentialFields').hidden=!ready;$('deliveryPending').hidden=ready;if(ready){$('accountEmail').textContent=order.account_email;$('accountPassword').textContent='••••••••';$('refreshButton').disabled=false}const device=order.trusted_device||{},name=String(device.name||'جهازك الحالي'),displayName=name.includes('•')?name:`${name} • ${currentBrowser()}`;trustedDeviceLabel=displayName;$('trustedDevice').textContent=`${deviceIcon(displayName)} ${displayName}`;$('deviceFingerprint').textContent=`ID: ${device.fingerprintId||'—'}`;$('mailMatchHint').innerHTML='رسائل هذه المحاولة فقط، ومطابقة للجهاز (<strong></strong>).';$('mailMatchHint').querySelector('strong').textContent=displayName;$('daysRemaining').textContent=`${days} يوم`;$('warrantyStatus').textContent=order.has_warranty&&order.warranty_expires_at&&new Date(order.warranty_expires_at)>new Date()?'سارٍ ✓':'غير ساري';$('helpLink').href='https://warranty.advpro.app/'+encodeURIComponent(token);show('dashboard')}
@@ -172,7 +158,8 @@
     $('refreshButton').onclick=()=>refreshMessages(true);
     $('quickGuide').onclick=()=>{$('guideModal').hidden=false};$('closeGuide').onclick=()=>{$('guideModal').hidden=true};$('guideModal').onclick=e=>{if(e.target===$('guideModal'))$('guideModal').hidden=true};
     document.querySelector('[data-quick-rating]').onclick=async()=>{const button=document.querySelector('[data-quick-rating]');button.disabled=true;try{const headers=await bindingHeaders(token,{'content-type':'application/json'}),response=await fetch('/api/public/track/'+encodeURIComponent(token)+'/review',{method:'POST',headers,body:JSON.stringify({rating:5,comment:'تم التفعيل بنجاح عبر بوابة كرانشي رول'})});if(!response.ok)throw new Error();button.textContent='شكرًا لتقييمك ★★★★★'}catch{button.textContent='تعذر إرسال التقييم الآن';button.disabled=false}};
-    $('switchOrder').onclick=()=>{forgetSession();token='';orderData=null;plainPassword='';clearInterval(autoTimer);clearTimeout(passwordMaskTimer);history.replaceState({},'',location.hostname==='anime.advpro.app'?'/':'/crunchyroll');$('orderNumber').value='';show('entry');$('orderNumber').focus()};
+    const resetOrder=()=>{forgetSession();token='';orderData=null;plainPassword='';clearInterval(autoTimer);clearTimeout(passwordMaskTimer);history.replaceState({},'',location.hostname==='anime.advpro.app'?'/':'/crunchyroll');$('orderNumber').value='';$('accessMessage').textContent='';show('entry');$('orderNumber').focus()};
+    $('switchOrder').onclick=resetOrder;
     const segments=location.pathname.split('/').filter(Boolean),directToken=location.hostname==='anime.advpro.app'?segments[0]:segments[1],queryOrder=new URLSearchParams(location.search).get('order'),savedToken=restoreSession();if(directToken&&/^[a-zA-Z0-9_-]{16,128}$/.test(directToken)){token=directToken;saveSession();openPortal()}else if(queryOrder){$('orderNumber').value='#'+cleanOrder(queryOrder);$('accessForm').requestSubmit()}else if(savedToken){token=savedToken;openPortal()}
   </script>
 </body>

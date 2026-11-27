@@ -15,7 +15,7 @@ test('standalone compensation portal exposes secure token and order-number entry
   assert.match(page, /warranty\.advpro\.app/);
   assert.match(page, /tokenPattern/);
   assert.match(page, /URLSearchParams\(location\.search\)\.get\('order'\)/);
-  assert.match(page, /collectDeviceDna/);
+  assert.match(page, /verifyOrderDevice/);
   assert.match(page, /image\/png,image\/jpeg,image\/webp/);
   assert.match(build, /compensate\.html/);
   assert.match(vercel, /https:\/\/warranty\.advpro\.app/);

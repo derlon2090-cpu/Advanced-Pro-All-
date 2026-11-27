@@ -1,11 +1,26 @@
-<div id="orderProgress">
-  <div class="order-progress-card">
-    <div class="order-progress-indicator" aria-hidden="true"><span>✓</span></div>
-    <div role="status" aria-live="polite" aria-atomic="true">
-      <strong data-progress-label="search">جارِ البحث عن طلبك…</strong>
-      <strong data-progress-label="found">تم العثور على طلبك ✓</strong>
-      <strong data-progress-label="verify">التحقق من الجهاز…</strong>
+<section id="orderProgress" class="verification-card" aria-label="التحقق من الطلب والجهاز">
+  <div class="verification-status" data-verification-view="progress" role="status" aria-live="polite" aria-atomic="true">
+    <div class="verification-orbit" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M12 3 5 6v5c0 4.6 3 7.5 7 10 4-2.5 7-5.4 7-10V6l-7-3Z"/><path d="m9 12 2 2 4-4"/></svg>
     </div>
-    <button id="continueToDevice" type="button">المتابعة للتحقق من الجهاز ←</button>
+    <div class="verification-confirm" aria-hidden="true">✓</div>
+    <div class="verification-headline verification-loading">جارٍ التحقق من الطلب وتوثيق الجهاز…</div>
+    <div class="verification-headline verification-success">تم التحقق من الطلب وتوثيق جهازك بنجاح ✓</div>
+    <p class="verification-detail verification-search">مطابقة بيانات الطلب…</p>
+    <p class="verification-detail verification-check">فحص بصمة المتصفح والجهاز…</p>
+    <p class="verification-detail verification-details">جارٍ فتح تفاصيل الطلب…</p>
+    <bdi class="verification-device-pill" data-verification-device hidden></bdi>
   </div>
-</div>
+
+  <div class="verification-mismatch" data-verification-view="mismatch">
+    <div class="verification-lock" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 1 1 8 0v3m-4 5v2"/></svg>
+    </div>
+    <h2 class="verification-title" data-mismatch-title>هذا الطلب موثّق على جهاز ومتصفح آخر</h2>
+    <p class="verification-authorized" hidden>الجهاز المصرّح له <bdi data-authorized-device></bdi></p>
+    <p class="verification-detail" data-mismatch-detail>يرجى فتح الرابط من نفس المتصفح الذي فعّلت منه الاشتراك أول مرة.</p>
+    <div class="verification-actions">
+      <button data-verification-other type="button">إدخال رقم طلب آخر ↺</button>
+    </div>
+  </div>
+</section>

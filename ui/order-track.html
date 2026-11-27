@@ -270,8 +270,8 @@
 <script>
   document.addEventListener('DOMContentLoaded', async () => {
     if (!location.pathname.startsWith('/track/') && !location.pathname.startsWith('/compensate/')) return;
-    const { setOrderProgress, confirmOrderFound } = await import('/lib/order-progress.js');
-    const { getBindAnchor, saveBindAnchor, bindingHeaders } = await import('/lib/device-bind-client.js');
+    const { setOrderProgress, previewOrder, verifyOrderDevice, revealVerified } = await import('/lib/order-progress.js');
+    const { bindingHeaders } = await import('/lib/device-bind-client.js');
     if (await window.apMaintenanceGate?.()) { setOrderProgress(); return; }
     const portal = document.getElementById('portal');
     if (!portal) return;
@@ -336,7 +336,7 @@
           const match = destination.pathname.match(/^\/track\/([a-zA-Z0-9_-]{16,128})\/?$/);
           if (!match) throw new Error('تعذر تجهيز رابط الطلب. حاول مجددًا.');
           const nextToken = match[1];
-          await findOrder(nextToken);
+          await previewOrder(nextToken);
           history.replaceState({}, '', destination.pathname);
           token = nextToken;
           await showOrder();
@@ -368,7 +368,6 @@
           ? { cls: '', title: 'مشمول بالضمان — متبقي ' + warrantyRemaining + ' يوم', text: 'يشمل الضمان التعويض عند التوقف غير الناتج عن مخالفة شروط المنتج.' }
           : { cls: 'expired', title: 'انتهت فترة الضمان', text: 'انتهت مدة التغطية المحددة لهذا الطلب.' };
       const points = String(order.acknowledgment_text || 'يرجى الالتزام بشروط استخدام المنتج وعدم مشاركة بياناته.').split(/\r?\n/).map(x => x.trim()).filter(Boolean);
-      const acknowledged = Boolean(order.acknowledged_at);
       const crunchyUrl = actions.crunchyrollPortalUrl || '';
       const productName = String(order.product_name || 'اشتراك رقمي');
       const isCrunchyroll = /crunchyroll|كرانشي/i.test(productName);
@@ -401,11 +400,11 @@
         : state.expired
           ? '<section class="glass-card delivery-card expired"><span class="delivery-icon">■</span><div class="delivery-copy"><h2>حالة التسليم</h2><strong>اكتملت مدة الاشتراك</strong><small>يمكنك استخدام خيار التجديد السريع أدناه لاستعادة الخدمة.</small></div></section>'
           : '<section class="glass-card delivery-card pending"><span class="delivery-icon">◷</span><div class="delivery-copy"><h2>الوقت المتوقع للتسليم والتفعيل</h2><strong>'+escapeHtml(deliveryEstimate)+'</strong><small>'+(order.created_at?'استلمنا طلبك في '+dateTime(order.created_at)+' — ':'')+'نتحقق من اكتمال التفعيل تلقائيًا كل 30 ثانية.</small></div></section>';
-      const policyCard = acknowledged ? '<details class="policy-details"><summary>إقرار وسياسة المنتج الموثّق ببصمة الجهاز</summary><div class="policy-body"><ul class="ack-list">'+points.map(point=>'<li>'+escapeHtml(point)+'</li>').join('')+'</ul><div class="ack-stamp">✓ تم التوثيق بتاريخ '+date(order.acknowledged_at)+'</div></div></details>' : '<section class="ack-box"><h2>إقرار وسياسة المنتج</h2><ul class="ack-list">'+points.map(point=>'<li>'+escapeHtml(point)+'</li>').join('')+'</ul><div class="ack-control"><label class="ack-check"><input id="ackCheckbox" type="checkbox"> <span>أقرّ بقراءة وموافقة شروط وسياسة المنتج أعلاه</span></label><button id="ackButton" class="ack-button" type="button" disabled>تأكيد الإقرار وعرض تفاصيل الاشتراك</button><p id="ackMessage" class="ack-message" role="status"></p></div></section>';
+      const policyCard = '<details class="policy-details"><summary>شروط المنتج والضمان</summary><div class="policy-body"><ul class="ack-list">'+points.map(point=>'<li>'+escapeHtml(point)+'</li>').join('')+'</ul></div></details>';
       const identityCard = '<section class="glass-card identity-card"><div class="identity-top"><div><span class="identity-label">تفاصيل اشتراكك</span><span class="order-number copy-inline">طلب #'+escapeHtml(order.order_number)+' '+copyButton(order.order_number,'نسخ الرقم ⧉')+'</span></div><h1>'+escapeHtml(productName)+'</h1><div class="identity-badges"><span class="salla-verified">تم التحقق من متجر سلة ✓</span><span class="state-badge '+statusClass+'"><i></i><span><strong>'+statusLabel+'</strong><small>'+state.detail+'</small></span></span></div></div>'+accountCard+(crunchyAction?'<div class="order-actions">'+crunchyAction+'</div>':'')+'</section>';
       const infoGrid = '<div class="order-info-grid">'+trustedDeviceCard+deliveryCard+'</div>';
       const statusCard = '<section class="glass-card status-card"><div class="status-head"><div><h2>الوقت المتبقي والضمان</h2><span>'+timingSummary+'</span></div><strong>'+(state.active?'متبقي '+remaining+' يوم':state.expired?'انتهت مدة الاشتراك':'بانتظار بدء الاشتراك')+'</strong></div><div class="progress" aria-label="نسبة المدة المتبقية"><i style="width:'+remainingProgress.toFixed(1)+'%"></i></div><section class="time-grid"><div class="time-cell"><span>بداية السريان</span><strong>'+(state.active?date(order.starts_at):'عند اكتمال التنفيذ')+'</strong></div><div class="time-cell"><span>تاريخ الانتهاء</span><strong>'+(state.active||state.expired?date(order.expires_at):'يُحسب بعد التنفيذ')+'</strong></div><div class="time-cell"><span>المدة الكلية</span><strong>'+escapeHtml(order.duration_days||30)+' يوم</strong></div></section><section class="warranty-card '+warranty.cls+'"><h2>✦ '+warranty.title+'</h2><p>'+warranty.text+'</p></section>'+policyCard+renewalCard+'</section>';
-      const regularCards = acknowledged ? identityCard+infoGrid+statusCard+upsellCard+referralCard+reminderCard+reviewCard : identityCard+infoGrid+statusCard;
+      const regularCards = identityCard+infoGrid+statusCard+upsellCard+referralCard+reminderCard+reviewCard;
       const compensationCards = identityCard+infoGrid+statusCard+compensationCard;
       portal.innerHTML = '<main class="order-portal"><section class="track-hero"><header class="order-brand"><button id="switchOrder" class="switch-order-button" type="button"><span aria-hidden="true">⌕</span> استعلام عن طلب آخر ↺</button></header><div class="track-hero-copy"><span class="order-number">بوابة الطلب الآمنة</span><h1>تفاصيل اشتراكك</h1></div></section><section class="track-night"><div class="order-wrap"><div class="track-stack">'+(directCompensation?compensationCards:regularCards)+'</div>'+(!directCompensation?'<p class="compensation-link-line">واجهت مشكلة في الحساب؟ <a href="https://warranty.advpro.app/'+encodeURIComponent(token)+'">عندك مشكلة؟</a></p>':'')+'</div></section></main>';
       bindCopyButtons();
@@ -474,22 +473,6 @@
           } catch (error) { resultBox.textContent = error.message; submit.disabled = false; submit.textContent = 'فحص الأهلية والاستبدال الآن'; }
         };
       }
-      if (!acknowledged) {
-        const checkbox = document.getElementById('ackCheckbox'), button = document.getElementById('ackButton'), message = document.getElementById('ackMessage');
-        checkbox.onchange = () => { button.disabled = !checkbox.checked; message.textContent = ''; };
-        button.onclick = async () => {
-          if (!checkbox.checked) return;
-          button.disabled = true; button.textContent = 'جارِ توثيق الإقرار…';
-          try {
-            const response = await fetch('/api/public/track?token=' + encodeURIComponent(token), { method: 'POST', headers: await bindingHeaders(token, { 'content-type': 'application/json' }), body: JSON.stringify({ token, accepted: true }) });
-            const result = await response.json().catch(() => ({}));
-            if (!response.ok) throw new Error(result.message || 'تعذر توثيق الإقرار.');
-            render(result);
-          } catch (error) {
-            message.textContent = error.message; button.disabled = false; button.textContent = 'تأكيد الإقرار وعرض تفاصيل الاشتراك';
-          }
-        };
-      }
     };
     const shell = content => '<main class="order-portal"><section class="track-hero"><header class="order-brand"><button id="switchOrder" class="switch-order-button" type="button"><span aria-hidden="true">⌕</span> استعلام عن طلب آخر ↺</button></header><div class="track-hero-copy"><span class="order-number">تحقق أمني صامت</span><h1>التحقق الأمني من الجهاز</h1></div></section><section class="track-night"><div class="order-wrap">'+content+'</div></section></main>';
     const loadOrder = async (trackingToken = token) => {
@@ -503,81 +486,30 @@
       data.defaultDeliveryEstimate = settings.defaultDeliveryEstimate || 'فوري خلال 5 – 18 ساعة';
       return data;
     };
-    const verifyDevice = async (action, dna) => {
-      const challengeResponse = await fetch('/api/public/verify-device', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ token, action: 'challenge' }) });
-      const challengePayload = await challengeResponse.json().catch(() => ({}));
-      if (!challengeResponse.ok || !challengePayload.challenge) throw new Error(challengePayload.message || 'تعذر إنشاء التحدي الأمني.');
-      const bindAnchor=await getBindAnchor(token),response = await fetch('/api/public/verify-device', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ token, action, bindAnchor, challenge: challengePayload.challenge, ...dna }) });
-      const result=await response.json().catch(() => ({}));if(response.ok&&result.bindAnchor)await saveBindAnchor(token,result.bindAnchor);return { response, result };
-    };
-    const showTransfer = (security, dna) => {
-      portal.innerHTML = shell('<article class="digital-order device-card"><div class="device-icon">↻</div><h1>يبدو أنك تستخدم جهازًا جديدًا</h1><p>نرحب بك! لاحظنا أن هذا الجهاز مختلف عن جهازك السابق (<strong>' + escapeHtml(security.oldDeviceName || 'جهازك السابق') + '</strong>). إذا قمت بتغيير جهازك، يمكنك اعتماد هذا الجهاز الجديد مجانًا لمرة واحدة.</p><p class="device-note">لن نسجل أي مخالفة عند النقل. بعد اعتماده يصبح الجهاز السابق غير معتمد، ويتبقى لك ' + Math.max(0, Number(security.freeResetsRemaining) || 0) + ' فرصة نقل.</p><button id="deviceTransfer" class="device-transfer" type="button">اعتماد هذا الجهاز كجهازي الأساسي</button><p id="deviceTransferMessage" class="ack-message" role="status"></p></article>');
-      const button = document.getElementById('deviceTransfer'), message = document.getElementById('deviceTransferMessage');
-      button.onclick = async () => {
-        button.disabled = true; button.textContent = 'جارِ اعتماد الجهاز…'; message.textContent = '';
-        try {
-          const { response, result } = await verifyDevice('transfer', dna);
-          if (!response.ok || !result.allowed) throw new Error(result.message || 'تعذر نقل الجهاز.');
-          await loadVerifiedOrder();
-        } catch (error) { message.textContent = error.message; button.disabled = false; button.textContent = 'اعتماد هذا الجهاز كجهازي الأساسي'; }
-      };
-    };
-    const showLocked = security => {
-      logCompensationMismatch();
-      const reason = security.message || 'تم رصد مخالفتين مؤكدتين لبصمة الجهاز.';
-      portal.innerHTML = shell('<article class="digital-order device-card device-lock"><div class="device-icon">!</div><h1>تم إيقاف الوصول لحماية الاشتراك</h1><p>' + reason + '</p><p class="device-note">إذا كنت صاحب الطلب وتعتقد أن هذا الإجراء غير صحيح، تواصل مع الدعم لمراجعة الحالة يدويًا.</p></article>');
-    };
-    const showStrike = security => {logCompensationMismatch();portal.innerHTML = shell('<article class="digital-order device-card"><div class="device-icon">!</div><h1>تنبيه أمني: لا يمكن تقديم طلب التعويض من هذا الجهاز</h1><p>' + escapeHtml(security.message || 'يرجى فتح الرابط من نفس جهازك الأصلي المعتمد في الطلب.') + '</p><p class="device-note">تم تسجيل محاولة التعويض من جهاز غير معتمد وإبلاغ الإدارة.</p></article>')};
-    const showAcknowledgment = payload => {
-      const order = payload.order || {};
-      const points = String(order.acknowledgment_text || 'يرجى الالتزام بشروط استخدام المنتج وعدم مشاركة بياناته.').split(/\r?\n/).map(value => value.trim()).filter(Boolean);
-      portal.innerHTML = shell('<article class="digital-order device-card step-ack"><div class="device-icon">⌾</div><h1>إقرار وسياسة الضمان</h1><p>تمت مطابقة الجهاز. بقي توثيق موافقتك قبل كشف بيانات الاشتراك الحساسة.</p><section class="ack-box"><ul class="ack-list">'+points.map(point=>'<li>'+escapeHtml(point)+'</li>').join('')+'</ul><div class="ack-control"><label class="ack-check"><input id="stageAckCheckbox" type="checkbox"> <span>أقرّ بقراءة شروط المنتج وسياسة الضمان وأوافق عليها</span></label><button id="stageAckButton" class="ack-button" type="button" disabled>أوافق وأُوثّق جهازي الآن ✓</button><p id="stageAckMessage" class="ack-message" role="status"></p></div></section></article>');
-      const checkbox=document.getElementById('stageAckCheckbox'),button=document.getElementById('stageAckButton'),message=document.getElementById('stageAckMessage');
-      checkbox.onchange=()=>{button.disabled=!checkbox.checked;message.textContent=''};
-      button.onclick=async()=>{if(!checkbox.checked)return;button.disabled=true;button.textContent='جارِ توثيق الإقرار…';try{const response=await fetch('/api/public/track?token='+encodeURIComponent(token),{method:'POST',headers:await bindingHeaders(token,{'content-type':'application/json'}),body:JSON.stringify({token,accepted:true})});const result=await response.json().catch(()=>({}));if(!response.ok)throw new Error(result.message||'تعذر توثيق الإقرار.');render(result)}catch(error){message.textContent=error.message;button.disabled=false;button.textContent='أوافق وأُوثّق جهازي الآن ✓'}};
-    };
     const enterVerified = payload => {
       if (!payload?.order?.device_verified) throw new Error('تعذر توثيق الجهاز لهذا الطلب.');
-      if (!payload.order.acknowledged_at) return showAcknowledgment(payload);
       render(payload);
     };
-    const loadVerifiedOrder = async () => {
+    const loadVerifiedOrder = async (confirmed = false) => {
       try {
-        enterVerified(await loadOrder());
+        const payload = confirmed ? await revealVerified(loadOrder) : await loadOrder();
+        enterVerified(payload);
+        portal.firstElementChild?.classList.add('verification-reveal');
       } catch (error) {
         portal.innerHTML = shell('<article class="digital-order device-card track-error"><div class="device-icon">!</div><h1>تعذر تحميل تفاصيل الاشتراك</h1><p>'+escapeHtml(error.message)+'</p><button id="retryOrderDetails" class="ack-button" type="button">إعادة تحميل معلومات الطلب</button></article>');
         const retry = document.getElementById('retryOrderDetails');
         retry.onclick = async () => { retry.disabled = true; await loadVerifiedOrder(); };
-      }
-    };
-    const startVerification = async () => {
-      setOrderProgress('verify');
-      try {
-        const { collectDeviceDna } = await import('/lib/device-dna.js');
-        const dna = await collectDeviceDna();
-        const { response, result: security } = await verifyDevice('verify', dna);
-        if (response.ok && security.allowed) return await loadVerifiedOrder();
-        if (security.transferRequired) return showTransfer(security, dna);
-        if (security.locked) return showLocked(security);
-        if (security.state === 'device_mismatch_strike') return showStrike(security);
-        throw new Error(security.message || 'تعذر التحقق من الجهاز.');
-      } catch (error) {
-        portal.innerHTML = shell('<div class="digital-order track-error"><strong>تعذر عرض الطلب</strong>' + escapeHtml(error.message) + '<br><br><a href="/">العودة إلى الاستعلام</a></div>');
       } finally {
         setOrderProgress();
       }
     };
-    const findOrder = async trackingToken => {
-      const { order } = await loadOrder(trackingToken);
-      if (!order) throw new Error('لم يتم العثور على الطلب.');
-    };
     const showOrder = async () => {
-      await confirmOrderFound();
-      await startVerification();
+      if (!await verifyOrderDevice({ token, onOtherOrder: showAnotherOrderLookup, onMismatch: logCompensationMismatch })) return;
+      await loadVerifiedOrder(true);
     };
     setOrderProgress('search');
     try {
-      await findOrder();
+      await previewOrder(token);
       await showOrder();
     } catch (error) {
       portal.innerHTML = '<main class="order-portal"><div class="track-error"><strong>تعذر عرض الطلب</strong>'+escapeHtml(error.message)+'<br><br><a href="/">العودة إلى الاستعلام</a></div></main>';

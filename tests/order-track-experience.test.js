@@ -13,22 +13,19 @@ test('order tracking uses the split brand layout and explicit lifecycle labels',
   assert.match(source, /defaultDeliveryEstimate/);
   assert.match(source, /setTimeout\(async \(\) => \{\s+try \{\s+const payload = await loadOrder\(displayedToken\);\s+if \(token === displayedToken\) render\(payload\)/);
   assert.match(source, /بداية السريان/);
-  assert.match(source, /بصمة الجهاز/);
+  assert.match(source, /الجهاز الموثّق/);
   assert.match(source, /order-info-grid/);
   assert.match(source, /grid-template-columns:repeat\(3,minmax\(0,1fr\)\)/);
   assert.match(source, /referral-title-row/);
   assert.doesNotMatch(source, /أصدقاء مكتملين/);
 });
 
-test('order tracking confirms the order before verification and opens details after verification', async () => {
+test('order tracking verifies automatically and opens details behind the verified session', async () => {
   const source = await readFile(new URL('../ui/order-track.html', import.meta.url), 'utf8');
-  assert.match(source, /await findOrder\(\);\s+await showOrder\(\)/);
-  assert.match(source, /await confirmOrderFound\(\);\s+await startVerification\(\)/);
-  assert.match(source, /setOrderProgress\('verify'\);[\s\S]*?verifyDevice\('verify', dna\)/);
-  assert.match(source, /if \(response\.ok && security\.allowed\) return await loadVerifiedOrder\(\)/);
-  assert.match(source, /أوافق وأُوثّق جهازي الآن/);
-  assert.doesNotMatch(source, /journey-stepper|journey-step/);
-  assert.match(source, /enterVerified\(await loadOrder\(\)\)/);
+  assert.match(source, /await previewOrder\(token\);\s+await showOrder\(\)/);
+  assert.match(source, /if \(!await verifyOrderDevice\([\s\S]*?\)\) return;\s+await loadVerifiedOrder\(true\)/);
+  assert.doesNotMatch(source, /ackCheckbox|stageAckCheckbox|confirmOrderFound|journey-stepper|journey-step/);
+  assert.match(source, /confirmed \? await revealVerified\(loadOrder\)/);
   assert.match(source, /retryOrderDetails/);
   assert.match(source, /const upsellCard = offer\?\.url/);
   assert.match(source, /\.track-night \.order-wrap \{ transform:none; \}/);
@@ -43,7 +40,7 @@ test('order details switch to another lookup in place without a page reload', as
   assert.match(source, /anotherOrderNumber/);
   assert.match(source, /input\.focus\(\)/);
   assert.match(source, /destination\.origin !== location\.origin/);
-  assert.match(source, /await findOrder\(nextToken\);\s+history\.replaceState\(/);
+  assert.match(source, /await previewOrder\(nextToken\);\s+history\.replaceState\(/);
   assert.doesNotMatch(source, /switchOrder[^\n]+location\.(?:assign|replace|reload)/);
 });
 
@@ -98,7 +95,7 @@ test('track routes use a dedicated secure loading document without homepage flas
   const config = JSON.parse(await readFile(new URL('../vercel.json', import.meta.url), 'utf8'));
   const boot = html.indexOf("dataset.orderProgress='search'");
   assert.ok(boot >= 0 && boot < html.search(/<body\b/));
-  assert.match(html, /جارِ البحث عن طلبك…/);
+  assert.match(html, /جارٍ التحقق من الطلب وتوثيق الجهاز…/);
   assert.doesNotMatch(html, /جارِ تجهيز تفاصيل طلبك/);
   assert.doesNotMatch(html, /<form id="singleOrderLookup"/);
   assert.doesNotMatch(html, /id="premiumLookup"/);
@@ -107,13 +104,14 @@ test('track routes use a dedicated secure loading document without homepage flas
   assert.ok(config.redirects.some(route => route.source === '/compensate/:path*' && route.destination === 'https://warranty.advpro.app/:path*'));
 });
 
-test('all public portals serve the same progress screen with one confirmation label', async () => {
+test('all public portals serve a shared in-place loader and have no manual device consent', async () => {
   for (const name of ['home','track','chatgpt','crunchyroll','compensate']) {
     const html = await readFile(new URL(`../public/${name}.html`, import.meta.url), 'utf8');
     assert.equal(html.match(/id="orderProgress"/g)?.length, 1, name);
-    assert.equal(html.match(/تم العثور على طلبك/g)?.length, 1, name);
-    assert.match(html, /data-progress-label="search">جارِ البحث عن طلبك…/, name);
-    assert.match(html, /data-progress-label="verify">التحقق من الجهاز…/, name);
+    assert.equal(html.match(/تم التحقق من الطلب وتوثيق جهازك بنجاح ✓/g)?.length, 1, name);
+    assert.match(html, /مطابقة بيانات الطلب…/);
+    assert.match(html, /فحص بصمة المتصفح والجهاز…/);
+    assert.doesNotMatch(html, /deviceBindingForm|أوافق على ربط الاشتراك|confirmOrderFound|id="continueToDevice"/);
     assert.equal(html.match(/<body\b/g)?.length, 1, name);
     if (name !== 'home') {
       const boot = html.indexOf("dataset.orderProgress='search'");

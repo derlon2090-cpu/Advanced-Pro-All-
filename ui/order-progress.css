@@ -1,56 +1,114 @@
-#orderProgress { display: none; }
-html[data-order-progress] body { overflow: hidden; }
-html[data-order-progress] body > :not(#orderProgress) { visibility: hidden; }
+.order-stage-layout { display: grid; grid-template-columns: minmax(0, 1fr); }
+.order-stage-layout > * { grid-area: 1 / 1; min-width: 0; }
+.order-stage-layout > [data-order-entry] {
+  width: min(100%, var(--verification-width, 100%));
+  min-height: 220px;
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+.order-stage-layout > #orderProgress { align-self: stretch; }
+.order-stage-layout > [data-order-entry].flow-view-enter { animation: none; }
+html[data-order-progress] .order-stage-layout > [data-order-entry] { visibility: hidden; }
+html[data-order-progress] .order-stage-layout > :not(#orderProgress,[data-order-entry]) { display: none; }
+.verification-card, .verification-card [hidden], .verification-card [data-verification-view],
+.verification-loading, .verification-success, .verification-search, .verification-check, .verification-details, .verification-confirm {
+  display: none;
+}
 html[data-order-progress] #orderProgress {
-  visibility: visible;
-  position: fixed;
-  inset: 0;
-  z-index: 1000;
   display: grid;
-  place-items: center;
+  align-content: center;
+  gap: 14px;
+  min-height: 220px;
+  width: min(100%, var(--verification-width, 100%));
+  margin-inline: auto;
+  padding: clamp(18px, 4vw, 30px);
   box-sizing: border-box;
-  padding: 24px;
-  background: radial-gradient(ellipse at 50% 32%, #1b3158, #071a35 72%);
+  border: 1px solid #64748b42;
+  border-radius: 20px;
+  background: radial-gradient(ellipse at 50% 0, #ea580c0f, transparent 75%), linear-gradient(145deg, #111a2bf5, #050a18fa);
   color: #f8fafc;
-  text-align: center;
+  box-shadow: 0 20px 55px #0206176b;
+  backdrop-filter: blur(18px);
 }
-.order-progress-card { width: min(100%, 30rem); }
-.order-progress-card strong { font-size: clamp(1.5rem, 5vw, 2.6rem); }
-.order-progress-card [data-progress-label], #continueToDevice { display: none; }
-html[data-order-progress="search"] [data-progress-label="search"],
-html[data-order-progress="found"] [data-progress-label="found"],
-html[data-order-progress="verify"] [data-progress-label="verify"] { display: block; }
-.order-progress-indicator {
+.verification-card [data-verification-view] { gap: 14px; min-width: 0; }
+html:is([data-order-progress="search"],[data-order-progress="verify"],[data-order-progress="success"],[data-order-progress="details"]) .verification-status,
+html[data-order-progress="mismatch"] .verification-mismatch { display: grid; }
+html:is([data-order-progress="search"],[data-order-progress="verify"]) .verification-loading,
+html[data-order-progress="search"] .verification-search,
+html[data-order-progress="verify"] .verification-check,
+html[data-order-progress="details"] .verification-details,
+html[data-order-progress="success"] .verification-success { display: block; }
+.verification-status, .verification-mismatch { justify-items: center; text-align: center; }
+.verification-status { align-content: center; }
+.verification-card svg { width: 22px; height: 22px; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.verification-orbit, .verification-lock, .verification-confirm {
+  position: relative;
   display: grid;
   place-items: center;
   box-sizing: border-box;
-  width: 54px;
-  height: 54px;
-  margin: 0 auto 18px;
-  border: 3px solid #fdba7440;
-  border-top-color: #fdba74;
-  border-radius: 50%;
-  animation: orderProgressSpin .8s linear infinite;
+  color: #fb923c;
 }
-.order-progress-indicator span { display: none; }
-html[data-order-progress="found"] .order-progress-indicator {
-  animation: none;
-  background: #052e2b;
-  border-color: #4ade8073;
-  color: #bbf7d0;
-  font-size: 1.6rem;
+.verification-orbit, .verification-confirm, .verification-lock { width: 52px; height: 52px; border-radius: 50%; }
+.verification-orbit::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: 2.5px solid #ea580c32;
+  border-top-color: #ea580c;
+  border-radius: inherit;
+  filter: drop-shadow(0 0 5px #ea580c80);
+  animation: verification-spin .85s cubic-bezier(.4,.2,.6,.8) infinite;
 }
-html[data-order-progress="found"] .order-progress-indicator span { display: block; }
-html[data-order-progress="found"] #continueToDevice {
-  display: inline-block;
-  margin-top: 20px;
-  padding: 10px 18px;
-  border: 1px solid #fdba7480;
-  border-radius: 10px;
-  background: #172844;
-  color: #fff;
+.verification-headline { margin: 0; font-size: 17px; font-weight: 800; line-height: 1.6; }
+.verification-detail, .verification-authorized { margin: 0; color: #94a3b8; font-size: 13px; line-height: 1.75; }
+.verification-status .verification-detail { animation: verification-label 170ms ease-out both; }
+.verification-device-pill {
+  width: fit-content;
+  padding: 4px 10px;
+  border: 1px solid #64748b45;
+  border-radius: 999px;
+  background: #ffffff06;
+  color: #cbd5e1;
+  font-size: 11px;
+  line-height: 1.55;
+}
+.verification-device-pill { max-width: 100%; overflow-wrap: anywhere; }
+.verification-confirm { display: none; color: #86efac; background: #064e3b4d; border: 1px solid #34d39960; box-shadow: 0 0 26px #10b98138; font-size: 24px; }
+html[data-order-progress="success"] .verification-confirm { display: grid; }
+html[data-order-progress="success"] :is(.verification-orbit,.verification-device-pill) { display: none; }
+.verification-success { color: #bbf7d0; }
+.verification-card button {
+  min-height: 48px;
+  padding: 8px 15px;
+  border: 1px solid #64748b55;
+  border-radius: 11px;
+  color: #f8fafc;
+  background: #ffffff08;
   font: inherit;
+  font-size: 13px;
+  font-weight: 800;
   cursor: pointer;
 }
-@keyframes orderProgressSpin { to { transform: rotate(360deg); } }
-@media (prefers-reduced-motion: reduce) { .order-progress-indicator { animation: none; } }
+.verification-card button:focus-visible { outline: 2px solid #fdba74; outline-offset: 3px; }
+.verification-card button:disabled { opacity: .52; cursor: default; }
+html[data-order-progress="mismatch"] #orderProgress { border-color: #ef444459; }
+.verification-lock { color: #fda4af; background: #7f1d1d42; border: 1px solid #ef444459; }
+.verification-authorized bdi { display: block; color: #f1f5f9; overflow-wrap: anywhere; }
+.verification-actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; width: 100%; }
+.verification-actions button { flex: 1 1 155px; }
+.track-verification-stage { display: none; }
+html.current-track[data-order-progress] .track-verification-stage {
+  display: grid;
+  width: min(620px, calc(100% - 28px));
+  margin-inline: auto;
+  padding-block: clamp(74px, 17vh, 170px) 36px;
+}
+html.current-track[data-order-progress] #portal { display: none; }
+html.current-track[data-order-progress] body { background: #050a18 !important; }
+.verification-reveal { animation: verification-reveal 220ms cubic-bezier(.2,.7,.2,1) both; }
+@keyframes verification-spin { to { transform: rotate(360deg); } }
+@keyframes verification-label { from { opacity: .35; } }
+@keyframes verification-reveal { from { opacity: 0; transform: translateY(6px); } }
+@media (prefers-reduced-motion: reduce) {
+  .verification-orbit::before, .verification-reveal, .verification-status .verification-detail { animation: none; }
+}

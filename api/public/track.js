@@ -55,6 +55,15 @@ export default async function handler(request, response) {
   const token = cleanToken(request.query?.token || request.body?.token);
   if (!token) return response.status(400).json({ message: 'رابط الطلب غير صالح.' });
 
+  if (request.method === 'GET' && request.query?.view === 'verification') {
+    const query = new URLSearchParams({ select: 'order_number,product_name,service_type', tracking_token: 'eq.' + token, limit: '1' });
+    const result = await database('orders?' + query);
+    if (!result.ok) return response.status(502).json({ message: 'تعذر تحميل بيانات الطلب.' });
+    const [order] = await result.json();
+    if (!order) return response.status(404).json({ message: 'لم يتم العثور على الطلب.' });
+    return response.status(200).setHeader('Cache-Control', 'private, no-store').json({ order });
+  }
+
   const legacySelect = 'id,order_number,product_name,service_type,status,created_at,duration_days,starts_at,expires_at,has_warranty,warranty_days,warranty_expires_at,acknowledgment_text,acknowledged_at,tracking_token,customer_email,reminder_email,reminder_subscribed_at,renewal_url,renewal_discount_code,security_strikes,locked_device_name,locked_device_fingerprint_hash,customers(name),account_assignments(email_accounts(mailbox_alias,encrypted_connection))';
   const baseSelect = legacySelect.replace('locked_device_fingerprint_hash,','locked_device_fingerprint_hash,device_bind_token_hash,locked_browser_fingerprint_hash,locked_browser_family,locked_os_name,registered_country_code,');
   const select = baseSelect.replace('tracking_token,','tracking_token,referral_code,referral_coupon_unlocked_at,referral_assigned_coupon,');

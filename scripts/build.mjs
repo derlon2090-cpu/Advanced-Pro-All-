@@ -50,8 +50,8 @@ const currentTrackBoot = "<script>if(location.pathname.startsWith('/track/')||lo
 const trackSearchBoot = "<script>if(/^\\/(track|compensate)\\/[^/]+/.test(location.pathname))document.documentElement.dataset.orderProgress='search'</script>";
 const withOrderProgress = (html, boot = "") => html
   .replace("</head>", () => orderProgressStyle + boot + "</head>")
-  .replace(/<body\b[^>]*>/, match => match + orderProgress);
-const serviceSearchBoot = (host, prefix) => `<script>if(new RegExp('^'+(location.hostname==='${host}'?'':'/${prefix}')+'/[a-zA-Z0-9_-]{16,128}/?$').test(location.pathname))document.documentElement.dataset.orderProgress='search'</script>`;
+  .replace("<!--order-progress-->", () => orderProgress);
+const serviceSearchBoot = (host, prefix, session) => `<script>(()=>{const token='[a-zA-Z0-9_-]{16,128}',route=new RegExp('^'+(location.hostname==='${host}'?'':'/${prefix}')+'/'+token+'/?$');let pending=route.test(location.pathname);if(!pending&&!new URLSearchParams(location.search).has('order'))try{const saved=JSON.parse(localStorage.getItem('advpro:${session}:session')||'null');pending=Boolean(saved?.expiresAt>Date.now()&&new RegExp('^'+token+'$').test(saved.token||''))}catch{}if(pending)document.documentElement.dataset.orderProgress='search'})()</script>`;
 const browserIcon = '<link rel="icon" type="image/png" sizes="any" href="/assets/bawaba-favicon.png"><link rel="apple-touch-icon" href="/assets/bawaba-favicon.png">';
 await mkdir(publicDir, { recursive: true });
 await cp(resolve(root, "assets"), resolve(publicDir, "assets"), { recursive: true });
@@ -73,8 +73,8 @@ const finishPage = (source, boot, injected = additions) => source
 await writeFile(resolve(publicDir, "home.html"), withOrderProgress(finishPage(currentPage, currentHomeBoot)), "utf8");
 await writeFile(resolve(publicDir, "admin.html"), finishPage(adminPage, "", adminAdditions), "utf8");
 await writeFile(resolve(publicDir, "track.html"), withOrderProgress(finishPage(trackPage, currentTrackBoot), trackSearchBoot), "utf8");
-await writeFile(resolve(publicDir, "crunchyroll.html"), withOrderProgress(crunchyrollPortal, serviceSearchBoot('anime.advpro.app', 'crunchyroll')), "utf8");
-await writeFile(resolve(publicDir, "chatgpt.html"), withOrderProgress(chatgptPortal, serviceSearchBoot('gpt.advpro.app', 'chatgpt')), "utf8");
-await writeFile(resolve(publicDir, "compensate.html"), withOrderProgress(compensatePortal, serviceSearchBoot('warranty.advpro.app', 'compensate')), "utf8");
+await writeFile(resolve(publicDir, "crunchyroll.html"), withOrderProgress(crunchyrollPortal, serviceSearchBoot('anime.advpro.app', 'crunchyroll', 'anime')), "utf8");
+await writeFile(resolve(publicDir, "chatgpt.html"), withOrderProgress(chatgptPortal, serviceSearchBoot('gpt.advpro.app', 'chatgpt', 'gpt')), "utf8");
+await writeFile(resolve(publicDir, "compensate.html"), withOrderProgress(compensatePortal, serviceSearchBoot('warranty.advpro.app', 'compensate', 'warranty')), "utf8");
 await writeFile(resolve(publicDir, "404.html"), '<!doctype html><html lang="ar" dir="rtl"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>404 | أدفانسد برو</title><style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#071a35;color:#f8fafc;font-family:Tahoma,Arial,sans-serif;text-align:center}h1{font-size:4rem;margin:0;color:#ea580c}p{color:#cbd5e1}</style><main><h1>404</h1><p>الصفحة غير موجودة.</p></main></html>', "utf8");
 console.log(`Built ${dist} and ${publicDir}`);

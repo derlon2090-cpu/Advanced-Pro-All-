@@ -42,16 +42,16 @@
   <main class="service-shell">
     <button id="switchOrder" class="switch-order hero-switch-order" type="button" hidden><span aria-hidden="true">⌕</span> استعلام عن طلب آخر ↺</button>
     <section class="hero"><div class="hero-art warranty-art" aria-hidden="true"><svg viewBox="0 0 1200 360" preserveAspectRatio="xMidYMid slice"><circle class="glow" cx="135" cy="176" r="120"/><g transform="translate(42 35)"><path class="shield" opacity=".64" d="M120 5c42 30 82 36 112 38v91c0 75-43 124-112 156C51 258 8 209 8 134V43c30-2 70-8 112-38Z"/><path class="line" d="m70 139 34 35 70-82"/><path class="line" opacity=".66" d="M120 31c31 19 59 26 86 31v69c0 57-31 97-86 126-55-29-86-69-86-126V62c27-5 55-12 86-31Z"/></g><g transform="translate(912 52)"><circle class="pulse" cx="120" cy="120" r="104"/><circle class="pulse" cx="120" cy="120" r="76"/><circle class="pulse" cx="120" cy="120" r="48"/><path class="shield" opacity=".72" d="M120 52c25 18 48 21 66 23v55c0 45-26 74-66 93-40-19-66-48-66-93V75c18-2 41-5 66-23Z"/><path class="line" d="m92 131 19 20 40-48"/></g><path class="pulse" opacity=".6" d="M8 319h52l19-34 28 61 27-48 18 21h109m679 0h95l22-50 31 78 25-55 16 27h83"/></svg></div><div class="hero-copy"><span class="eyebrow">Advanced Pro · Smart Compensation</span><h1>بوابة التعويض والاستبدال الفوري</h1><p>أدخل رقم طلبك لفحص الضمان وبصمة الجهاز ومعالجة طلب التعويض آليًا.</p></div></section>
-    <section class="stage">
-      <div id="entry" class="panel"><div class="panel-head"><div><h2>فحص أهلية طلبك</h2><p>نتعرّف على الرمز # والأرقام العربية تلقائيًا.</p></div><span class="badge">فحص آمن</span></div><form id="orderForm" class="order-form"><div class="field-shell"><input id="orderNumber" inputmode="numeric" autocomplete="off" required aria-label="رقم الطلب" placeholder="مثال: #12345"><button id="pasteButton" class="paste" type="button">لصق</button></div><button id="checkButton" class="primary" type="submit">فحص أهلية التعويض ←</button></form><p id="entryMessage" class="message" role="status"></p></div>
+    <section class="stage order-stage-layout" style="--verification-width:800px">
+      <!--order-progress-->
+      <div id="entry" class="panel" data-order-entry><div class="panel-head"><div><h2>فحص أهلية طلبك</h2><p>نتعرّف على الرمز # والأرقام العربية تلقائيًا.</p></div><span class="badge">فحص آمن</span></div><form id="orderForm" class="order-form"><div class="field-shell"><input id="orderNumber" inputmode="numeric" autocomplete="off" required aria-label="رقم الطلب" placeholder="مثال: #12345"><button id="pasteButton" class="paste" type="button">لصق</button></div><button id="checkButton" class="primary" type="submit">فحص أهلية التعويض ←</button></form><p id="entryMessage" class="message" role="status"></p></div>
       <div id="result" class="panel" hidden></div>
     </section>
   </main>
   <footer class="footer">بوابة أدفانسد برو · معالجة آمنة ومخصصة لطلبات الضمان</footer>
   <script type="module">
-    import { collectDeviceDna } from '/lib/device-dna.js';
-    import { setOrderProgress, confirmOrderFound } from '/lib/order-progress.js';
-    import { getBindAnchor, saveBindAnchor, bindingHeaders } from '/lib/device-bind-client.js';
+    import { setOrderProgress, verifyOrderDevice, revealVerified } from '/lib/order-progress.js';
+    import { bindingHeaders } from '/lib/device-bind-client.js';
     const $=id=>document.getElementById(id),digits=value=>String(value||'').replace(/[٠-٩]/g,d=>String(d.charCodeAt(0)-1632)).replace(/[۰-۹]/g,d=>String(d.charCodeAt(0)-1776)),cleanOrder=value=>digits(value).replace(/[^0-9]/g,'');
     let token='',evidenceData='';
     const sessionKey='advpro:warranty:session',sessionTtl=30*60*1000,switchMarkup='';
@@ -72,18 +72,11 @@
       if (!/^[a-zA-Z0-9_-]{16,128}$/.test(data.trackingToken || '')) throw new Error('تعذر تجهيز رابط الطلب.');
       return data.trackingToken;
     }
-    async function verifyDevice(){const challenge=await api('/api/public/verify-device',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({token,action:'challenge'})});const dna=await collectDeviceDna(),bindAnchor=await getBindAnchor(token);try{const result=await api('/api/public/verify-device',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({token,action:'verify',bindAnchor,challenge:challenge.challenge,...dna})});if(result.bindAnchor)await saveBindAnchor(token,result.bindAnchor);return result}catch(error){throw new Error(error.payload?.message||'عذرًا، طلب التعويض متاح حصريًا من المتصفح والجهاز الموثّقين للطلب.')}}
-    async function inspect(orderConfirmed = false) {
+    async function inspect() {
       setOrderProgress('search');
       try {
-        if (!orderConfirmed) {
-          const { order } = await api('/api/public/track?token='+encodeURIComponent(token),{cache:'no-store'});
-          if (!order) throw new Error('لم يتم العثور على الطلب.');
-        }
-        await confirmOrderFound();
-        setOrderProgress('verify');
-        await verifyDevice();
-        const data = await api('/api/public/compensate/'+encodeURIComponent(token),{headers:await bindingHeaders(token,{accept:'application/json'}),cache:'no-store'});
+        if (!await verifyOrderDevice({ token, onOtherOrder: resetOrder })) return;
+        const data = await revealVerified(async () => api('/api/public/compensate/'+encodeURIComponent(token),{headers:await bindingHeaders(token,{accept:'application/json'}),cache:'no-store'}));
         render(data);
       } catch (error) {
         show('result');
@@ -114,7 +107,7 @@
         saveSession();
         const prefix = location.hostname === 'warranty.advpro.app' ? '/' : '/compensate/';
         history.replaceState({}, '', prefix + encodeURIComponent(token));
-        await inspect(true);
+        await inspect();
       } catch (error) {
         $('entryMessage').textContent = error.message;
       } finally {
