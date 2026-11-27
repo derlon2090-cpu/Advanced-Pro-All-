@@ -25,6 +25,13 @@ async function db(path, options = {}) {
   });
 }
 
+async function loadOrderReviews() {
+  const fields = 'id,order_id,order_number,customer_name,product_name,rating,comment,suggestion_category,suggestion_text,status,is_negative,salla_shared_at,created_at,reviewed_at';
+  const query = 'order_reviews?order=created_at.desc&limit=500&select=';
+  const result = await db(query + fields + ',salla_feedback_id,salla_publish_state,salla_publish_note');
+  return result.ok ? result : db(query + fields);
+}
+
 export default async function handler(request, response) {
   if (enforceAdminHost(request, response)) return;
   if (request.query?._route === 'dispute-report') return disputeReportHandler(request, response);
@@ -50,7 +57,7 @@ export default async function handler(request, response) {
       db('orders?select=id,order_number,product_name,service_type,customer_phone,customer_email,reminder_email,reminder_subscribed_at,status,created_at,starts_at,expires_at,auto_provisioned_at,provisioning_source,has_warranty,warranty_days,warranty_expires_at,acknowledgment_text,acknowledged_at,tracking_token,renewal_url,renewal_discount_code,renewal_reminder_3d_sent_at,renewal_reminder_1d_sent_at,renewal_reminder_manual_sent_at,security_strikes,locked_device_name,registered_city_name,registered_country_code,free_resets_remaining,customers(name),account_assignments(email_accounts(id,mailbox_alias,integrity_status,integrity_alerted_at))&order=created_at.desc&limit=100'),
       db('email_accounts?select=id,mailbox_alias,service_type,max_slots,is_active,archived_at,password_updated_at,integrity_status,integrity_alerted_at,operational_status,subscription_expires_at,health_checked_at,health_failure_reason,encrypted_connection,totp_secret&order=created_at.desc&limit=200'),
       db('mail_security_events?select=id,event_type,received_at,suspected_order_id,attribution_basis,email_accounts(mailbox_alias)&order=received_at.desc&limit=100'),
-      db('order_reviews?select=id,order_id,order_number,customer_name,product_name,rating,comment,suggestion_category,suggestion_text,status,is_negative,salla_shared_at,created_at,reviewed_at&order=created_at.desc&limit=500'),
+      loadOrderReviews(),
       db('compensation_requests?select=id,order_id,reason,customer_note,status,review_mode,strikes_at_request,cumulative_strikes,cumulative_orders,cumulative_compensations,reputation_badge,old_email_account_id,replacement_email_account_id,evidence_image_url,evidence_image_hash,device_mismatch_blocked,customer_email,decision_reason,reviewed_at,created_at&order=created_at.desc&limit=500'),
       db('device_access_events?select=order_id,physical_core_hash&order=occurred_at.desc&limit=5000'),
       db(`service_reauth_sessions?select=email_account_id,started_at&started_at=gte.${encodeURIComponent(new Date(Date.now() - 86400000).toISOString())}&limit=5000`),

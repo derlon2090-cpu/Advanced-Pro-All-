@@ -37,12 +37,12 @@ test('paid Salla events provision instantly and send service-specific onboarding
   assert.match(webhook, /servicePortalUrl/);
 });
 
-test('inventory health cron is protected, quarantines failures and feeds the admin bell every 30 minutes', async () => {
+test('inventory health cron is protected, quarantines failures and feeds the admin bell daily', async () => {
   const [cron, config] = await Promise.all([read('lib/cron-handlers.js'), read('vercel.json')]);
   assert.match(cron, /inventoryHealth/);
   assert.match(cron, /operational_status:quarantine\?'quarantined':'available'/);
   assert.match(cron, /admin_notifications/);
   assert.doesNotMatch(cron, /Telegram/);
   const vercel = JSON.parse(config);
-  assert.ok(vercel.crons.some(item => item.path === '/api/cron/inventory-health' && item.schedule === '*/30 * * * *'));
+  assert.ok(vercel.crons.some(item => item.path === '/api/cron/inventory-health' && item.schedule === '0 10 * * *'));
 });
