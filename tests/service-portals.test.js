@@ -84,3 +84,17 @@ test('service subdomain heroes use distinct responsive artwork without the healt
   assert.match(homeShell, /النظام يعمل بكفاءة/);
   assert.doesNotMatch(home, /class="hero-art/);
 });
+
+test('service portals can switch to another order without reloading', async () => {
+  const pages = await Promise.all([
+    '../ui/crunchyroll-portal.html',
+    '../ui/chatgpt-portal.html',
+    '../ui/compensate-portal.html',
+  ].map(file => readFile(new URL(file, import.meta.url), 'utf8')));
+  for (const page of pages) {
+    assert.match(page, /استعلام عن طلب آخر/);
+    assert.match(page, /history\.replaceState/);
+    assert.match(page, /orderNumber[^\n]+\.focus\(\)/);
+    assert.match(page, /border-radius:999px/);
+  }
+});

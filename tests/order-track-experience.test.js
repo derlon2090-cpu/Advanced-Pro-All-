@@ -32,6 +32,16 @@ test('order tracking reveals the order through three secure progressive stages',
   assert.doesNotMatch(source, /translateY\(-(?:48|58)px\)/);
 });
 
+test('order details switch to another lookup in place without a page reload', async () => {
+  const source = await readFile(new URL('../ui/order-track.html', import.meta.url), 'utf8');
+  assert.match(source, /استعلام عن طلب آخر/);
+  assert.match(source, /showAnotherOrderLookup/);
+  assert.match(source, /history\.replaceState\(\{\},'', '\/'\)/);
+  assert.match(source, /anotherOrderNumber/);
+  assert.match(source, /input\.focus\(\)/);
+  assert.doesNotMatch(source, /switchOrder[^\n]+location\.(?:assign|replace|reload)/);
+});
+
 test('home lookup shows a branded transition before navigation', async () => {
   const source = await readFile(new URL('../ui/single-order-home.html', import.meta.url), 'utf8');
   const shell = await readFile(new URL('../ui/single-order-home-shell.html', import.meta.url), 'utf8');
