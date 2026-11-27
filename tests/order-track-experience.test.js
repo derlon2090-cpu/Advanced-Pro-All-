@@ -5,9 +5,13 @@ import { readFile } from 'node:fs/promises';
 test('order tracking uses the split brand layout and explicit lifecycle labels', async () => {
   const source = await readFile(new URL('../ui/order-track.html', import.meta.url), 'utf8');
   assert.match(source, /linear-gradient\(135deg, #7c2d12 0%, #c2410c 50%, #ea580c 100%\)/);
-  assert.match(source, /تم التنفيذ • بدأ سريان الاشتراك ✓/);
-  assert.match(source, /قيد التنفيذ • سيبدأ احتساب المدة فور التفعيل/);
-  assert.match(source, /انتهت مدة الاشتراك/);
+  assert.match(source, /حالة الطلب: سارٍ ✓/);
+  assert.match(source, /حالة الطلب: تحت المراجعة والتجهيز ⏳/);
+  assert.match(source, /حالة الطلب: منتهي/);
+  assert.match(source, /الوقت المتوقع للتسليم والتفعيل/);
+  assert.match(source, /تم التسليم والتفعيل بنجاح ✓/);
+  assert.match(source, /defaultDeliveryEstimate/);
+  assert.match(source, /setTimeout\(\(\) => loadOrder\(\)\.then\(render\)/);
   assert.match(source, /تاريخ بداية السريان/);
   assert.match(source, /بصمة الجهاز الفيزيائية/);
 });
@@ -78,7 +82,7 @@ test('track routes use a dedicated secure loading document without homepage flas
   assert.doesNotMatch(html, /id="premiumLookup"/);
   assert.doesNotMatch(html, /نظام الضمان والمتابعة الذكي/);
   assert.ok(config.rewrites.some(route => route.source === '/track/:path*' && route.destination === '/track.html'));
-  assert.ok(config.rewrites.some(route => route.source === '/compensate/:path*' && route.destination === '/track.html'));
+  assert.ok(config.rewrites.some(route => route.source === '/compensate/:path*' && ['/track.html', '/compensate.html'].includes(route.destination)));
 });
 
 test('fulfillment migration resets subscription and warranty start dates', async () => {
@@ -87,5 +91,16 @@ test('fulfillment migration resets subscription and warranty start dates', async
   assert.match(sql, /expires_at = v_started_at \+ make_interval/);
   assert.match(sql, /warranty_expires_at = case when has_warranty/);
   assert.match(sql, /status = 'delivered'/);
+});
+
+test('delivery estimate is configurable and exposed to pending orders', async () => {
+  const migration = await readFile(new URL('../supabase/migrations/025_order_delivery_estimate.sql', import.meta.url), 'utf8');
+  const admin = await readFile(new URL('../api/admin/operations.js', import.meta.url), 'utf8');
+  const dashboard = await readFile(new URL('../ui/admin-dashboard.html', import.meta.url), 'utf8');
+  const publicInfo = await readFile(new URL('../lib/public-info-handlers.js', import.meta.url), 'utf8');
+  assert.match(migration, /default_delivery_estimate text/);
+  assert.match(admin, /save_delivery_estimate/);
+  assert.match(dashboard, /الوقت المتوقع للتسليم الافتراضي/);
+  assert.match(publicInfo, /defaultDeliveryEstimate/);
 });
 

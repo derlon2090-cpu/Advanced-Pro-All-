@@ -52,7 +52,7 @@ export default async function handler(request, response) {
   const token = cleanToken(request.query?.token || request.body?.token);
   if (!token) return response.status(400).json({ message: 'رابط الطلب غير صالح.' });
 
-  const baseSelect = 'id,order_number,product_name,service_type,status,duration_days,starts_at,expires_at,has_warranty,warranty_days,warranty_expires_at,acknowledgment_text,acknowledged_at,tracking_token,customer_email,reminder_email,reminder_subscribed_at,renewal_url,renewal_discount_code,security_strikes,customers(name),account_assignments(email_accounts(mailbox_alias,encrypted_connection))';
+  const baseSelect = 'id,order_number,product_name,service_type,status,created_at,duration_days,starts_at,expires_at,has_warranty,warranty_days,warranty_expires_at,acknowledgment_text,acknowledged_at,tracking_token,customer_email,reminder_email,reminder_subscribed_at,renewal_url,renewal_discount_code,security_strikes,customers(name),account_assignments(email_accounts(mailbox_alias,encrypted_connection))';
   const select = baseSelect.replace('tracking_token,','tracking_token,referral_code,referral_coupon_unlocked_at,referral_assigned_coupon,');
   let params = new URLSearchParams({ select, tracking_token: `eq.${token}`, limit: '1' });
   let foundResponse = await database(`orders?${params}`);

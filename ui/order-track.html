@@ -32,9 +32,17 @@
   .copy-button { padding: 5px 8px; border: 1px solid #ffffff45; border-radius: 8px; color: #fff7ed; background: #43140766; font: inherit; font-size: .72rem; cursor: pointer; transition: .2s; }
   .copy-button:hover { background: #7c2d1266; }
   .copy-button.copied { border-color: #22c55e88; color: #86efac; background: #052e2b; }
-  .state-badge { display:inline-flex; align-items:center; justify-content:center; flex:0 0 auto; padding: 9px 14px; border: 1px solid #86efac88; border-radius: 999px; background: #052e2bd9; color: #bbf7d0; box-shadow:0 0 24px #22c55e35; font-size:.78rem; font-weight: 900; }
-  .state-badge.expired { background: #334155d9; color: #e2e8f0; }
+  .state-badge { display:inline-flex; align-items:center; justify-content:flex-start; gap:10px; flex:0 1 330px; padding: 10px 14px; border: 1px solid #86efac88; border-radius: 16px; background: #052e2bd9; color: #bbf7d0; box-shadow:0 0 24px #22c55e35; text-align:right; }
+  .state-badge i { width:9px; height:9px; flex:0 0 9px; border-radius:50%; background:#22c55e; box-shadow:0 0 0 5px #22c55e1c,0 0 15px #22c55e; }
+  .state-badge span,.state-badge strong,.state-badge small { display:block; }
+  .state-badge strong { font-size:.77rem; }
+  .state-badge small { margin-top:3px; color:#a7f3d0; font-size:.62rem; line-height:1.5; }
+  .state-badge.expired { border-color:#64748b99; background: #334155d9; color: #e2e8f0; box-shadow:none; }
+  .state-badge.expired i { background:#94a3b8; box-shadow:0 0 0 5px #94a3b81c; }
+  .state-badge.expired small { color:#cbd5e1; }
   .state-badge.pending { border-color:#fcd34d99; background: #78350fd9; color: #fde68a; box-shadow:0 0 25px #f59e0b2e; animation:statusPulse 1.8s ease-in-out infinite; }
+  .state-badge.pending i { background:#f59e0b; box-shadow:0 0 0 5px #f59e0b1f,0 0 15px #f59e0b; }
+  .state-badge.pending small { color:#fed7aa; }
   @keyframes statusPulse { 50%{box-shadow:0 0 34px #f59e0b55} }
   .ticket-body { padding: 24px; }
   .track-stack { display:grid; gap:15px; }
@@ -47,6 +55,18 @@
   .status-card h2,.referral-card h2,.reminder-card h2,.review-card h2 { margin:0 0 8px; font-size:1.02rem; }
   .status-head { display:flex; justify-content:space-between; gap:12px; align-items:center; margin-bottom:14px; }
   .status-head strong { color:#86efac; }
+  .delivery-card { position:relative; overflow:hidden; display:grid; grid-template-columns:auto 1fr; gap:14px; align-items:center; border-color:#166534; background:linear-gradient(135deg,#052e2048,#081124 72%); }
+  .delivery-card::after { content:""; position:absolute; width:150px; height:150px; left:-55px; bottom:-85px; border-radius:50%; background:#22c55e12; pointer-events:none; }
+  .delivery-card.pending { border-color:#b4530988; background:linear-gradient(135deg,#78350f42,#081124 72%); }
+  .delivery-card.expired { border-color:#475569; background:linear-gradient(135deg,#1e293b8f,#081124 72%); }
+  .delivery-icon { width:46px; height:46px; display:grid; place-items:center; border:1px solid #22c55e66; border-radius:14px; color:#86efac; background:#052e2b; font-size:1.15rem; box-shadow:0 10px 28px #0005; }
+  .delivery-card.pending .delivery-icon { border-color:#f59e0b77; color:#fde68a; background:#78350f; }
+  .delivery-card.expired .delivery-icon { border-color:#64748b; color:#cbd5e1; background:#1e293b; }
+  .delivery-copy h2 { margin:0 0 5px; color:#cbd5e1; font-size:.8rem; }
+  .delivery-copy strong { display:block; color:#bbf7d0; font-size:1.05rem; line-height:1.55; }
+  .delivery-card.pending .delivery-copy strong { color:#fde68a; }
+  .delivery-card.expired .delivery-copy strong { color:#e2e8f0; }
+  .delivery-copy small { display:block; margin-top:6px; color:#94a3b8; font-size:.7rem; line-height:1.65; }
   .policy-details { margin-top:14px; border:1px solid #1e3a5f; border-radius:14px; background:#060d1c; overflow:hidden; }
   .policy-details summary { padding:14px; color:#cbd5e1; font-size:.82rem; font-weight:900; cursor:pointer; }
   .policy-details .policy-body { padding:0 15px 15px; }
@@ -170,6 +190,7 @@
     .ticket-body { padding: 16px; }
     .time-grid, .order-actions, .feedback-actions, .coupon-actions { grid-template-columns: 1fr; }
     .identity-top,.status-head,.reminder-compact { align-items:flex-start; flex-direction:column; }
+    .identity-badges,.state-badge { width:100%; box-sizing:border-box; }
     .account-line { align-items: flex-start; flex-direction: column; }
     .reminder-form { grid-template-columns: 1fr; }
     .time-cell { min-height: auto; }
@@ -184,6 +205,7 @@
     if (!portal) return;
     document.body.classList.add('order-track-ready');
     const token = decodeURIComponent(location.pathname.split('/').filter(Boolean)[1] || '');
+    let statusRefreshTimer;
     let compensationMismatchLogged=false;const logCompensationMismatch=()=>{if(compensationMismatchLogged||!location.pathname.startsWith('/compensate/'))return;compensationMismatchLogged=true;fetch('/api/public/compensate/'+encodeURIComponent(token),{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({reason:'other'})}).catch(()=>{})};
     const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
     const date = value => value ? new Intl.DateTimeFormat('ar-SA', { dateStyle: 'medium', timeZone: 'Asia/Riyadh' }).format(new Date(value)) : '—';
@@ -204,9 +226,9 @@
     });
     const statusInfo = order => {
       const value = String(order.salla_status || order.status || '').toLowerCase();
-      if (value === 'expired' || (order.expires_at && new Date(order.expires_at) <= new Date())) return { label:'انتهت مدة الاشتراك', cls:'expired', active:false, expired:true };
-      if (['delivered','follow_up_complete','completed','active','تم التنفيذ'].includes(value)) return { label:'تم التنفيذ • بدأ سريان الاشتراك ✓', cls:'', active:true, expired:false };
-      return { label:'قيد التنفيذ • سيبدأ احتساب المدة فور التفعيل', cls:'pending', active:false, expired:false };
+      if (value === 'expired' || (order.expires_at && new Date(order.expires_at) <= new Date())) return { label:'حالة الطلب: منتهي', detail:'اكتملت مدة الاشتراك ويمكنك تجديده الآن', cls:'expired', active:false, expired:true };
+      if (['delivered','follow_up_complete','completed','active','تم التنفيذ'].includes(value)) return { label:'حالة الطلب: سارٍ ✓', detail:'تم تفعيل اشتراكك بنجاح ويعمل بكفاءة', cls:'active', active:true, expired:false };
+      return { label:'حالة الطلب: تحت المراجعة والتجهيز ⏳', detail:'طلبك محفوظ ويجري تجهيزه للتفعيل', cls:'pending', active:false, expired:false };
     };
     const stepper = active => '<nav class="journey-stepper" aria-label="مراحل فتح الطلب"><span class="journey-step '+(active>1?'done':active===1?'active':'')+'"><b>'+(active>1?'✓':'١')+'</b>العثور على الطلب</span><span class="journey-step '+(active>2?'done':active===2?'active':'')+'"><b>'+(active>2?'✓':'٢')+'</b>التحقق من الجهاز</span><span class="journey-step '+(active===3?'active':'')+'"><b>٣</b>بيانات الاشتراك</span></nav>';
     const render = payload => {
@@ -246,13 +268,21 @@
         ? '<section class="review-card"><h2>تقييم تجربتك واقتراحات التطوير</h2><div class="review-existing">✓ وصلنا تقييمك وهو الآن ' + (review.status === 'published' ? 'منشور بعد الاعتماد.' : review.status === 'hidden' ? 'محفوظ لدى فريق الجودة.' : 'بانتظار مراجعة فريق الجودة.') + '</div></section>'
         : '<section class="review-card"><h2>تقييم تجربتك واقتراحات التطوير</h2><p>رأيك يصل مباشرة إلى فريق الجودة ويرتبط بطلبك بأمان.</p><form id="reviewForm"><div class="review-stars" role="radiogroup" aria-label="تقييم الخدمة">'+stars+'</div><p id="reviewRatingLabel" class="review-rating-label">اختر عدد النجوم</p><label>اكتب رأيك أو ملاحظتك حول الخدمة<textarea id="reviewComment" maxlength="2000" placeholder="اكتب تجربتك هنا (اختياري)"></textarea></label><details class="review-suggestion"><summary>هل لديك اقتراح لتطوير البوابة؟</summary><div><label>تصنيف الاقتراح<select id="suggestionCategory"><option value="">اختر التصنيف</option><option value="activation_speed">سرعة التفعيل</option><option value="portal_ux">سهولة البوابة</option><option value="new_feature">إضافة ميزة جديدة</option><option value="support">الدعم الفني</option><option value="other">أخرى</option></select></label><label>تفاصيل الاقتراح<textarea id="suggestionText" maxlength="2000" placeholder="ما الذي تحب أن نطوره؟"></textarea></label></div></details><button class="review-submit" type="submit">إرسال التقييم بأمان</button><p id="reviewMessage" class="review-message" role="status"></p></form><div id="reviewResult" hidden></div></section>';
       const timingSummary = state.active ? 'اشتراكك سارٍ حاليًا — متبقي '+remaining+' يوم' : state.expired ? 'اكتملت مدة الاشتراك — يمكنك التجديد الآن' : 'مدة اشتراكك محفوظة بالكامل ولن تُحتسب إلا لحظة التنفيذ';
+      const deliveryEstimate = String(payload.defaultDeliveryEstimate || 'فوري خلال 5 – 18 ساعة').trim();
+      const deliveryCard = state.active
+        ? '<section class="glass-card delivery-card"><span class="delivery-icon">✓</span><div class="delivery-copy"><h2>حالة التسليم</h2><strong>تم التسليم والتفعيل بنجاح ✓</strong><small>تم التفعيل في '+dateTime(order.starts_at)+'</small></div></section>'
+        : state.expired
+          ? '<section class="glass-card delivery-card expired"><span class="delivery-icon">■</span><div class="delivery-copy"><h2>حالة التسليم</h2><strong>اكتملت مدة الاشتراك</strong><small>يمكنك استخدام خيار التجديد السريع أدناه لاستعادة الخدمة.</small></div></section>'
+          : '<section class="glass-card delivery-card pending"><span class="delivery-icon">◷</span><div class="delivery-copy"><h2>الوقت المتوقع للتسليم والتفعيل</h2><strong>'+escapeHtml(deliveryEstimate)+'</strong><small>'+(order.created_at?'استلمنا طلبك في '+dateTime(order.created_at)+' — ':'')+'نتحقق من اكتمال التفعيل تلقائيًا كل 30 ثانية.</small></div></section>';
       const policyCard = acknowledged ? '<details class="policy-details"><summary>إقرار وسياسة المنتج الموثّق ببصمة الجهاز</summary><div class="policy-body"><ul class="ack-list">'+points.map(point=>'<li>'+escapeHtml(point)+'</li>').join('')+'</ul><div class="ack-stamp">✓ تم التوثيق بتاريخ '+date(order.acknowledged_at)+'</div></div></details>' : '<section class="ack-box"><h2>إقرار وسياسة المنتج</h2><ul class="ack-list">'+points.map(point=>'<li>'+escapeHtml(point)+'</li>').join('')+'</ul><div class="ack-control"><label class="ack-check"><input id="ackCheckbox" type="checkbox"> <span>أقرّ بقراءة وموافقة شروط وسياسة المنتج أعلاه</span></label><button id="ackButton" class="ack-button" type="button" disabled>تأكيد الإقرار وعرض تفاصيل الاشتراك</button><p id="ackMessage" class="ack-message" role="status"></p></div></section>';
-      const identityCard = '<section class="glass-card identity-card"><div class="identity-top"><div><span class="order-number copy-inline">طلب #'+escapeHtml(order.order_number)+' '+copyButton(order.order_number,'نسخ الرقم')+'</span><h1>'+escapeHtml(productName)+'</h1></div><div class="identity-badges"><span class="salla-verified">تم التحقق من متجر سلة ✓</span><span class="state-badge '+statusClass+'">'+statusLabel+'</span></div></div>'+accountCard+(crunchyAction?'<div class="order-actions">'+crunchyAction+'</div>':'')+'</section>';
-      const statusCard = '<section class="glass-card status-card"><div class="status-head"><div><h2>الوقت المتبقي والضمان</h2><span>'+timingSummary+'</span></div><strong>متبقي '+remaining+' يوم من أصل '+escapeHtml(order.duration_days||30)+' يوم</strong></div><div class="progress" aria-label="نسبة المدة المتبقية"><i style="width:'+remainingProgress.toFixed(1)+'%"></i></div><section class="time-grid" style="margin-top:14px"><div class="time-cell"><span>'+(state.active?'تاريخ بداية السريان':'موعد بداية الاشتراك')+'</span><strong>'+(state.active?dateTime(order.starts_at):'عند اكتمال التنفيذ')+'</strong></div><div class="time-cell"><span>تاريخ الانتهاء</span><strong>'+(state.active||state.expired?date(order.expires_at):'يُحسب بعد التنفيذ')+'</strong></div><div class="time-cell"><span>المدة</span><strong>'+escapeHtml(order.duration_days||30)+' يوم</strong></div></section><section class="warranty-card '+warranty.cls+'"><h2>✦ '+warranty.title+'</h2><p>'+warranty.text+'</p></section>'+policyCard+renewalCard+'</section>';
-      const regularCards = acknowledged ? identityCard+statusCard+upsellCard+referralCard+reminderCard+reviewCard : identityCard+statusCard;
-      const compensationCards = identityCard+statusCard+compensationCard;
+      const identityCard = '<section class="glass-card identity-card"><div class="identity-top"><div><span class="order-number copy-inline">طلب #'+escapeHtml(order.order_number)+' '+copyButton(order.order_number,'نسخ الرقم')+'</span><h1>'+escapeHtml(productName)+'</h1></div><div class="identity-badges"><span class="salla-verified">تم التحقق من متجر سلة ✓</span><span class="state-badge '+statusClass+'"><i></i><span><strong>'+statusLabel+'</strong><small>'+state.detail+'</small></span></span></div></div>'+accountCard+(crunchyAction?'<div class="order-actions">'+crunchyAction+'</div>':'')+'</section>';
+      const statusCard = '<section class="glass-card status-card"><div class="status-head"><div><h2>الوقت المتبقي والضمان</h2><span>'+timingSummary+'</span></div><strong>'+(state.active?'متبقي '+remaining+' يوم من أصل '+escapeHtml(order.duration_days||30)+' يوم':state.expired?'انتهت مدة الاشتراك':'بانتظار بدء مدة الاشتراك')+'</strong></div><div class="progress" aria-label="نسبة المدة المتبقية"><i style="width:'+remainingProgress.toFixed(1)+'%"></i></div><section class="time-grid" style="margin-top:14px"><div class="time-cell"><span>'+(state.active?'تاريخ بداية السريان':'موعد بداية الاشتراك')+'</span><strong>'+(state.active?dateTime(order.starts_at):'عند اكتمال التنفيذ')+'</strong></div><div class="time-cell"><span>تاريخ الانتهاء</span><strong>'+(state.active||state.expired?date(order.expires_at):'يُحسب بعد التنفيذ')+'</strong></div><div class="time-cell"><span>المدة</span><strong>'+escapeHtml(order.duration_days||30)+' يوم</strong></div></section><section class="warranty-card '+warranty.cls+'"><h2>✦ '+warranty.title+'</h2><p>'+warranty.text+'</p></section>'+policyCard+renewalCard+'</section>';
+      const regularCards = acknowledged ? identityCard+deliveryCard+statusCard+upsellCard+referralCard+reminderCard+reviewCard : identityCard+deliveryCard+statusCard;
+      const compensationCards = identityCard+deliveryCard+statusCard+compensationCard;
       portal.innerHTML = '<main class="order-portal"><section class="track-hero"><header class="order-brand"><div><strong>بوابة أدفانسد برو</strong><small>Advanced Pro Portal</small></div><a href="/">← استعلام عن طلب آخر</a></header><div class="track-hero-copy"><span class="order-number">بوابة الطلب الآمنة</span><h1>تفاصيل اشتراكك</h1></div></section><section class="track-night"><div class="order-wrap">'+stepper(3)+'<div class="track-stack">'+(directCompensation?compensationCards:regularCards)+'</div>'+(!directCompensation?'<p class="compensation-link-line">واجهت مشكلة في الحساب؟ <a href="/compensate/'+encodeURIComponent(token)+'">عندك مشكلة؟</a></p>':'')+'</div></section></main>';
       bindCopyButtons();
+      clearTimeout(statusRefreshTimer);
+      if (!state.active && !state.expired && !directCompensation) statusRefreshTimer = setTimeout(() => loadOrder().then(render).catch(() => {}), 30000);
       const countdown=document.getElementById('offerCountdown');if(countdown){const tick=()=>{const left=Math.max(0,new Date(countdown.dataset.expires)-Date.now()),m=Math.floor(left/60000),s=Math.floor(left%60000/1000);countdown.textContent=String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');if(!left)countdown.closest('.upsell-card').hidden=true};tick();const timer=setInterval(()=>{if(!countdown.isConnected){clearInterval(timer);return}tick()},1000)}
       const copyReferral=document.getElementById('copyReferral');if(copyReferral)copyReferral.onclick=async()=>{try{await navigator.clipboard.writeText(copyReferral.dataset.url);copyReferral.textContent='تم نسخ رابط الدعوة ✓'}catch{copyReferral.textContent='تعذر النسخ — انسخ الرابط يدويًا'}};
       const reminderToggle=document.getElementById('reminderToggle');if(reminderToggle)reminderToggle.onclick=()=>{document.getElementById('reminderEmailForm').hidden=false;reminderToggle.hidden=true;document.getElementById('reminderEmailInput').focus()};
@@ -326,9 +356,17 @@
       }
     };
     const shell = content => '<main class="order-portal"><section class="track-hero"><header class="order-brand"><div><strong>بوابة أدفانسد برو</strong><small>حماية الاشتراك بجهاز واحد</small></div><a href="/">← العودة للاستعلام</a></header><div class="track-hero-copy"><span class="order-number">المرحلة الثانية</span><h1>التحقق الأمني من الجهاز</h1></div></section><section class="track-night"><div class="order-wrap">'+stepper(2)+content+'</div></section></main>';
-    const loadOrder = () => fetch('/api/public/track?token=' + encodeURIComponent(token), { headers: { accept: 'application/json' } })
-      .then(async response => { const data = await response.json().catch(() => ({})); if (!response.ok) throw new Error(data.message || 'تعذر تحميل الطلب.'); return data; })
-    ;
+    const loadOrder = async () => {
+      const [orderResponse, settingsResponse] = await Promise.all([
+        fetch('/api/public/track?token=' + encodeURIComponent(token), { headers: { accept: 'application/json' } }),
+        fetch('/api/public/system-settings', { headers: { accept: 'application/json' } }).catch(() => null),
+      ]);
+      const data = await orderResponse.json().catch(() => ({}));
+      if (!orderResponse.ok) throw new Error(data.message || 'تعذر تحميل الطلب.');
+      const settings = settingsResponse?.ok ? await settingsResponse.json().catch(() => ({})) : {};
+      data.defaultDeliveryEstimate = settings.defaultDeliveryEstimate || 'فوري خلال 5 – 18 ساعة';
+      return data;
+    };
     const verifyDevice = async (action, dna) => {
       const challengeResponse = await fetch('/api/public/verify-device', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ token, action: 'challenge' }) });
       const challengePayload = await challengeResponse.json().catch(() => ({}));
