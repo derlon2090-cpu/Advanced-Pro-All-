@@ -48,6 +48,7 @@
     { "source": "/api/cron/renewal-reminders", "destination": "/api/cron?job=renewal-reminders" },
     { "source": "/api/cron/mail-retention", "destination": "/api/cron?job=mail-retention" },
     { "source": "/api/cron/daily-digest", "destination": "/api/cron?job=daily-digest" },
+    { "source": "/api/cron/inventory-health", "destination": "/api/cron?job=inventory-health" },
     {
       "source": "/admin/:path*",
       "has": [{ "type": "host", "value": { "re": "^(advpro\\.app|anime\\.advpro\\.app|gpt\\.advpro\\.app|warranty\\.advpro\\.app)$" } }],
@@ -68,6 +69,7 @@
   "crons": [
     { "path": "/api/cron/renewal-reminders", "schedule": "0 13 * * *" },
     { "path": "/api/cron/mail-retention", "schedule": "0 14 * * *" },
-    { "path": "/api/cron/daily-digest", "schedule": "0 18 * * *" }
+    { "path": "/api/cron/daily-digest", "schedule": "0 18 * * *" },
+    { "path": "/api/cron/inventory-health", "schedule": "*/30 * * * *" }
   ]
 }

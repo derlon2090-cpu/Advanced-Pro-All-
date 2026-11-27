@@ -8,6 +8,7 @@ import { encryptPassword } from '../../lib/account-credentials.js';
 import { generateTotp, normalizeTotpSecret } from '../../lib/totp.js';
 import { htmlEscape, sendOperationalEmail } from '../../lib/operational-email.js';
 import { enforceAdminHost } from '../../lib/host-routing.js';
+import { servicePortalUrl } from '../../lib/service-portal.js';
 
 async function requireAdmin(request) {
   const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL, anon = process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY, token = tokenFromRequest(request);
@@ -41,18 +42,20 @@ export default async function handler(request, response) {
     return result?.success ? response.status(200).json({ ok: true, freeResetsRemaining: result.free_resets_remaining }) : response.status(404).json({ message: 'الطلب غير موجود.' });
   }
   if (request.method === 'GET') {
-    const [capacity, rotations, mappings, settings, mailLogs, stores, orders, accounts, mailSecurityEvents, reviews, compensations, deviceEvents, reauthSessions] = await Promise.all([
+    const [capacity, rotations, mappings, settings, mailLogs, stores, orders, accounts, mailSecurityEvents, reviews, compensations, deviceEvents, reauthSessions, referralCoupons, adminNotifications] = await Promise.all([
       db('admin_capacity_radar?select=*'), db('admin_password_rotation_queue?select=*'),
       db('salla_product_mappings?select=*&order=created_at.desc'), db('system_settings?select=*&singleton=eq.true'),
       db('mail_delivery_logs?select=recipient_address,category,received_at,email_accounts(mailbox_alias)&order=received_at.desc&limit=5'),
       db('stores?select=id&order=created_at.asc&limit=1'),
-      db('orders?select=id,order_number,product_name,service_type,customer_phone,customer_email,reminder_email,reminder_subscribed_at,status,created_at,starts_at,expires_at,has_warranty,warranty_days,warranty_expires_at,acknowledgment_text,acknowledged_at,tracking_token,renewal_url,renewal_discount_code,renewal_reminder_3d_sent_at,renewal_reminder_1d_sent_at,renewal_reminder_manual_sent_at,security_strikes,locked_device_name,registered_city_name,registered_country_code,free_resets_remaining,customers(name),account_assignments(email_accounts(id,mailbox_alias,integrity_status,integrity_alerted_at))&order=created_at.desc&limit=100'),
-      db('email_accounts?select=id,mailbox_alias,service_type,max_slots,is_active,archived_at,password_updated_at,integrity_status,integrity_alerted_at,totp_secret&order=created_at.desc&limit=200'),
+      db('orders?select=id,order_number,product_name,service_type,customer_phone,customer_email,reminder_email,reminder_subscribed_at,status,created_at,starts_at,expires_at,auto_provisioned_at,provisioning_source,has_warranty,warranty_days,warranty_expires_at,acknowledgment_text,acknowledged_at,tracking_token,renewal_url,renewal_discount_code,renewal_reminder_3d_sent_at,renewal_reminder_1d_sent_at,renewal_reminder_manual_sent_at,security_strikes,locked_device_name,registered_city_name,registered_country_code,free_resets_remaining,customers(name),account_assignments(email_accounts(id,mailbox_alias,integrity_status,integrity_alerted_at))&order=created_at.desc&limit=100'),
+      db('email_accounts?select=id,mailbox_alias,service_type,max_slots,is_active,archived_at,password_updated_at,integrity_status,integrity_alerted_at,operational_status,subscription_expires_at,health_checked_at,health_failure_reason,encrypted_connection,totp_secret&order=created_at.desc&limit=200'),
       db('mail_security_events?select=id,event_type,received_at,suspected_order_id,attribution_basis,email_accounts(mailbox_alias)&order=received_at.desc&limit=100'),
       db('order_reviews?select=id,order_id,order_number,customer_name,product_name,rating,comment,suggestion_category,suggestion_text,status,is_negative,salla_shared_at,created_at,reviewed_at&order=created_at.desc&limit=500'),
       db('compensation_requests?select=id,order_id,reason,customer_note,status,review_mode,strikes_at_request,cumulative_strikes,cumulative_orders,cumulative_compensations,reputation_badge,old_email_account_id,replacement_email_account_id,evidence_image_url,evidence_image_hash,device_mismatch_blocked,customer_email,decision_reason,reviewed_at,created_at&order=created_at.desc&limit=500'),
       db('device_access_events?select=order_id,physical_core_hash&order=occurred_at.desc&limit=5000'),
       db(`service_reauth_sessions?select=email_account_id,started_at&started_at=gte.${encodeURIComponent(new Date(Date.now() - 86400000).toISOString())}&limit=5000`),
+      db('referral_coupons?select=id,referrer_order_id,milestone,code,salla_coupon_id,status,expiry_date,issued_at,used_at,failure_reason,created_at,orders(order_number,customer_email)&order=created_at.desc&limit=500'),
+      db('admin_notifications?select=id,severity,title,message,source,entity_type,entity_id,read_at,created_at&order=created_at.desc&limit=100'),
     ]);
     if (!capacity.ok || !rotations.ok || !mappings.ok || !settings.ok || !mailLogs.ok || !stores.ok || !orders.ok || !accounts.ok || !mailSecurityEvents.ok || !deviceEvents.ok) return response.status(502).json({ message: 'تعذر تحميل بيانات التشغيل.' });
     const orderRows = await orders.json(), compensationRows = compensations.ok ? await compensations.json() : [], deviceRows = await deviceEvents.json(), reviewRows = reviews.ok ? await reviews.json() : [];
@@ -61,12 +64,15 @@ export default async function handler(request, response) {
       if (item.email_account_id) counts[item.email_account_id] = (counts[item.email_account_id] || 0) + 1;
       return counts;
     }, {});
-    const accountRows = (await accounts.json()).map(({ totp_secret, ...account }) => {
+    const accountRows = (await accounts.json()).map(({ totp_secret, encrypted_connection, ...account }) => {
       const attempts = reauthCounts[account.id] || 0;
-      const quarantined = !account.is_active || Boolean(account.archived_at) || (account.integrity_status && account.integrity_status !== 'healthy');
+      const quarantined = !account.is_active || Boolean(account.archived_at) || account.operational_status === 'quarantined' || (account.integrity_status && account.integrity_status !== 'healthy');
       return {
         ...account,
         totp_configured: Boolean(totp_secret),
+        imap_configured: Boolean(encrypted_connection?.imap?.host && encrypted_connection?.imap?.user && encrypted_connection?.imap?.password),
+        imap_host: String(encrypted_connection?.imap?.host || '').slice(0, 255) || null,
+        imap_user: String(encrypted_connection?.imap?.user || '').slice(0, 254) || null,
         reauth_attempts_24h: attempts,
         health_status: quarantined ? 'quarantined' : attempts > 3 ? 'watch' : 'excellent',
         health_label: quarantined ? 'محجور' : attempts > 3 ? 'تحت المراقبة' : 'ممتاز 100%',
@@ -76,12 +82,17 @@ export default async function handler(request, response) {
     const reputations = buildCustomerReputations(orderRows, compensationRows, deviceRows);
     const enrichedOrders = orderRows.map(order => ({ ...order, customer_reputation: reputations[order.id] }));
     const enrichedCompensations = compensationRows.map(item => ({ ...item, customer_reputation: reputations[item.order_id] }));
-    return response.status(200).json({ capacity: await capacity.json(), rotations: await rotations.json(), mappings: await mappings.json(), settings: (await settings.json())[0] || {}, mailLogs: await mailLogs.json(), storeId: (await stores.json())[0]?.id || null, orders: enrichedOrders, accounts: accountRows, mailSecurityEvents: await mailSecurityEvents.json(), reviews: reviewRows, compensations: enrichedCompensations });
+    const couponRows=referralCoupons.ok?await referralCoupons.json():[],notificationRows=adminNotifications.ok?await adminNotifications.json():[],deliveredOrders=orderRows.filter(order=>['delivered','active'].includes(order.status)),activeOrders=deliveredOrders.filter(order=>!order.expires_at||new Date(order.expires_at)>new Date()),claimedOrders=new Set(compensationRows.map(item=>item.order_id)),now=Date.now();
+    const kpis={instant_delivery_percent:deliveredOrders.length?Math.round(deliveredOrders.filter(order=>order.auto_provisioned_at).length/deliveredOrders.length*100):0,zero_claim_rate_percent:activeOrders.length?Math.round(activeOrders.filter(order=>!claimedOrders.has(order.id)).length/activeOrders.length*100):100,accounts_expiring_72h:accountRows.filter(account=>account.subscription_expires_at&&new Date(account.subscription_expires_at)>new Date()&&new Date(account.subscription_expires_at).getTime()-now<=72*3600000).length,referral_coupons_issued:couponRows.filter(item=>['active','used'].includes(item.status)).length};
+    return response.status(200).json({ capacity: await capacity.json(), rotations: await rotations.json(), mappings: await mappings.json(), settings: (await settings.json())[0] || {}, mailLogs: await mailLogs.json(), storeId: (await stores.json())[0]?.id || null, orders: enrichedOrders, accounts: accountRows, mailSecurityEvents: await mailSecurityEvents.json(), reviews: reviewRows, compensations: enrichedCompensations, referralCoupons:couponRows, notifications:notificationRows, unreadNotifications:notificationRows.filter(item=>!item.read_at).length, kpis });
   }
   if (request.method === 'POST') {
     const { action, emailAccountId, orderId, mapping, settings, bulk, manualOrder, newPassword, totpSecret } = request.body || {};
     let result;
-    if (action === 'create_manual_order') {
+    if (action === 'mark_notifications_read') {
+      result = await db('admin_notifications?read_at=is.null', { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ read_at: new Date().toISOString(), updated_at: new Date().toISOString() }) });
+      return result.ok ? response.status(200).json({ ok: true }) : response.status(502).json({ message: 'تعذر تحديث حالة التنبيهات.' });
+    } else if (action === 'create_manual_order') {
       const clean = {
         orderNumber: String(manualOrder?.order_number || '').trim().slice(0, 80),
         customerName: String(manualOrder?.customer_name || '').trim().slice(0, 120),
@@ -174,6 +185,9 @@ export default async function handler(request, response) {
       const defaultDeliveryEstimate = String(settings?.default_delivery_estimate || 'فوري خلال 5 – 18 ساعة').trim().slice(0, 160);
       if (!defaultDeliveryEstimate) return response.status(400).json({ message: 'أدخل الوقت المتوقع للتسليم.' });
       result = await db('system_settings?singleton=eq.true', { method: 'PATCH', body: JSON.stringify({ default_delivery_estimate: defaultDeliveryEstimate, updated_at: new Date().toISOString() }) });
+    } else if (action === 'save_referral_settings') {
+      const type=settings?.referral_coupon_type==='fixed'?'fixed':'percentage',amount=Math.min(Math.max(Number(settings?.referral_coupon_amount)||25,.01),type==='percentage'?100:100000),expiryDays=Math.min(Math.max(Number(settings?.referral_coupon_expiry_days)||14,1),365);
+      result=await db('system_settings?singleton=eq.true',{method:'PATCH',body:JSON.stringify({referral_coupon_type:type,referral_coupon_amount:amount,referral_coupon_expiry_days:expiryDays,updated_at:new Date().toISOString()})});
     } else if (action === 'save_settings') {
       const optionalHttps = (value, label) => {
         const clean = String(value || '').trim();
@@ -196,7 +210,8 @@ export default async function handler(request, response) {
         upsellUrl = optionalHttps(settings?.upsell_url, 'رابط عرض الترقية');
       } catch (error) { return response.status(400).json({ message: error.message }); }
       const digestEmail=String(settings?.digest_email||'').trim().toLowerCase();if(digestEmail&&!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(digestEmail))return response.status(400).json({message:'بريد التقرير اليومي غير صالح.'});
-      const settingsUpdate = { banner_active: Boolean(settings?.banner_active), banner_message: String(settings?.banner_message || '').trim().slice(0, 500) || null, auto_assignment_paused: Boolean(settings?.auto_assignment_paused), support_whatsapp: supportWhatsapp, salla_review_url: sallaReviewUrl, renewal_store_url: renewalStoreUrl, crunchyroll_portal_url: crunchyrollPortalUrl, default_delivery_estimate: String(settings?.default_delivery_estimate || 'فوري خلال 5 – 18 ساعة').trim().slice(0, 160) || 'فوري خلال 5 – 18 ساعة', maintenance_enabled: Boolean(settings?.maintenance_enabled), maintenance_message: String(settings?.maintenance_message || 'نقوم حاليًا بإجراء تحديثات تقنية لتحسين جودة الخدمة في بوابة أدفانسد برو، سنعود للعمل خلال دقائق معدودة.').trim().slice(0, 1000), upsell_enabled:Boolean(settings?.upsell_enabled),upsell_title:String(settings?.upsell_title||'').trim().slice(0,160)||null,upsell_description:String(settings?.upsell_description||'').trim().slice(0,500)||null,upsell_url:upsellUrl,upsell_duration_minutes:Math.min(Math.max(Number(settings?.upsell_duration_minutes)||30,1),1440),digest_email:digestEmail||null,referral_coupon_enabled:settings?.referral_coupon_enabled!==false,referral_coupon_target:Math.min(Math.max(Number(settings?.referral_coupon_target)||5,1),100),referral_coupon_code:String(settings?.referral_coupon_code||'ADVVIP5').trim().slice(0,80),referral_coupon_discount_label:String(settings?.referral_coupon_discount_label||'خصم خاص 25% لعملائنا السفراء').trim().slice(0,160), updated_at: new Date().toISOString() };
+      const couponType=settings?.referral_coupon_type==='fixed'?'fixed':'percentage',couponAmount=Math.min(Math.max(Number(settings?.referral_coupon_amount)||25,.01),couponType==='percentage'?100:100000),couponExpiryDays=Math.min(Math.max(Number(settings?.referral_coupon_expiry_days)||14,1),365);
+      const settingsUpdate = { banner_active: Boolean(settings?.banner_active), banner_message: String(settings?.banner_message || '').trim().slice(0, 500) || null, auto_assignment_paused: Boolean(settings?.auto_assignment_paused), support_whatsapp: supportWhatsapp, salla_review_url: sallaReviewUrl, renewal_store_url: renewalStoreUrl, crunchyroll_portal_url: crunchyrollPortalUrl, default_delivery_estimate: String(settings?.default_delivery_estimate || 'فوري خلال 5 – 18 ساعة').trim().slice(0, 160) || 'فوري خلال 5 – 18 ساعة', maintenance_enabled: Boolean(settings?.maintenance_enabled), maintenance_message: String(settings?.maintenance_message || 'نقوم حاليًا بإجراء تحديثات تقنية لتحسين جودة الخدمة في بوابة أدفانسد برو، سنعود للعمل خلال دقائق معدودة.').trim().slice(0, 1000), upsell_enabled:Boolean(settings?.upsell_enabled),upsell_title:String(settings?.upsell_title||'').trim().slice(0,160)||null,upsell_description:String(settings?.upsell_description||'').trim().slice(0,500)||null,upsell_url:upsellUrl,upsell_duration_minutes:Math.min(Math.max(Number(settings?.upsell_duration_minutes)||30,1),1440),digest_email:digestEmail||null,referral_coupon_enabled:settings?.referral_coupon_enabled!==false,referral_coupon_target:Math.min(Math.max(Number(settings?.referral_coupon_target)||5,1),100),referral_coupon_code:String(settings?.referral_coupon_code||'ADVVIP5').trim().slice(0,80),referral_coupon_discount_label:String(settings?.referral_coupon_discount_label||'خصم خاص 25% لعملائنا السفراء').trim().slice(0,160),referral_coupon_type:couponType,referral_coupon_amount:couponAmount,referral_coupon_expiry_days:couponExpiryDays, updated_at: new Date().toISOString() };
       settingsUpdate.chatgpt_portal_url = chatgptPortalUrl;
       if (typeof settings?.renewal_reminders_enabled === 'boolean') settingsUpdate.renewal_reminders_enabled = settings.renewal_reminders_enabled;
       if (Array.isArray(settings?.renewal_reminder_days)) settingsUpdate.renewal_reminder_days = [...new Set(settings.renewal_reminder_days.map(Number).filter(day => day >= 1 && day <= 30))].sort((a, b) => b - a).slice(0, 5);
@@ -211,6 +226,17 @@ export default async function handler(request, response) {
           result = await db('system_settings?singleton=eq.true', { method: 'PATCH', body: JSON.stringify(legacyUpdate) });
         }
       }
+    } else if (action === 'save_imap_settings') {
+      if(!/^[0-9a-f-]{36}$/i.test(String(emailAccountId||'')))return response.status(400).json({message:'معرّف الحساب غير صالح.'});
+      const host=String(settings?.imap_host||'').trim().toLowerCase(),user=String(settings?.imap_user||'').trim(),password=String(settings?.imap_password||''),port=Math.min(Math.max(Number(settings?.imap_port)||993,1),65535);
+      if(!/^[a-z0-9.-]+$/.test(host)||host.length>255||!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(user)||password.length<6)return response.status(400).json({message:'أكمل مضيف IMAP والبريد وكلمة مرور تطبيق صالحة.'});
+      const found=await db(`email_accounts?select=id,encrypted_connection&id=eq.${encodeURIComponent(emailAccountId)}&limit=1`);const [account]=found.ok?await found.json():[];if(!account)return response.status(404).json({message:'الحساب غير موجود.'});
+      const connection={...(account.encrypted_connection||{}),imap:{host,port,user,password:encryptPassword(password)}};
+      result=await db(`email_accounts?id=eq.${encodeURIComponent(emailAccountId)}`,{method:'PATCH',body:JSON.stringify({encrypted_connection:connection,operational_status:'available',health_failure_reason:null})});
+    } else if (action === 'save_account_expiry') {
+      if(!/^[0-9a-f-]{36}$/i.test(String(emailAccountId||'')))return response.status(400).json({message:'معرّف الحساب غير صالح.'});
+      const expiry=String(settings?.subscription_expires_at||'').trim();let parsed=null;if(expiry){parsed=new Date(expiry);if(Number.isNaN(parsed.getTime()))return response.status(400).json({message:'تاريخ الانتهاء غير صالح.'})}
+      result=await db(`email_accounts?id=eq.${encodeURIComponent(emailAccountId)}`,{method:'PATCH',body:JSON.stringify({subscription_expires_at:parsed?parsed.toISOString():null,operational_status:parsed&&parsed<=new Date()?'quarantined':'available',health_failure_reason:parsed&&parsed<=new Date()?'subscription_expired':null})});
     } else if (action === 'test_totp_secret') {
       let candidate = String(totpSecret || '');
       if (!candidate && emailAccountId) {
@@ -235,11 +261,11 @@ export default async function handler(request, response) {
     } else if (action === 'rotate_password_notify') {
       if(!emailAccountId||String(newPassword||'').length<6||String(newPassword).length>200)return response.status(400).json({message:'أدخل كلمة مرور جديدة من 6 أحرف على الأقل.'});
       let encrypted;try{encrypted=encryptPassword(String(newPassword))}catch(error){return response.status(503).json({message:error.message})}
-      const accountResult=await db(`email_accounts?select=id,mailbox_alias,encrypted_connection&id=eq.${encodeURIComponent(emailAccountId)}&limit=1`);if(!accountResult.ok)return response.status(502).json({message:'تعذر تحميل الحساب.'});const [target]=await accountResult.json();if(!target)return response.status(404).json({message:'الحساب غير موجود.'});
+      const accountResult=await db(`email_accounts?select=id,mailbox_alias,service_type,encrypted_connection&id=eq.${encodeURIComponent(emailAccountId)}&limit=1`);if(!accountResult.ok)return response.status(502).json({message:'تعذر تحميل الحساب.'});const [target]=await accountResult.json();if(!target)return response.status(404).json({message:'الحساب غير موجود.'});
       const updatedConnection={...(target.encrypted_connection||{}),password:encrypted};
       result=await db(`email_accounts?id=eq.${encodeURIComponent(emailAccountId)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({encrypted_connection:updatedConnection,password_updated_at:new Date().toISOString(),integrity_status:'healthy',integrity_alerted_at:null})});if(!result.ok)return response.status(502).json({message:'تعذر حفظ كلمة المرور المشفرة.'});
       const subscribers=await db(`account_assignments?select=orders(id,order_number,customer_email,reminder_email,security_strikes,tracking_token,customers(name))&email_account_id=eq.${encodeURIComponent(emailAccountId)}&released_at=is.null`);const rows=subscribers.ok?await subscribers.json():[];let notified=0;
-      for(const row of rows){const o=row.orders;if(!o||Number(o.security_strikes||0)>0)continue;const to=o.reminder_email||o.customer_email;if(!to)continue;const name=Array.isArray(o.customers)?o.customers[0]?.name:o.customers?.name,portal=`${process.env.APP_BASE_URL||process.env.PUBLIC_APP_URL||process.env.NEXT_PUBLIC_APP_URL||'https://advpro.app'}/track/${encodeURIComponent(o.tracking_token)}`;try{await sendOperationalEmail({to,subject:`تم تحديث بيانات دخول اشتراكك — الطلب #${o.order_number}`,html:`<div dir="rtl"><h2>مرحبًا ${htmlEscape(name||'عميلنا العزيز')}</h2><p>تم تحديث بيانات الدخول للحساب المشترك. افتح بطاقة طلبك من جهازك المعتمد لعرض البيانات الجديدة بأمان.</p><p><a href="${htmlEscape(portal)}">فتح بطاقة الاشتراك</a></p></div>`,text:`تم تحديث بيانات دخول الطلب #${o.order_number}. اعرض البيانات الجديدة من جهازك المعتمد: ${portal}`});notified++}catch{}
+      for(const row of rows){const o=row.orders;if(!o||Number(o.security_strikes||0)>0)continue;const to=o.reminder_email||o.customer_email;if(!to)continue;const name=Array.isArray(o.customers)?o.customers[0]?.name:o.customers?.name,portal=servicePortalUrl(target.service_type,o.tracking_token);try{await sendOperationalEmail({to,subject:`تم تحديث بيانات دخول اشتراكك — الطلب #${o.order_number}`,html:`<div dir="rtl"><h2>مرحبًا ${htmlEscape(name||'عميلنا العزيز')}</h2><p>تم تحديث بيانات الدخول لضمان استمرارية الخدمة. يمكنك نسخها الآن من بوابتك.</p><p><a href="${htmlEscape(portal)}">فتح بوابة الخدمة</a></p></div>`,text:`تم تحديث بيانات دخول الطلب #${o.order_number}. انسخها من بوابتك: ${portal}`});notified++}catch{}
       }
       return response.status(200).json({ok:true,notified,excluded:rows.length-notified});
     } else if (action === 'bulk_import') {

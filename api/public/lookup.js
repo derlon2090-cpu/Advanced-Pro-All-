@@ -3,6 +3,7 @@ import { blockForMaintenance } from '../../lib/maintenance-mode.js';
 import { handlePublicReviews, handlePublicSettings } from '../../lib/public-info-handlers.js';
 import { normalizeOrderNumber } from '../../lib/order-number.js';
 import { portalForOrder } from '../../lib/service-product.js';
+import { issueReferralCoupon } from '../../lib/salla-referral-coupons.js';
 
 const ip = request => String(request.headers['x-forwarded-for'] || request.headers['x-real-ip'] || 'unknown').split(',')[0].trim().slice(0, 128);
 const database = (path, options = {}) => {
@@ -90,7 +91,12 @@ export default async function handler(request, response) {
     return response.status(404).json({ message: failure.blockedUntil ? 'لم يتم العثور على الطلب. تم إيقاف الاستعلام مؤقتًا لحماية العملاء.' : 'لم يتم العثور على هذا الطلب. تحقق من الرقم وحاول مجددًا.', attemptsRemaining: Math.max(0, 6 - failure.failures) });
   }
   await resetFailures(hash);
+  await database(`orders?id=eq.${encodeURIComponent(found.id)}`, { method: 'PATCH', body: JSON.stringify({ last_lookup_ip_hash: hash, updated_at: new Date().toISOString() }) }).catch(() => null);
   const referralCode=/^[A-Z0-9]{8,32}$/i.test(String(request.body?.referralCode||''))?String(request.body.referralCode).toUpperCase():null;
-  if(referralCode&&found.id)await database('rpc/reward_order_referral',{method:'POST',body:JSON.stringify({p_referral_code:referralCode,p_referred_order_id:found.id})}).catch(()=>null);
+  if(referralCode&&found.id){
+    const reward=await database('rpc/reward_order_referral_secure',{method:'POST',body:JSON.stringify({p_referral_code:referralCode,p_referred_order_id:found.id,p_claim_ip_hash:hash})}).catch(()=>null);
+    const [result]=reward?.ok?await reward.json():[];
+    if(result?.rewarded&&result?.milestone_due)await issueReferralCoupon({referrerOrderId:result.referrer_order_id,milestone:Number(result.milestone_due)}).catch(()=>null);
+  }
   return response.status(200).setHeader('Cache-Control', 'private, no-store').json({ trackingToken: found.tracking_token, redirectTo: portalForOrder(found, found.tracking_token) });
 }
