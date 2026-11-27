@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { encryptSensitivePayload } from "../../lib/account-credentials.js";
+import { extractApprovalDeviceInfo } from "../../lib/device-info.js";
 
 const normalizeAddress = value => String(value || "").trim().toLowerCase().replace(/^.*<([^>]+)>.*$/, "$1");
 async function resolveAccount(candidates) {
@@ -26,11 +27,15 @@ const extractCrunchyrollPayload = (subject, textBody) => {
   const approvalUrl = urls.find(value => {
     try { return /(^|\.)crunchyroll\.com$/i.test(new URL(value.replace(/[),.;]+$/, '')).hostname); } catch { return false; }
   });
+  const approvalDevice = extractApprovalDeviceInfo(source);
   return {
     subject: String(subject || 'رسالة من Crunchyroll').slice(0, 300),
     snippet: String(textBody || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 900),
     code: codeMatch?.[1] || null,
     approvalUrl: approvalUrl ? approvalUrl.replace(/[),.;]+$/, '') : null,
+    deviceLabel: approvalDevice.label,
+    device: approvalDevice.device,
+    browser: approvalDevice.browser,
   };
 };
 
@@ -54,8 +59,8 @@ export default async function handler(request, response) {
   const { messageId, to, envelopeTo, forwardedTo, from, subject, textBody } = request.body || {};
   if (!messageId || !to || !from) return response.status(400).json({ error: "Missing email envelope data" });
 
-  // Intentionally retain classification metadata only. Raw bodies, OTPs,
-  // approval URLs, reset links, and credentials are never stored or returned.
+  // Raw mail is not retained. For trusted Crunchyroll senders only, the short
+  // customer snippet, OTP/approval target, and device hint are encrypted at rest.
   const inspected = `${subject || ""}\n${textBody || ""}`.slice(0, 4000).toLowerCase();
   const passwordChanged = /password (?:was )?changed|your password has been changed|تم تغيير كلمة المرور|تغيّرت كلمة المرور/.test(inspected);
   const emailChanged = /email (?:was )?changed|email address changed|تم تغيير البريد|تغيير عنوان البريد/.test(inspected);

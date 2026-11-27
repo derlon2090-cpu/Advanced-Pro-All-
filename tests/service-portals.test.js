@@ -34,4 +34,6 @@ test('customer portals display the verified device and hide pending credentials'
   assert.match(chatgpt, /pendingDelivery/);
   assert.match(api, /trusted_device/);
   assert.match(api, /fingerprintId/);
+  assert.match(crunchyroll, /mailMatchHint/);
+  assert.match(crunchyroll, /مطابق لجهازك/);
 });

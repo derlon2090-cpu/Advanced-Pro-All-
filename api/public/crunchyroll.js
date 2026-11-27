@@ -94,6 +94,9 @@ async function handleMessages(request, response) {
       snippet: cleanText(payload.snippet, 500),
       code: /^\d{4,8}$/.test(String(payload.code || '')) ? String(payload.code) : null,
       approvalUrl: safeApprovalUrl(payload.approvalUrl),
+      deviceLabel: cleanText(payload.deviceLabel, 100) || null,
+      device: cleanText(payload.device, 40) || null,
+      browser: cleanText(payload.browser, 40) || null,
     };
   });
   const featuredMessage = messages.find(item => item.code || item.approvalUrl);
