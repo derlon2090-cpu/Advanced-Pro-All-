@@ -17,15 +17,19 @@
     { "source": "/api/public/verify-device", "destination": "/api/public/track?_route=verify-device" },
     { "source": "/api/public/track/:token/reminder-email", "destination": "/api/public/track?_route=reminder-email&token=:token" },
     { "source": "/api/public/track/:token/review", "destination": "/api/public/track?_route=review&token=:token" },
+    { "source": "/api/public/track/:token/review-share", "destination": "/api/public/track?_route=review-share&token=:token" },
     { "source": "/api/public/compensate/:token", "destination": "/api/public/compensate?token=:token" },
     { "source": "/api/admin/reviews/:id", "destination": "/api/admin/reviews?id=:id" },
+    { "source": "/api/admin/compensations/:id", "destination": "/api/admin/compensations?id=:id" },
     { "source": "/api/admin/dispute-report", "destination": "/api/admin/operations?_route=dispute-report" },
     { "source": "/api/admin/orders/:id/reset-device", "destination": "/api/admin/operations?_route=reset-device&orderId=:id" },
     { "source": "/admin/:path*", "destination": "/index.html" },
-    { "source": "/track/:path*", "destination": "/index.html" }
+    { "source": "/track/:path*", "destination": "/index.html" },
+    { "source": "/compensate/:path*", "destination": "/index.html" }
   ],
   "crons": [
     { "path": "/api/cron/renewal-reminders", "schedule": "0 13 * * *" },
-    { "path": "/api/cron/mail-retention", "schedule": "0 14 * * *" }
+    { "path": "/api/cron/mail-retention", "schedule": "0 14 * * *" },
+    { "path": "/api/cron/daily-digest", "schedule": "0 18 * * *" }
   ]
 }

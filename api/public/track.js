@@ -3,6 +3,7 @@ import activityHandler from '../../lib/activity-api.js';
 import verifyDeviceHandler from '../../lib/verify-device-api.js';
 import { sendReminderConfirmation } from '../../lib/renewal-email.js';
 import { blockForMaintenance } from '../../lib/maintenance-mode.js';
+import { decryptPassword } from '../../lib/account-credentials.js';
 
 const buckets = new Map();
 const clientIp = request => String(request.headers['x-forwarded-for'] || request.headers['x-real-ip'] || 'unknown').split(',')[0].trim().slice(0, 128);
@@ -51,13 +52,15 @@ export default async function handler(request, response) {
   const token = cleanToken(request.query?.token || request.body?.token);
   if (!token) return response.status(400).json({ message: 'رابط الطلب غير صالح.' });
 
-  const select = 'id,order_number,product_name,service_type,status,duration_days,starts_at,expires_at,has_warranty,warranty_days,warranty_expires_at,acknowledgment_text,acknowledged_at,tracking_token,customer_email,reminder_email,reminder_subscribed_at,renewal_url,renewal_discount_code,security_strikes,customers(name),account_assignments(email_accounts(mailbox_alias))';
-  const params = new URLSearchParams({ select, tracking_token: `eq.${token}`, limit: '1' });
-  const foundResponse = await database(`orders?${params}`);
+  const baseSelect = 'id,order_number,product_name,service_type,status,duration_days,starts_at,expires_at,has_warranty,warranty_days,warranty_expires_at,acknowledgment_text,acknowledged_at,tracking_token,customer_email,reminder_email,reminder_subscribed_at,renewal_url,renewal_discount_code,security_strikes,customers(name),account_assignments(email_accounts(mailbox_alias,encrypted_connection))';
+  const select = baseSelect.replace('tracking_token,','tracking_token,referral_code,');
+  let params = new URLSearchParams({ select, tracking_token: `eq.${token}`, limit: '1' });
+  let foundResponse = await database(`orders?${params}`);
+  if(!foundResponse.ok){params=new URLSearchParams({select:baseSelect,tracking_token:`eq.${token}`,limit:'1'});foundResponse=await database(`orders?${params}`)}
   if (!foundResponse.ok) return response.status(502).json({ message: 'تعذر تحميل بيانات الطلب.' });
   const [order] = await foundResponse.json();
   if (!order) return response.status(404).json({ message: 'لم يتم العثور على الطلب.' });
-  const portalSettingsResponse = await database('system_settings?select=renewal_store_url,salla_review_url,support_whatsapp&singleton=eq.true&limit=1');
+  const portalSettingsResponse = await database('system_settings?select=renewal_store_url,salla_review_url,support_whatsapp,upsell_enabled,upsell_title,upsell_description,upsell_url,upsell_duration_minutes&singleton=eq.true&limit=1');
   const portalSettings = portalSettingsResponse.ok ? (await portalSettingsResponse.json())[0] || {} : {};
   const verifiedSession = deviceSession(request, order.id), deviceVerified = Boolean(verifiedSession);
 
@@ -83,6 +86,10 @@ export default async function handler(request, response) {
     const sallaReviewUrl = publicUrl(process.env.PUBLIC_SALLA_REVIEW_URL || portalSettings.salla_review_url);
     const supportWhatsapp = String(process.env.PUBLIC_SUPPORT_WHATSAPP || portalSettings.support_whatsapp || '').replace(/\D/g, '').slice(0, 20) || null;
     return response.status(existing ? 200 : 201).setHeader('Cache-Control', 'private, no-store').json({ ok: true, rating, positive: rating >= 4, sallaReviewUrl: rating >= 4 ? sallaReviewUrl : null, supportWhatsapp: rating <= 3 ? supportWhatsapp : null });
+  }
+  if(request.method==='POST'&&request.query?._route==='review-share'){
+    const sharedAt=new Date().toISOString(),saved=await database(`order_reviews?order_id=eq.${encodeURIComponent(order.id)}&rating=gte.4`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({salla_shared_at:sharedAt})});
+    return saved.ok?response.status(200).json({ok:true,sharedAt}):response.status(404).json({message:'لم يتم العثور على تقييم إيجابي.'});
   }
 
   if (request.method === 'POST' && request.query?._route === 'reminder-email') {
@@ -117,7 +124,9 @@ export default async function handler(request, response) {
     order.acknowledged_at = updated?.acknowledged_at || acknowledgedAt;
   }
 
-  const accountEmail = order.acknowledged_at && deviceVerified ? order.account_assignments?.[0]?.email_accounts?.mailbox_alias || null : null;
+  const assignedAccount=order.account_assignments?.[0]?.email_accounts;
+  const accountEmail = order.acknowledged_at && deviceVerified ? assignedAccount?.mailbox_alias || null : null;
+  const accountPassword = order.acknowledged_at && deviceVerified ? decryptPassword(assignedAccount?.encrypted_connection?.password) : null;
   const reviewResponse = order.acknowledged_at && deviceVerified ? await database(`order_reviews?select=status&order_id=eq.${encodeURIComponent(order.id)}&limit=1`) : null;
   const [existingReview] = reviewResponse?.ok ? await reviewResponse.json() : [];
   if (accountEmail) await database('portal_activity_events', { method: 'POST', body: JSON.stringify({ order_id: order.id, activity_type: 'account_details_viewed', physical_core_hash: verifiedSession.physicalHash }) });
@@ -131,8 +140,15 @@ export default async function handler(request, response) {
   delete order.customer_email;
   delete order.tracking_token;
   order.account_email = accountEmail;
+  order.account_password = accountPassword;
   order.device_verified = deviceVerified;
-  const compensationEligible = deviceVerified && order.acknowledged_at && order.has_warranty && Number(order.security_strikes || 0) === 0 && order.warranty_expires_at && new Date(order.warranty_expires_at) > new Date();
+  const compensationAvailable = Boolean(deviceVerified && order.acknowledged_at && order.has_warranty && order.warranty_expires_at && new Date(order.warranty_expires_at) > new Date());
+  const compensationEligible = compensationAvailable && Number(order.security_strikes || 0) === 0;
+  const origin=`https://${String(request.headers.host||'').replace(/[^a-zA-Z0-9.:-]/g,'')}`;
+  const referralUrl=deviceVerified&&order.referral_code?`${origin}/?ref=${encodeURIComponent(order.referral_code)}`:null;
+  const offerMinutes=Math.min(Math.max(Number(portalSettings.upsell_duration_minutes)||30,1),1440),offerExpiresAt=order.acknowledged_at?new Date(new Date(order.acknowledged_at).getTime()+offerMinutes*60000):null;
+  const upsellOffer=deviceVerified&&portalSettings.upsell_enabled&&offerExpiresAt>Date.now()&&publicUrl(portalSettings.upsell_url)?{title:portalSettings.upsell_title||'عرض خاص لعملائنا المميزين',description:portalSettings.upsell_description||'أضف منتجًا مكملًا بخصم حصري الآن',url:publicUrl(portalSettings.upsell_url),expiresAt:offerExpiresAt.toISOString()}:null;
+  delete order.referral_code;
   delete order.security_strikes;
   return response.status(200).setHeader('Cache-Control', 'private, no-store').json({
     order,
@@ -142,6 +158,9 @@ export default async function handler(request, response) {
       sallaReviewUrl: deviceVerified ? publicUrl(process.env.PUBLIC_SALLA_REVIEW_URL || portalSettings.salla_review_url) : null,
       renewalStoreUrl: deviceVerified ? publicUrl(portalSettings.renewal_store_url) : null,
       compensationEligible,
+      compensationManualAvailable: compensationAvailable && !compensationEligible,
+      referralUrl,
+      upsellOffer,
     },
     review: existingReview ? { submitted: true, status: existingReview.status } : { submitted: false },
   });

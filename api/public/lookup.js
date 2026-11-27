@@ -60,7 +60,7 @@ async function importFromSalla(orderNumber) {
   const email = String(customer.email || '').trim().toLowerCase();
   await database(`orders?id=eq.${encodeURIComponent(orderId)}`, { method: 'PATCH', body: JSON.stringify({ customer_email: /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) ? email : null, tracking_token: randomBytes(24).toString('hex'), renewal_url: mapping?.renewal_url || null, renewal_discount_code: mapping?.renewal_discount_code || null, updated_at: new Date().toISOString() }) });
   await database('rpc/assign_order_to_available_account', { method: 'POST', body: JSON.stringify({ p_order_id: orderId }) });
-  const found = await database(`orders?select=tracking_token&order_number=eq.${encodeURIComponent(orderNumber)}&limit=1`);
+  const found = await database(`orders?select=id,tracking_token&order_number=eq.${encodeURIComponent(orderNumber)}&limit=1`);
   return found.ok ? (await found.json())[0] || null : null;
 }
 
@@ -75,7 +75,7 @@ export default async function handler(request, response) {
     const seconds = Math.max(1, Math.ceil((new Date(state.blocked_until) - Date.now()) / 1000));
     return response.status(429).setHeader('Retry-After', String(seconds)).json({ message: 'تم إيقاف الاستعلام مؤقتًا بعد محاولات غير صحيحة متتالية. حاول بعد 15 دقيقة.' });
   }
-  const query = new URLSearchParams({ select: 'tracking_token', order_number: `eq.${order}`, limit: '1' });
+  const query = new URLSearchParams({ select: 'id,tracking_token', order_number: `eq.${order}`, limit: '1' });
   let result = await database(`orders?${query}`), found = result.ok ? (await result.json())[0] : null;
   if (!found?.tracking_token) found = await importFromSalla(order).catch(() => null);
   if (!found?.tracking_token) {
@@ -83,5 +83,7 @@ export default async function handler(request, response) {
     return response.status(404).json({ message: failure.blockedUntil ? 'لم يتم العثور على الطلب. تم إيقاف الاستعلام مؤقتًا لحماية العملاء.' : 'لم يتم العثور على هذا الطلب. تحقق من الرقم وحاول مجددًا.', attemptsRemaining: Math.max(0, 6 - failure.failures) });
   }
   await resetFailures(hash);
+  const referralCode=/^[A-Z0-9]{8,32}$/i.test(String(request.body?.referralCode||''))?String(request.body.referralCode).toUpperCase():null;
+  if(referralCode&&found.id)await database('rpc/reward_order_referral',{method:'POST',body:JSON.stringify({p_referral_code:referralCode,p_referred_order_id:found.id})}).catch(()=>null);
   return response.status(200).setHeader('Cache-Control', 'private, no-store').json({ redirectTo: `/track/${encodeURIComponent(found.tracking_token)}` });
 }
