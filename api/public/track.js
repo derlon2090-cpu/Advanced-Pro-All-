@@ -60,7 +60,7 @@ export default async function handler(request, response) {
   if (!foundResponse.ok) return response.status(502).json({ message: 'تعذر تحميل بيانات الطلب.' });
   const [order] = await foundResponse.json();
   if (!order) return response.status(404).json({ message: 'لم يتم العثور على الطلب.' });
-  const settingsSelect = 'renewal_store_url,salla_review_url,support_whatsapp,upsell_enabled,upsell_title,upsell_description,upsell_url,upsell_duration_minutes,referral_coupon_enabled,referral_coupon_target,referral_coupon_code,referral_coupon_discount_label';
+  const settingsSelect = 'renewal_store_url,salla_review_url,support_whatsapp,crunchyroll_portal_url,upsell_enabled,upsell_title,upsell_description,upsell_url,upsell_duration_minutes,referral_coupon_enabled,referral_coupon_target,referral_coupon_code,referral_coupon_discount_label';
   let portalSettingsResponse = await database(`system_settings?select=${settingsSelect}&singleton=eq.true&limit=1`);
   if (!portalSettingsResponse.ok) portalSettingsResponse = await database('system_settings?select=renewal_store_url,salla_review_url,support_whatsapp,upsell_enabled,upsell_title,upsell_description,upsell_url,upsell_duration_minutes&singleton=eq.true&limit=1');
   const portalSettings = portalSettingsResponse.ok ? (await portalSettingsResponse.json())[0] || {} : {};
@@ -159,7 +159,7 @@ export default async function handler(request, response) {
   return response.status(200).setHeader('Cache-Control', 'private, no-store').json({
     order,
     actions: {
-      crunchyrollPortalUrl: deviceVerified && /crunchyroll|كرانشي/i.test(String(order.product_name || '')) ? publicUrl(process.env.PUBLIC_CRUNCHYROLL_PORTAL_URL) : null,
+      crunchyrollPortalUrl: deviceVerified && order.service_type === 'crunchyroll' ? publicUrl(process.env.PUBLIC_CRUNCHYROLL_PORTAL_URL || portalSettings.crunchyroll_portal_url || 'https://advpro.app/crunchyroll') : null,
       supportWhatsapp: deviceVerified ? String(process.env.PUBLIC_SUPPORT_WHATSAPP || '').replace(/\D/g, '').slice(0, 20) || null : null,
       sallaReviewUrl: deviceVerified ? publicUrl(process.env.PUBLIC_SALLA_REVIEW_URL || portalSettings.salla_review_url) : null,
       renewalStoreUrl: deviceVerified ? publicUrl(portalSettings.renewal_store_url) : null,

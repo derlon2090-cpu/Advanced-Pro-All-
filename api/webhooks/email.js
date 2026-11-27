@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { encryptSensitivePayload } from "../../lib/account-credentials.js";
 
 const normalizeAddress = value => String(value || "").trim().toLowerCase().replace(/^.*<([^>]+)>.*$/, "$1");
 async function resolveAccount(candidates) {
@@ -15,6 +16,33 @@ async function logDelivery({ messageId, recipient, accountId, senderDomain, cate
   const url = process.env.SUPABASE_URL, key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) return;
   await fetch(`${url}/rest/v1/mail_delivery_logs`, { method: 'POST', headers: { apikey: key, authorization: `Bearer ${key}`, 'content-type': 'application/json', Prefer: 'resolution=ignore-duplicates' }, body: JSON.stringify({ provider_message_id: messageId, recipient_address: recipient, email_account_id: accountId || null, sender_domain: senderDomain, category }) });
+}
+
+const extractCrunchyrollPayload = (subject, textBody) => {
+  const source = `${String(subject || '')}\n${String(textBody || '')}`.slice(0, 8000);
+  const codeMatch = source.match(/(?:verification|security|one[- ]time|رمز(?: التحقق| التأكيد)?)[^\d]{0,40}(\d{4,8})/i)
+    || source.match(/(?:^|\D)(\d{6})(?:\D|$)/);
+  const urls = source.match(/https:\/\/[^\s<>"']+/gi) || [];
+  const approvalUrl = urls.find(value => {
+    try { return /(^|\.)crunchyroll\.com$/i.test(new URL(value.replace(/[),.;]+$/, '')).hostname); } catch { return false; }
+  });
+  return {
+    subject: String(subject || 'رسالة من Crunchyroll').slice(0, 300),
+    snippet: String(textBody || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 900),
+    code: codeMatch?.[1] || null,
+    approvalUrl: approvalUrl ? approvalUrl.replace(/[),.;]+$/, '') : null,
+  };
+};
+
+async function storeCrunchyrollMessage({ messageId, accountId, subject, textBody }) {
+  const url = process.env.SUPABASE_URL, key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key || !accountId) return;
+  const encryptedPayload = encryptSensitivePayload(extractCrunchyrollPayload(subject, textBody));
+  await fetch(`${url}/rest/v1/crunchyroll_mailbox_messages`, {
+    method: 'POST',
+    headers: { apikey: key, authorization: `Bearer ${key}`, 'content-type': 'application/json', Prefer: 'resolution=ignore-duplicates' },
+    body: JSON.stringify({ provider_message_id: messageId, email_account_id: accountId, encrypted_payload: encryptedPayload }),
+  });
 }
 
 export default async function handler(request, response) {
@@ -43,6 +71,10 @@ export default async function handler(request, response) {
   const recipient = account?.mailbox_alias || candidates[0] || normalizeAddress(to);
   const senderDomain = String(from).split("@").pop()?.toLowerCase() || null;
   await logDelivery({ messageId, recipient, accountId: account?.id, senderDomain, category });
+  const trustedCrunchyrollSender = /(^|\.)crunchyroll\.com$/i.test(senderDomain || '');
+  if (account?.id && serviceType === 'crunchyroll' && trustedCrunchyrollSender && !blocked) {
+    await storeCrunchyrollMessage({ messageId, accountId: account.id, subject, textBody });
+  }
   let securityEvent = null;
   const eventType = passwordChanged ? 'password_changed' : emailChanged ? 'email_changed' : logoutAll ? 'logout_all' : unusualSignin ? 'unusual_signin' : null;
   if (eventType && account?.id && process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
@@ -62,7 +94,7 @@ export default async function handler(request, response) {
     serviceType,
     category,
     securityEvent: securityEvent ? { recorded: true, reviewCandidateFound: Boolean(securityEvent.suspected_order_id) } : null,
-    customerVisible: false,
+    customerVisible: Boolean(account?.id && serviceType === 'crunchyroll' && trustedCrunchyrollSender && !blocked),
     bodyInspectedChars: Math.min(String(textBody || "").length, 4000)
   };
   return response.status(202).json(payload);
