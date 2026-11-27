@@ -40,6 +40,16 @@ test('admin host isolation blocks official non-admin hosts and accepts forwarded
   assert.equal(blockAdminOutsideOfficialHost({ headers: { host: 'localhost:3000' } }), false);
 });
 
+test('public admin path is rewritten to a real 404 response handler', async () => {
+  const config = JSON.parse(await read('vercel.json'));
+  const blocked = config.rewrites.filter(route => route.source === '/admin' || route.source === '/admin/:path*');
+  assert.equal(blocked.length, 2);
+  assert.ok(blocked.every(route => route.destination.includes('_route=not-found')));
+  const lookup = await read('api/public/lookup.js');
+  assert.match(lookup, /_route === 'not-found'/);
+  assert.match(lookup, /response\.status\(404\)/);
+});
+
 test('build emits host-specific pages and official environment defaults', async () => {
   const [home, admin, crunchyroll, chatgpt, compensate, env] = await Promise.all([
     read('public/home.html'), read('public/admin.html'), read('public/crunchyroll.html'),

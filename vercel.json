@@ -51,12 +51,12 @@
     {
       "source": "/admin/:path*",
       "has": [{ "type": "host", "value": { "re": "^(advpro\\.app|anime\\.advpro\\.app|gpt\\.advpro\\.app|warranty\\.advpro\\.app)$" } }],
-      "destination": "/404.html"
+      "destination": "/api/public/lookup?_route=not-found"
     },
     {
       "source": "/admin",
       "has": [{ "type": "host", "value": { "re": "^(advpro\\.app|anime\\.advpro\\.app|gpt\\.advpro\\.app|warranty\\.advpro\\.app)$" } }],
-      "destination": "/404.html"
+      "destination": "/api/public/lookup?_route=not-found"
     },
     { "source": "/:path((?!api/|assets/|lib/).*)", "has": [{ "type": "host", "value": "waleed.advpro.app" }], "destination": "/admin.html" },
     { "source": "/:path((?!api/|assets/|lib/).*)", "has": [{ "type": "host", "value": "anime.advpro.app" }], "destination": "/crunchyroll.html" },

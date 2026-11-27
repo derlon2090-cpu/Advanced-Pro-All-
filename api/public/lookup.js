@@ -67,6 +67,9 @@ async function importFromSalla(orderNumber) {
 }
 
 export default async function handler(request, response) {
+  if (request.query?._route === 'not-found') {
+    return response.status(404).setHeader('Cache-Control', 'no-store').setHeader('Content-Type', 'text/html; charset=utf-8').send('<!doctype html><html lang="ar" dir="rtl"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>404 | أدفانسد برو</title><style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#07152b;color:#f8fafc;font-family:Tahoma,Arial,sans-serif}.box{text-align:center;padding:32px}h1{font-size:64px;margin:0;color:#ea580c}p{color:#cbd5e1;font-size:18px}</style><main class="box"><h1>404</h1><p>الصفحة غير موجودة.</p></main></html>');
+  }
   if (request.query?._route === 'reviews') return handlePublicReviews(request, response);
   if (request.query?._route === 'system-settings') return handlePublicSettings(request, response);
   if (request.method !== 'POST') return response.status(405).json({ message: 'الطريقة غير مسموحة.' });
