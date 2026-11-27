@@ -48,7 +48,7 @@ test('all customer portals share the dark glass theme and clean dot-matrix hero'
   ];
   const pages = await Promise.all(files.map(file => readFile(new URL(file, import.meta.url), 'utf8')));
   for (const page of pages) {
-    assert.match(page, /#050a18/i);
+    assert.match(page, /#071a35/i);
     assert.match(page, /#9a3412 0%,\s*#ea580c 55%,\s*#c2410c 100%/i);
     assert.match(page, /radial-gradient\(rgba\(255,\s*255,\s*255,\s*\.16\)\s*1\.5px,\s*transparent\s+1\.5px\)/i);
     assert.match(page, /background-size:\s*24px 24px/i);

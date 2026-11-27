@@ -39,7 +39,7 @@ test('home lookup shows a branded transition before navigation', async () => {
   assert.match(source, /جارِ فتح تفاصيل الاشتراك بأمان/);
   assert.match(source, /normalizeOrderNumber/);
   assert.match(source, /\.order-input-wrap:focus-within/);
-  assert.match(source, /background: #050a18/);
+  assert.match(source, /background: #071a35/);
   assert.match(source, /form\.querySelector\('\.single-action'\)/);
   assert.match(shell, /id="pasteOrderNumber"/);
   assert.match(shell, /id="clearOrderNumber"/);
