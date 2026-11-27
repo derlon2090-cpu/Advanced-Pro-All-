@@ -19,8 +19,8 @@
   .track-hero-copy .order-number { display:inline-flex; justify-content:center; }
   .track-hero-copy h1 { margin:10px 0 13px; color:#fff; font-size:clamp(1.8rem,5vw,3.2rem); letter-spacing:-.035em; }
   .track-service { display:block; margin-top:9px; color:#ffedd5; font-size:.76rem; font-weight:800; }
-  .track-night { min-height:calc(100vh - 300px); padding:0 18px 58px; background:radial-gradient(circle at 50% -10%,#c2410c1c,transparent 28rem),#050a18; }
-  .track-night .order-wrap { transform:translateY(-58px); }
+  .track-night { min-height:calc(100vh - 300px); padding:28px 18px 58px; background:radial-gradient(circle at 50% -10%,#c2410c1c,transparent 28rem),#050a18; }
+  .track-night .order-wrap { transform:none; }
   .digital-order { position: relative; overflow: hidden; border: 1px solid #ffffff14; border-radius: 24px; background: linear-gradient(145deg, #0b1224, #080f1f); box-shadow: 0 32px 95px #000b,0 0 0 1px #ea580c12; animation:cardEnter .45s cubic-bezier(.2,.75,.25,1) both; }
   @keyframes cardEnter { from{opacity:0;transform:translateY(18px) scale(.985)} to{opacity:1;transform:none} }
   .ticket-head { position: relative; display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; padding: 26px; background: linear-gradient(120deg, #9a3412, #c2410c 65%, #ea580c); }
@@ -174,7 +174,7 @@
   .found-continue { width:100%; padding:15px 18px; border:0; border-radius:13px; color:#9a3412; background:#fff; box-shadow:0 14px 35px #4314074d; font:inherit; font-weight:950; cursor:pointer; transition:transform .2s,box-shadow .2s; }
   .found-continue:hover { transform:translateY(-2px); box-shadow:0 18px 42px #43140766; }
   .found-auto { display:block; margin-top:12px; color:#fed7aa; font-size:.72rem; }
-  .journey-stepper { position:relative; z-index:2; display:grid; grid-template-columns:repeat(3,1fr); gap:8px; width:min(720px,100%); margin:18px auto 26px; padding:10px; border:1px solid #1e3a5f; border-radius:15px; background:#071426d9; }
+  .journey-stepper { position:relative; z-index:2; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; box-sizing:border-box; width:min(720px,100%); margin:0 auto 26px; padding:10px; border:1px solid #1e3a5f; border-radius:15px; background:#071426d9; }
   .journey-step { display:flex; align-items:center; justify-content:center; gap:7px; min-height:38px; padding:7px; border-radius:10px; color:#64748b; font-size:.72rem; font-weight:900; text-align:center; }
   .journey-step b { display:grid; place-items:center; width:22px; height:22px; border:1px solid #334155; border-radius:50%; font-size:.68rem; }
   .journey-step.done { color:#86efac; background:#052e203d; }.journey-step.done b{border-color:#22c55e;background:#166534;color:#fff}
@@ -189,8 +189,8 @@
   @media (max-width: 700px) {
     .track-hero { min-height:275px; padding:20px 14px 86px; }
     .track-hero-copy { margin-top:34px; }
-    .track-night { padding-inline:12px; }
-    .track-night .order-wrap { transform:translateY(-48px); }
+    .track-night { padding:22px 12px 48px; }
+    .track-night .order-wrap { transform:none; }
     .order-brand strong{font-size:.9rem}.order-brand small{font-size:.62rem}.order-brand a{font-size:.68rem}
     .ticket-head { padding: 21px 18px; }
     .ticket-body { padding: 16px; }
@@ -269,6 +269,10 @@
       const directCompensation = location.pathname.startsWith('/compensate/');
       const showCompensation = directCompensation && (actions.compensationEligible || actions.compensationManualAvailable);
       const compensationCard = showCompensation ? '<section class="compensation-card"><h2>مشكلة في الحساب؟</h2><p>'+(actions.compensationEligible?'سجلك الحالي نظيف وضمانك سارٍ. أرفق لقطة شاشة حقيقية، وسيفحص النظام السجل والصورة قبل الاستبدال.':'ضمانك سارٍ، لكن الطلب يحتاج مراجعة بشرية بسبب السجل الأمني. أرفق الإثبات وسيصل الطلب للإدارة دون استبدال آلي.')+'</p><button id="compensationOpen" class="compensation-open" type="button">'+(actions.compensationEligible?'طلب استبدال فوري':'إرسال طلب للمراجعة')+'</button><form id="compensationForm" class="compensation-form" hidden><select id="compensationReason" required><option value="">اختر سبب المشكلة</option><option value="password_changed">تغيّرت كلمة المرور</option><option value="account_not_working">الحساب لا يعمل</option><option value="signed_out">تم تسجيل خروجي</option><option value="other">مشكلة أخرى</option></select><label class="compensation-file">لقطة شاشة للإثبات — PNG/JPG/WEBP حتى 5MB<input id="compensationEvidence" type="file" accept="image/png,image/jpeg,image/webp" required></label><img id="compensationPreview" class="compensation-preview" alt="معاينة صورة الإثبات"><input id="compensationEmail" type="email" maxlength="254" placeholder="بريدك للإشعار (اختياري)"><textarea id="compensationNote" maxlength="1000" placeholder="ملاحظة إضافية (اختياري)"></textarea><button type="submit">فحص الأهلية وإرسال الطلب</button></form><p id="compensationResult" role="status"></p></section>' : '';
+      const offer = actions.upsellOffer;
+      const upsellCard = offer?.url && offer?.expiresAt
+        ? '<section class="upsell-card"><h2>'+escapeHtml(offer.title || 'عرض خاص لعملائنا المميزين')+'</h2><p>'+escapeHtml(offer.description || 'أضف منتجًا مكملًا بخصم حصري الآن')+'</p><strong id="offerCountdown" class="offer-countdown" data-expires="'+escapeHtml(offer.expiresAt)+'">--:--</strong><a target="_blank" rel="noopener" href="'+escapeHtml(offer.url)+'">استفد من العرض الآن ↗</a></section>'
+        : '';
       const referral = actions.referralProgram || (actions.referralUrl ? { url:actions.referralUrl, count:0, target:5, enabled:true } : null);
       const referralCount = Math.max(0, Number(referral?.count)||0), referralTarget = Math.max(1, Number(referral?.target)||5), referralPercent = Math.min(100, referralCount/referralTarget*100);
       const couponBox = referral?.coupon ? '<div class="coupon-unlocked"><span>مكافأتك جاهزة ✦</span><strong>'+escapeHtml(referral.coupon)+'</strong><small>'+escapeHtml(referral.discountLabel||'كود خصم خاص لعملائنا السفراء')+'</small><div class="coupon-actions"><button type="button" data-copy="'+escapeHtml(referral.coupon)+'" data-copy-label="كود الخصم">نسخ كود الخصم</button>'+(referral.storeUrl?'<a target="_blank" rel="noopener" href="'+escapeHtml(referral.storeUrl)+'">استخدام الكود في المتجر ↗</a>':'')+'</div></div>' : '';
@@ -405,9 +409,16 @@
     const showScanning = () => {
       portal.innerHTML = shell('<article class="digital-order device-card security-scan"><div class="device-icon">♢</div><h1>جارٍ التحقق من أمان الجهاز</h1><p>نطابق بصمة الجهاز الفيزيائية الآمنة ونربطها بطلبك دون كشف بيانات الاشتراك.</p><div class="scan-bar" aria-label="جارٍ فحص بصمة الجهاز"><i></i></div><p class="device-note">تتم هذه الخطوة تلقائيًا لحماية اشتراكك من الوصول غير المصرح.</p></article>');
     };
-    const showVerified = payload => {
+    const showVerified = () => {
       portal.innerHTML = shell('<article class="digital-order device-card security-scan verified-shield"><div class="device-icon">✓</div><h1>تم التحقق من جهازك بنجاح ✓</h1><p>اكتملت المطابقة الأمنية. جارِ فتح معلومات الاشتراك والضمان…</p></article>');
-      setTimeout(() => render(payload), 800);
+      setTimeout(async () => {
+        try {
+          render(await loadOrder());
+        } catch (error) {
+          portal.innerHTML = shell('<article class="digital-order device-card track-error"><div class="device-icon">!</div><h1>تم التحقق، وتعذر تحميل التفاصيل مؤقتًا</h1><p>'+escapeHtml(error.message || 'حدث خطأ مؤقت أثناء فتح بيانات الطلب.')+'</p><button id="retryOrderDetails" class="ack-button" type="button">إعادة تحميل معلومات الطلب</button></article>');
+          document.getElementById('retryOrderDetails').onclick = showVerified;
+        }
+      }, 650);
     };
     const showAcknowledgment = payload => {
       const order = payload.order || {};
@@ -420,7 +431,7 @@
     const enterVerified = async payload => {
       if (!payload?.order?.device_verified) throw new Error('تعذر توثيق الجهاز لهذا الطلب.');
       if (!payload.order.acknowledged_at) return showAcknowledgment(payload);
-      showVerified(payload);
+      showVerified();
     };
     const startVerification = async () => {
       showScanning();

@@ -25,7 +25,11 @@ test('order tracking reveals the order through three secure progressive stages',
   assert.match(source, /تم التحقق من جهازك بنجاح/);
   assert.match(source, /journey-stepper/);
   assert.match(source, /setTimeout\(proceed,1800\)/);
-  assert.match(source, /setTimeout\(\(\) => render\(payload\), 800\)/);
+  assert.match(source, /render\(await loadOrder\(\)\)/);
+  assert.match(source, /retryOrderDetails/);
+  assert.match(source, /const upsellCard = offer\?\.url/);
+  assert.match(source, /\.track-night \.order-wrap \{ transform:none; \}/);
+  assert.doesNotMatch(source, /translateY\(-(?:48|58)px\)/);
 });
 
 test('home lookup shows a branded transition before navigation', async () => {
