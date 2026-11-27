@@ -30,8 +30,13 @@ test('home lookup shows a branded transition before navigation', async () => {
   assert.match(source, /order-transition/);
   assert.match(source, /جارِ فتح تفاصيل الاشتراك بأمان/);
   assert.match(source, /normalizeOrderNumber/);
+  assert.match(source, /\.order-input-wrap:focus-within/);
+  assert.match(source, /margin: -36px auto 0/);
+  assert.match(source, /form\.querySelector\('\.single-action'\)/);
   assert.match(shell, /id="pasteOrderNumber"/);
   assert.match(shell, /id="clearOrderNumber"/);
+  assert.match(shell, /النظام يعمل بكفاءة/);
+  assert.match(shell, /عرض بيانات الاشتراك ←/);
 });
 
 test('tracking page links to the dedicated compensation portal without legacy support UI', async () => {
