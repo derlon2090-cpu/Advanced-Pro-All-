@@ -14,8 +14,21 @@ test('order tracking uses the split brand layout and explicit lifecycle labels',
 
 test('home lookup shows a branded transition before navigation', async () => {
   const source = await readFile(new URL('../ui/single-order-home.html', import.meta.url), 'utf8');
+  const shell = await readFile(new URL('../ui/single-order-home-shell.html', import.meta.url), 'utf8');
   assert.match(source, /order-transition/);
   assert.match(source, /جارِ فتح تفاصيل الاشتراك بأمان/);
+  assert.match(source, /normalizeOrderNumber/);
+  assert.match(shell, /id="pasteOrderNumber"/);
+  assert.match(shell, /id="clearOrderNumber"/);
+});
+
+test('tracking page links to the dedicated compensation portal without legacy support UI', async () => {
+  const source = await readFile(new URL('../ui/order-track.html', import.meta.url), 'utf8');
+  assert.match(source, /showCompensation = directCompensation/);
+  assert.match(source, /compensation-link-line/);
+  assert.match(source, /\/compensate\//);
+  assert.doesNotMatch(source, /طلب دعم \/ تعويض الضمان \(واتساب\)/);
+  assert.doesNotMatch(source, /بوابة Crunchyroll غير مهيأة حاليًا/);
 });
 
 test('home page renders immediately without the orange split boot screen', async () => {

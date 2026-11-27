@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "build": "node scripts/build.mjs",
-    "validate": "node scripts/validate-artifact.mjs && node --test tests/customer-reputation.test.js tests/growth-automation.test.js tests/maintenance-and-sync.test.js tests/order-track-experience.test.js"
+    "validate": "node scripts/validate-artifact.mjs && node --test tests/customer-reputation.test.js tests/growth-automation.test.js tests/maintenance-and-sync.test.js tests/order-number.test.js tests/order-track-experience.test.js"
   },
   "devDependencies": {
     "wrangler": "^3.114.14"

@@ -1,9 +1,9 @@
 import { createHmac, randomBytes } from 'node:crypto';
 import { blockForMaintenance } from '../../lib/maintenance-mode.js';
 import { handlePublicReviews, handlePublicSettings } from '../../lib/public-info-handlers.js';
+import { normalizeOrderNumber } from '../../lib/order-number.js';
 
 const ip = request => String(request.headers['x-forwarded-for'] || request.headers['x-real-ip'] || 'unknown').split(',')[0].trim().slice(0, 128);
-const normalizeOrder = value => String(value || '').trim().replace(/[٠-٩]/g, digit => String(digit.charCodeAt(0) - 1632)).replace(/[۰-۹]/g, digit => String(digit.charCodeAt(0) - 1776));
 const database = (path, options = {}) => {
   const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL, key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   return fetch(`${url}/rest/v1/${path}`, { ...options, headers: { apikey: key, authorization: `Bearer ${key}`, 'content-type': 'application/json', ...(options.headers || {}) } });
@@ -70,7 +70,7 @@ export default async function handler(request, response) {
   if (request.query?._route === 'system-settings') return handlePublicSettings(request, response);
   if (request.method !== 'POST') return response.status(405).json({ message: 'الطريقة غير مسموحة.' });
   if (await blockForMaintenance(response)) return;
-  const order = normalizeOrder(request.body?.orderNumber || request.body?.order_number || request.body?.salla_reference_id);
+  const order = normalizeOrderNumber(request.body?.orderNumber || request.body?.order_number || request.body?.salla_reference_id);
   if (!/^\d{1,30}$/.test(order)) return response.status(400).json({ message: 'أدخل رقم الطلب بالأرقام فقط.' });
   if (!(process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL) || !process.env.SUPABASE_SERVICE_ROLE_KEY) return response.status(503).json({ message: 'خدمة الاستعلام غير متاحة مؤقتًا.' });
   const hash = ipHash(request), state = await limitState(hash);
@@ -78,7 +78,7 @@ export default async function handler(request, response) {
     const seconds = Math.max(1, Math.ceil((new Date(state.blocked_until) - Date.now()) / 1000));
     return response.status(429).setHeader('Retry-After', String(seconds)).json({ message: 'تم إيقاف الاستعلام مؤقتًا بعد محاولات غير صحيحة متتالية. حاول بعد 15 دقيقة.' });
   }
-  const query = new URLSearchParams({ select: 'id,tracking_token', order_number: `eq.${order}`, limit: '1' });
+  const query = new URLSearchParams({ select: 'id,tracking_token', or: `(order_number.eq.${order},order_number.eq.#${order})`, limit: '1' });
   let result = await database(`orders?${query}`), found = result.ok ? (await result.json())[0] : null;
   if (!found?.tracking_token) found = await importFromSalla(order).catch(() => null);
   if (!found?.tracking_token) {

@@ -8,8 +8,10 @@ const publicDir = resolve(root, "public");
 await rm(dist, { recursive: true, force: true });
 await rm(publicDir, { recursive: true, force: true });
 await mkdir(resolve(dist, "server"), { recursive: true });
+await mkdir(resolve(dist, "lib"), { recursive: true });
 await mkdir(resolve(dist, ".openai"), { recursive: true });
 await cp(resolve(root, "worker/index.js"), resolve(dist, "server/index.js"));
+await cp(resolve(root, "lib/order-number.js"), resolve(dist, "lib/order-number.js"));
 await cp(resolve(root, ".openai/hosting.json"), resolve(dist, ".openai/hosting.json"));
 
 // Vercel serves static files from public/. Keep this generated copy in sync with

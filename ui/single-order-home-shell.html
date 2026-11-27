@@ -13,7 +13,11 @@
             <div class="lookup-pair">
               <label class="single-label" for="singleOrderNumber">
                 <span><b>#</b> رقم الطلب</span>
-                <input id="singleOrderNumber" class="single-input" name="orderNumber" type="text" required inputmode="numeric" pattern="[0-9]*" maxlength="30" autocomplete="off" placeholder="رقم الطلب">
+                <span class="order-input-wrap">
+                  <input id="singleOrderNumber" class="single-input" name="orderNumber" type="text" required inputmode="text" maxlength="120" autocomplete="off" placeholder="مثال: #19482011">
+                  <button id="pasteOrderNumber" class="input-tool paste-tool" type="button" aria-label="لصق رقم الطلب من الحافظة"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M9 5h6m-5-2h4a2 2 0 0 1 2 2v1h2a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h2V5a2 2 0 0 1 2-2Z"/><path d="M8 6h8v4H8z"/></svg><span>لصق</span></button>
+                  <button id="clearOrderNumber" class="input-tool clear-tool" type="button" aria-label="مسح رقم الطلب" hidden>×</button>
+                </span>
               </label>
             </div>
             <button class="single-action" type="submit">⌕ &nbsp; عرض بيانات الاشتراك</button>

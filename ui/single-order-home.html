@@ -79,10 +79,11 @@
   .lookup-pair { display: grid; grid-template-columns: 1fr; gap: 12px; align-items: end; }
   .lookup-pair .single-label { display: grid; gap: 8px; }
   .lookup-pair [hidden] { display: none !important; }
+  .order-input-wrap { position: relative; display: block; }
   .single-input {
     width: 100%;
     height: 56px;
-    padding: 0 16px;
+    padding: 0 84px 0 92px;
     color: #fff;
     text-align: center;
     font-size: 1.05rem;
@@ -95,6 +96,13 @@
   .single-input::placeholder { color: #64748b; }
   .single-input:focus { border-color: #fb923c; box-shadow: 0 0 0 4px #fb923c20; }
   .single-input[aria-invalid="true"] { border-color: #fb7185; box-shadow: 0 0 0 4px #fb718520; }
+  .input-tool { position: absolute; top: 50%; z-index: 1; display: inline-flex; align-items: center; justify-content: center; gap: 5px; border: 1px solid #ffffff1f; color: #cbd5e1; background: #0f2747cc; backdrop-filter: blur(10px); transform: translateY(-50%); transition: border-color .2s, color .2s, box-shadow .2s, background .2s; }
+  .paste-tool { left: 7px; min-width: 76px; height: 42px; padding: 0 10px; border-radius: 10px; font-size: .78rem; font-weight: 900; }
+  .paste-tool svg { width: 17px; height: 17px; }
+  .paste-tool:hover { border-color: #ea580c; color: #fed7aa; background: #7c2d124f; box-shadow: 0 0 18px #ea580c36; }
+  .paste-tool.success { border-color: #22c55e88; color: #86efac; background: #052e2bcc; }
+  .clear-tool { right: 8px; width: 34px; height: 34px; padding: 0; border-radius: 50%; color: #94a3b8; font-size: 1.25rem; line-height: 1; }
+  .clear-tool:hover { border-color: #fb718577; color: #fecdd3; background: #4c051944; }
   .single-action {
     width: 100%;
     margin-top: 14px;
@@ -175,22 +183,39 @@
     const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
     fetch('/api/public/reviews').then(r=>r.json()).then(data=>{if(!data.reviews?.length)return;document.getElementById('proofTrack').innerHTML=data.reviews.map(r=>'<article class="proof-item"><span class="proof-stars">★★★★★</span><strong>'+escapeHtml(r.customer_name)+'</strong><small>'+escapeHtml(r.product_name)+'</small>'+(r.comment?'<p>'+escapeHtml(r.comment)+'</p>':'')+'</article>').join('');document.getElementById('socialProof').hidden=false}).catch(()=>{});
     const message = document.getElementById('singleLookupMessage');
-    const normalizeDigits = value => String(value)
-      .replace(/[٠-٩]/g, digit => String(digit.charCodeAt(0) - 1632))
-      .replace(/[۰-۹]/g, digit => String(digit.charCodeAt(0) - 1776))
-      .replace(/\D/g, '')
-      .slice(0, 30);
+    const { normalizeOrderNumber } = await import('/lib/order-number.js');
+    const pasteButton = document.getElementById('pasteOrderNumber');
+    const clearButton = document.getElementById('clearOrderNumber');
+    const updateTools = () => { clearButton.hidden = !orderInput.value; };
     orderInput.addEventListener('input', () => {
-      const digits = normalizeDigits(orderInput.value);
-      if (orderInput.value !== digits) orderInput.value = digits;
+      const orderNumber = normalizeOrderNumber(orderInput.value);
+      if (orderNumber && orderInput.value !== orderNumber) orderInput.value = orderNumber;
       orderInput.removeAttribute('aria-invalid');
       message.textContent = '';
+      updateTools();
+    });
+    clearButton.addEventListener('click', () => { orderInput.value = ''; updateTools(); orderInput.focus(); message.textContent = ''; });
+    pasteButton.addEventListener('click', async () => {
+      try {
+        if (!navigator.clipboard?.readText || !window.isSecureContext) throw new Error('clipboard-unavailable');
+        const orderNumber = normalizeOrderNumber(await navigator.clipboard.readText());
+        orderInput.value = orderNumber;
+        updateTools();
+        orderInput.removeAttribute('aria-invalid');
+        message.textContent = orderNumber ? '' : 'لم نجد رقم طلب في النص المنسوخ.';
+        const original = pasteButton.innerHTML;
+        pasteButton.classList.add('success'); pasteButton.innerHTML = '<span>✓ تم اللصق</span>';
+        setTimeout(() => { pasteButton.classList.remove('success'); pasteButton.innerHTML = original; }, 1500);
+      } catch {
+        orderInput.focus();
+        message.textContent = 'الصق رقم الطلب يدويًا داخل الحقل.';
+      }
     });
     document.getElementById('singleOrderLookup').addEventListener('submit', async event => {
       event.preventDefault();
       const form = event.currentTarget;
       const button = form.querySelector('button');
-      const orderNumber = normalizeDigits(orderInput.value);
+      const orderNumber = normalizeOrderNumber(orderInput.value);
       orderInput.value = orderNumber;
       if (!orderNumber) {
         orderInput.setAttribute('aria-invalid', 'true');
