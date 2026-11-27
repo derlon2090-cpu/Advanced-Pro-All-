@@ -53,10 +53,8 @@ test('all customer portals share the dark glass theme and clean dot-matrix hero'
     assert.match(page, /radial-gradient\(rgba\(255,\s*255,\s*255,\s*\.16\)\s*1\.5px,\s*transparent\s+1\.5px\)/i);
     assert.match(page, /background-size:\s*24px 24px/i);
   }
-  for (const file of ['../ui/single-order-home-shell.html', '../ui/order-track-shell.html']) {
-    const shell = await readFile(new URL(file, import.meta.url), 'utf8');
-    assert.match(shell, /النظام يعمل بكفاءة/);
-  }
+  const shell = await readFile(new URL('../ui/single-order-home-shell.html', import.meta.url), 'utf8');
+  assert.match(shell, /النظام يعمل بكفاءة/);
 });
 
 test('service subdomain heroes use distinct responsive artwork without the health badge', async () => {

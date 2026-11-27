@@ -54,8 +54,7 @@
         <form id="lookupForm"><div class="field-row"><input id="orderNumber" class="order-input" inputmode="numeric" autocomplete="off" placeholder="#12345" aria-label="رقم الطلب"><button id="pasteButton" class="paste" type="button">لصق</button></div><button id="openButton" class="btn orange" type="submit">فتح بوابة الاشتراك ←</button></form>
         <div id="lookupMessage" class="message" role="alert"></div>
       </div>
-      <div id="loading" class="card skeleton hidden"><div class="spinner" aria-label="جار التحميل"></div><strong>تم العثور على طلبك ✓</strong><p class="note">جارِ التحقق من الجهاز وتهيئة تفاصيل الاشتراك…</p></div>
-      <div id="deviceGate" class="card gate hidden"><div class="gate-icon">⌁</div><h2 class="section-title">تأكيد الجهاز المعتمد</h2><p class="note">نطابق بصمة الجهاز الفيزيائية لحماية بيانات الاشتراك. لا نجمع ملفاتك أو سجل تصفحك.</p><button id="verifyButton" class="btn orange">تحقق من هذا الجهاز</button><button id="transferButton" class="btn light hidden">نقل الاشتراك إلى هذا الجهاز</button><div id="deviceMessage" class="message" role="alert"></div></div>
+      <div id="deviceGate" class="card gate hidden"><div class="gate-icon">⌁</div><h2 class="section-title">التحقق من الجهاز</h2><p class="note">نطابق بصمة الجهاز الفيزيائية لحماية بيانات الاشتراك. لا نجمع ملفاتك أو سجل تصفحك.</p><button id="verifyButton" class="btn orange">تحقق من هذا الجهاز</button><button id="transferButton" class="btn light hidden">نقل الاشتراك إلى هذا الجهاز</button><div id="deviceMessage" class="message" role="alert"></div></div>
       <div id="ackGate" class="card gate hidden"><div class="gate-icon">✓</div><h2 class="section-title">إقرار استلام وحماية الاشتراك</h2><div id="ackText" class="ack-text"></div><label><input id="ackCheck" type="checkbox"> قرأت الشروط وأوافق على الالتزام بها</label><button id="ackButton" class="btn orange">توثيق الإقرار والمتابعة</button><div id="ackMessage" class="message" role="alert"></div></div>
       <div id="dashboard" class="portal-grid hidden">
         <article class="card credential-card"><h2 class="section-title">بيانات الدخول السريعة</h2><p class="note">استخدمها على الموقع الرسمي لـ ChatGPT فقط.</p><div class="status-row"><span id="daysPill" class="pill good"></span><span id="warrantyPill" class="pill"></span><span id="devicePill" class="pill device-pill"></span></div><div id="pendingDelivery" class="pending-delivery hidden"><strong>طلبك قيد التجهيز</strong><small>الوقت المتوقع للتسليم والتفعيل: فوري خلال 5 – 18 ساعة.</small></div><div id="credentialFields"><div class="credential"><label>البريد الإلكتروني</label><div class="credential-line"><span id="emailValue" class="credential-value"></span><button class="icon-btn" data-copy="emailValue">نسخ</button></div></div><div class="credential"><label>كلمة المرور</label><div class="credential-line"><span id="passwordValue" class="credential-value" data-secret></span><button id="togglePassword" class="icon-btn">إظهار</button><button class="icon-btn" data-copy-secret="passwordValue">نسخ</button></div></div></div></article>
@@ -67,7 +66,8 @@
   <footer id="footer" class="footer hidden">تواجه مشكلة؟ <a id="supportLink" href="#">افتح طلب تعويض أو مساعدة</a></footer>
   <script type="module">
     import { collectDeviceDna } from '/lib/device-dna.js';
-    const $=id=>document.getElementById(id), views=['lookup','loading','deviceGate','ackGate','dashboard'];
+    import { setOrderProgress, confirmOrderFound } from '/lib/order-progress.js';
+    const $=id=>document.getElementById(id), views=['lookup','deviceGate','ackGate','dashboard'];
     let token='', portalData=null, deviceDna=null, transferChallenge=null, countdown=null, seconds=0, passwordVisible=false, rawPassword='';
     const sessionKey='advpro:gpt:session',sessionTtl=30*60*1000;
     const show=id=>{views.forEach(view=>{const element=$(view),visible=view===id;element.classList.toggle('hidden',!visible);if(visible){element.classList.remove('flow-view-enter');requestAnimationFrame(()=>element.classList.add('flow-view-enter'))}});$('switchOrder').hidden=id!=='dashboard'};
@@ -79,8 +79,66 @@
     const json=async(url,options={})=>{const response=await fetch(url,options);const data=await response.json().catch(()=>({}));if(!response.ok){const error=new Error(data.message||'تعذر إكمال الطلب.');error.status=response.status;error.data=data;throw error}return data};
     const cleanOrder=value=>String(value||'').replace(/[٠-٩]/g,d=>'٠١٢٣٤٥٦٧٨٩'.indexOf(d)).replace(/[۰-۹]/g,d=>'۰۱۲۳۴۵۶۷۸۹'.indexOf(d)).replace(/[^0-9]/g,'').slice(0,30);
     function pathToken(){const pattern=location.hostname==='gpt.advpro.app'?/^\/([a-zA-Z0-9_-]{16,128})\/?$/:/^\/chatgpt\/([a-zA-Z0-9_-]{16,128})\/?$/;const match=location.pathname.match(pattern);return match?match[1]:''}
-    async function openOrder(event){event?.preventDefault();const orderNumber=cleanOrder($('orderNumber').value);$('orderNumber').value=orderNumber;if(!orderNumber)return message('lookupMessage','أدخل رقم طلب صالحًا.');busy($('openButton'),true,'جارِ التحقق…');try{const data=await json('/api/public/chatgpt/access',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({orderNumber})});history.replaceState({},'',data.redirectTo);token=data.token;saveSession();await loadPortal()}catch(error){let redirect=error.data?.redirectTo;if(redirect){const separator=redirect.includes('?')?'&':'?';redirect+=separator+'order='+encodeURIComponent(orderNumber)}message('lookupMessage',error.message,'bad',redirect)}finally{busy($('openButton'),false)}}
-    async function loadPortal(showLoader=true){if(showLoader)show('loading');clearInterval(countdown);try{portalData=await json('/api/public/track?token='+encodeURIComponent(token));const order=portalData.order||{};if(order.service_type!=='chatgpt'||!/chatgpt|openai|شات\s*(?:جي\s*بي\s*تي|GPT)/i.test(String(order.product_name||''))){location.replace('https://advpro.app');return}if(!order.device_verified){show('deviceGate');return}if(!order.acknowledged_at){$('ackText').textContent=order.acknowledgment_text||'أتعهد بعدم مشاركة الحساب أو تغيير بياناته، وباستخدامه وفق شروط المنتج.';show('ackGate');return}renderDashboard()}catch(error){show('lookup');message('lookupMessage',error.message)} }
+    async function openOrder(event) {
+      event?.preventDefault();
+      const button = $('openButton');
+      if (button.disabled) return;
+      const orderNumber = cleanOrder($('orderNumber').value);
+      $('orderNumber').value = orderNumber;
+      if (!orderNumber) return message('lookupMessage','أدخل رقم طلب صالحًا.');
+      button.disabled = true;
+      setOrderProgress('search');
+      try {
+        const data = await json('/api/public/chatgpt/access',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({orderNumber})});
+        history.replaceState({},'',data.redirectTo);
+        token = data.token;
+        saveSession();
+        await loadPortal();
+      } catch (error) {
+        let redirect = error.data?.redirectTo;
+        if (redirect) redirect += (redirect.includes('?') ? '&' : '?') + 'order=' + encodeURIComponent(orderNumber);
+        message('lookupMessage',error.message,'bad',redirect);
+      } finally {
+        setOrderProgress();
+        button.disabled = false;
+      }
+    }
+    async function loadPortal(initial = true) {
+      if (initial) setOrderProgress('search');
+      clearInterval(countdown);
+      try {
+        portalData = await json('/api/public/track?token='+encodeURIComponent(token));
+        const order = portalData.order || {};
+        if (order.service_type!=='chatgpt'||!/chatgpt|openai|شات\s*(?:جي\s*بي\s*تي|GPT)/i.test(String(order.product_name||''))) {
+          location.replace('https://advpro.app');
+          return;
+        }
+        if (initial) await confirmOrderFound();
+        if (!order.device_verified) {
+          if (initial) {
+            $('transferButton').classList.add('hidden');
+            $('deviceMessage').textContent = '';
+          }
+          show('deviceGate');
+          return;
+        }
+        if (initial) {
+          setOrderProgress('verify');
+          await new Promise(resolve => setTimeout(resolve, 450));
+        }
+        if (!order.acknowledged_at) {
+          $('ackText').textContent = order.acknowledgment_text || 'أتعهد بعدم مشاركة الحساب أو تغيير بياناته، وباستخدامه وفق شروط المنتج.';
+          show('ackGate');
+          return;
+        }
+        renderDashboard();
+      } catch (error) {
+        show('lookup');
+        message('lookupMessage',error.message);
+      } finally {
+        if (initial) setOrderProgress();
+      }
+    }
     async function challenge(){return json('/api/public/verify-device',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({token,action:'challenge'})})}
     async function verifyDevice(action='verify'){const button=action==='transfer'?$('transferButton'):$('verifyButton');busy(button,true,'جارِ مطابقة الجهاز…');try{deviceDna=deviceDna||await collectDeviceDna();const issued=await challenge();const body={token,action,...deviceDna,challenge:issued.challenge};const result=await json('/api/public/verify-device',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)});if(result.allowed){message('deviceMessage','تم اعتماد الجهاز بنجاح.','good');setTimeout(()=>loadPortal(false),450)}}catch(error){if(error.data?.transferRequired){$('transferButton').classList.remove('hidden');message('deviceMessage',`هذا جهاز مختلف عن ${error.data.oldDeviceName||'الجهاز السابق'}. يمكنك استخدام فرصة النقل المجانية.`)}else message('deviceMessage',error.message)}finally{busy(button,false)}}
     async function acceptAck(){if(!$('ackCheck').checked)return message('ackMessage','فعّل مربع الموافقة أولًا.');busy($('ackButton'),true,'جارِ التوثيق…');try{await json('/api/public/track?token='+encodeURIComponent(token),{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({token,accepted:true})});await loadPortal(false)}catch(error){message('ackMessage',error.message)}finally{busy($('ackButton'),false)}}

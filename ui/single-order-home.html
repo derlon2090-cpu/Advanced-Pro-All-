@@ -150,12 +150,6 @@
   .footer-mark img { width: 34px; height: 34px; object-fit: contain; display: block; }
   .copyright { margin-top: 13px; color: #64748b; font-size: .72rem; }
   .social-proof{margin-top:15px;padding:13px;border:1px solid #1e3a5f;border-radius:14px;background:#081a35;overflow:hidden}.social-proof h2{margin:0 0 9px;color:#fdba74;font-size:.78rem;text-align:center}.proof-track{display:flex;gap:10px;overflow:auto;scrollbar-width:none}.proof-item{min-width:210px;padding:10px;border-radius:10px;background:#06152d}.proof-stars{color:#fb923c;letter-spacing:1px}.proof-item strong,.proof-item small{display:block}.proof-item strong{margin-top:5px;font-size:.72rem}.proof-item small{margin-top:3px;color:#94a3b8;font-size:.64rem}.proof-item p{margin:6px 0 0;color:#cbd5e1;font-size:.66rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .order-transition { position:fixed; z-index:999; inset:0; display:grid; place-items:center; opacity:0; pointer-events:none; background:linear-gradient(135deg,#7c2d12,#c2410c 52%,#ea580c); transition:opacity .25s ease; }
-  .order-transition.show { opacity:1; pointer-events:auto; }
-  .order-transition div { text-align:center; color:#fff; }
-  .order-transition i { display:block; width:44px; height:44px; margin:0 auto 16px; border:4px solid #ffffff55; border-top-color:#fff; border-radius:50%; animation:orderTransitionSpin .7s linear infinite; }
-  .order-transition strong,.order-transition small { display:block; }.order-transition small{margin-top:7px;color:#ffedd5}
-  @keyframes orderTransitionSpin { to { transform:rotate(360deg); } }
   @media (max-width: 650px) {
     .lookup-pair { grid-template-columns: 1fr; }
     .split-top { min-height: 43vh; padding: 52px 16px 132px; }
@@ -172,16 +166,20 @@
     if (await window.apMaintenanceGate?.()) return;
     if (!document.getElementById('portal')) return;
     document.body.classList.add('split-home-ready');
+    const form = document.getElementById('singleOrderLookup');
+    if (!form) return;
     const orderInput = document.getElementById('singleOrderNumber');
     const incomingRef=new URLSearchParams(location.search).get('ref');if(/^[A-Z0-9]{8,32}$/i.test(incomingRef||''))localStorage.setItem('advpro_referral',incomingRef.toUpperCase());
     const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
     fetch('/api/public/reviews').then(r=>r.json()).then(data=>{if(!data.reviews?.length)return;document.getElementById('proofTrack').innerHTML=data.reviews.map(r=>'<article class="proof-item"><span class="proof-stars">★★★★★</span><strong>'+escapeHtml(r.customer_name)+'</strong><small>'+escapeHtml(r.product_name)+'</small>'+(r.comment?'<p>'+escapeHtml(r.comment)+'</p>':'')+'</article>').join('');document.getElementById('socialProof').hidden=false}).catch(()=>{});
     const message = document.getElementById('singleLookupMessage');
     const { normalizeOrderNumber } = await import('/lib/order-number.js');
+    const { setOrderProgress } = await import('/lib/order-progress.js');
     const pasteButton = document.getElementById('pasteOrderNumber');
     const clearButton = document.getElementById('clearOrderNumber');
     const updateTools = () => { clearButton.hidden = !orderInput.value; };
     orderInput.addEventListener('input', () => {
+      if (button.disabled) return;
       const orderNumber = normalizeOrderNumber(orderInput.value);
       if (orderNumber && orderInput.value !== orderNumber) orderInput.value = orderNumber;
       orderInput.removeAttribute('aria-invalid');
@@ -205,10 +203,9 @@
         message.textContent = 'الصق رقم الطلب يدويًا داخل الحقل.';
       }
     });
-    document.getElementById('singleOrderLookup').addEventListener('submit', async event => {
+    const button = form.querySelector('.single-action');
+    form.addEventListener('submit', async event => {
       event.preventDefault();
-      const form = event.currentTarget;
-      const button = form.querySelector('.single-action');
       const orderNumber = normalizeOrderNumber(orderInput.value);
       orderInput.value = orderNumber;
       if (!orderNumber) {
@@ -218,8 +215,9 @@
         return;
       }
       button.disabled = true;
-      button.textContent = 'جارِ التحقق…';
       message.textContent = '';
+      setOrderProgress('search');
+      let navigating = false;
       try {
         const result = await fetch('/api/public/lookup', {
           method: 'POST',
@@ -229,7 +227,9 @@
         const data = await result.json().catch(() => ({}));
         if (result.ok && data.redirectTo) {
           localStorage.removeItem('advpro_referral');
-          var transition=document.createElement('div');transition.className='order-transition';transition.innerHTML='<div><i></i><strong>جارِ البحث عن طلبك…</strong><small>لحظات ونجهز رحلة التحقق الآمنة</small></div>';document.body.append(transition);requestAnimationFrame(function(){transition.classList.add('show')});setTimeout(function(){location.assign(data.redirectTo)},320);return;
+          location.assign(data.redirectTo);
+          navigating = true;
+          return;
         }
         message.textContent = result.status === 503
           ? 'خدمة الاستعلام غير متاحة مؤقتًا. يرجى المحاولة بعد قليل.'
@@ -237,9 +237,18 @@
       } catch {
         message.textContent = 'تعذر الاتصال بالخدمة. حاول بعد قليل.';
       } finally {
-        button.disabled = false;
-        button.textContent = 'عرض بيانات الاشتراك ←';
+        if (!navigating) {
+          setOrderProgress();
+          button.disabled = false;
+          orderInput.focus();
+        }
       }
     });
+    window.addEventListener('pageshow', event => {
+      if (!event.persisted) return;
+      setOrderProgress();
+      button.disabled = false;
+    });
+    button.disabled = false;
   });
 </script>

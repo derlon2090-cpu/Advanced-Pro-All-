@@ -11,25 +11,24 @@ test('order tracking uses the split brand layout and explicit lifecycle labels',
   assert.match(source, /الوقت المتوقع للتسليم والتفعيل/);
   assert.match(source, /تم التسليم والتفعيل بنجاح ✓/);
   assert.match(source, /defaultDeliveryEstimate/);
-  assert.match(source, /setTimeout\(\(\) => loadOrder\(\)\.then\(render\)/);
+  assert.match(source, /setTimeout\(async \(\) => \{\s+try \{\s+const payload = await loadOrder\(displayedToken\);\s+if \(token === displayedToken\) render\(payload\)/);
   assert.match(source, /بداية السريان/);
-  assert.match(source, /بصمة الجهاز الفيزيائية/);
+  assert.match(source, /بصمة الجهاز/);
   assert.match(source, /order-info-grid/);
   assert.match(source, /grid-template-columns:repeat\(3,minmax\(0,1fr\)\)/);
   assert.match(source, /referral-title-row/);
   assert.doesNotMatch(source, /أصدقاء مكتملين/);
 });
 
-test('order tracking reveals the order through three secure progressive stages', async () => {
+test('order tracking confirms the order before verification and opens details after verification', async () => {
   const source = await readFile(new URL('../ui/order-track.html', import.meta.url), 'utf8');
-  assert.match(source, /تم العثور على طلبك بنجاح!/);
-  assert.match(source, /المتابعة للتحقق من الجهاز/);
-  assert.match(source, /جارٍ التحقق من أمان الجهاز/);
+  assert.match(source, /await findOrder\(\);\s+await showOrder\(\)/);
+  assert.match(source, /await confirmOrderFound\(\);\s+await startVerification\(\)/);
+  assert.match(source, /setOrderProgress\('verify'\);[\s\S]*?verifyDevice\('verify', dna\)/);
+  assert.match(source, /if \(response\.ok && security\.allowed\) return await loadVerifiedOrder\(\)/);
   assert.match(source, /أوافق وأُوثّق جهازي الآن/);
-  assert.match(source, /تم التحقق من جهازك بنجاح/);
   assert.doesNotMatch(source, /journey-stepper|journey-step/);
-  assert.match(source, /setTimeout\(proceed,1800\)/);
-  assert.match(source, /render\(await loadOrder\(\)\)/);
+  assert.match(source, /enterVerified\(await loadOrder\(\)\)/);
   assert.match(source, /retryOrderDetails/);
   assert.match(source, /const upsellCard = offer\?\.url/);
   assert.match(source, /\.track-night \.order-wrap \{ transform:none; \}/);
@@ -43,15 +42,17 @@ test('order details switch to another lookup in place without a page reload', as
   assert.match(source, /history\.replaceState\(\{\},'', '\/'\)/);
   assert.match(source, /anotherOrderNumber/);
   assert.match(source, /input\.focus\(\)/);
+  assert.match(source, /destination\.origin !== location\.origin/);
+  assert.match(source, /await findOrder\(nextToken\);\s+history\.replaceState\(/);
   assert.doesNotMatch(source, /switchOrder[^\n]+location\.(?:assign|replace|reload)/);
 });
 
 test('home lookup keeps the search state until the tracking page confirms the order', async () => {
   const source = await readFile(new URL('../ui/single-order-home.html', import.meta.url), 'utf8');
   const shell = await readFile(new URL('../ui/single-order-home-shell.html', import.meta.url), 'utf8');
-  assert.match(source, /order-transition/);
-  assert.match(source, /جارِ البحث عن طلبك/);
-  assert.doesNotMatch(source, /<strong>تم العثور على طلبك<\/strong>/);
+  assert.match(source, /setOrderProgress\('search'\);[\s\S]*?fetch\('\/api\/public\/lookup'/);
+  assert.match(source, /location\.assign\(data\.redirectTo\)/);
+  assert.doesNotMatch(source, /confirmOrderFound|order-transition/);
   assert.match(source, /normalizeOrderNumber/);
   assert.match(source, /\.order-input-wrap:focus-within/);
   assert.match(source, /background: #071a35/);
@@ -95,13 +96,30 @@ test('built homepage contains only the current lookup design and disables docume
 test('track routes use a dedicated secure loading document without homepage flashes', async () => {
   const html = await readFile(new URL('../public/track.html', import.meta.url), 'utf8');
   const config = JSON.parse(await readFile(new URL('../vercel.json', import.meta.url), 'utf8'));
-  assert.match(html, /<span class="order-number">بوابة الطلب الآمنة<\/span>/);
-  assert.match(html, /جارِ تجهيز تفاصيل طلبك/);
+  const boot = html.indexOf("dataset.orderProgress='search'");
+  assert.ok(boot >= 0 && boot < html.search(/<body\b/));
+  assert.match(html, /جارِ البحث عن طلبك…/);
+  assert.doesNotMatch(html, /جارِ تجهيز تفاصيل طلبك/);
   assert.doesNotMatch(html, /<form id="singleOrderLookup"/);
   assert.doesNotMatch(html, /id="premiumLookup"/);
   assert.doesNotMatch(html, /نظام الضمان والمتابعة الذكي/);
   assert.ok(config.rewrites.some(route => route.source === '/track/:path*' && route.destination === '/track.html'));
   assert.ok(config.redirects.some(route => route.source === '/compensate/:path*' && route.destination === 'https://warranty.advpro.app/:path*'));
+});
+
+test('all public portals serve the same progress screen with one confirmation label', async () => {
+  for (const name of ['home','track','chatgpt','crunchyroll','compensate']) {
+    const html = await readFile(new URL(`../public/${name}.html`, import.meta.url), 'utf8');
+    assert.equal(html.match(/id="orderProgress"/g)?.length, 1, name);
+    assert.equal(html.match(/تم العثور على طلبك/g)?.length, 1, name);
+    assert.match(html, /data-progress-label="search">جارِ البحث عن طلبك…/, name);
+    assert.match(html, /data-progress-label="verify">التحقق من الجهاز…/, name);
+    assert.equal(html.match(/<body\b/g)?.length, 1, name);
+    if (name !== 'home') {
+      const boot = html.indexOf("dataset.orderProgress='search'");
+      assert.ok(boot >= 0 && boot < html.search(/<body\b/), name);
+    }
+  }
 });
 
 test('fulfillment migration resets subscription and warranty start dates', async () => {

@@ -59,7 +59,6 @@
         <form id="accessForm" class="order-form"><div class="field-shell"><input id="orderNumber" inputmode="numeric" autocomplete="off" required aria-label="رقم الطلب" placeholder="مثال: #12345"><button id="pasteButton" class="paste" type="button">لصق</button></div><button id="accessButton" class="primary" type="submit">فتح بوابة الاشتراك ←</button></form>
         <p id="accessMessage" class="message" role="status"></p><p class="hint">يتم التحقق من نوع المنتج، صلاحية الطلب، والجهاز الموثّق قبل عرض أي بيانات حساسة.</p>
       </div>
-      <div id="loader" class="panel entry loader" hidden><div class="spinner"></div><strong>تم العثور على طلبك ✓</strong><p class="hint">جارِ التحقق الآمن من الجهاز وفتح تفاصيل الاشتراك…</p></div>
       <div id="ack" class="panel ack" hidden><div class="panel-head"><div><h2>إقرار الضمان وتوثيق الجهاز</h2><p>هذه أول زيارة لهذا الطلب. راجع الشروط ثم وثّق جهازك للمتابعة.</p></div><span class="badge">خطوة واحدة</span></div><ul id="ackPoints"></ul><label class="ack-check"><input id="ackCheckbox" type="checkbox"><span>أقرّ بقراءة الشروط وأوافق على ربط الوصول بهذا الجهاز.</span></label><button id="ackButton" class="primary" disabled>تأكيد الإقرار وفتح الاشتراك</button><p id="ackMessage" class="message" role="status"></p></div>
       <div id="dashboard" class="dashboard" hidden>
         <div class="dash-grid">
@@ -74,10 +73,11 @@
   <footer class="footer">بوابة أدفانسد برو · وصول محمي ومخصص لعملاء Crunchyroll</footer>
   <script type="module">
     import { collectDeviceDna } from '/lib/device-dna.js';
+    import { setOrderProgress, confirmOrderFound } from '/lib/order-progress.js';
     const $=id=>document.getElementById(id),arabicDigits=value=>String(value||'').replace(/[٠-٩]/g,d=>String(d.charCodeAt(0)-1632)).replace(/[۰-۹]/g,d=>String(d.charCodeAt(0)-1776)),cleanOrder=value=>arabicDigits(value).replace(/[^0-9]/g,'');
     let token='',orderData=null,plainPassword='',autoTimer=null,autoStopsAt=0,trustedDeviceLabel='جهازك الموثّق';
     const sessionKey='advpro:anime:session',sessionTtl=30*60*1000;
-    const show=name=>{['entry','loader','ack','dashboard'].forEach(id=>{const view=$(id),visible=id===name;view.hidden=!visible;if(visible){view.classList.remove('flow-view-enter');requestAnimationFrame(()=>view.classList.add('flow-view-enter'))}});$('switchOrder').hidden=name!=='dashboard'};
+    const show=name=>{['entry','ack','dashboard'].forEach(id=>{const view=$(id),visible=id===name;view.hidden=!visible;if(visible){view.classList.remove('flow-view-enter');requestAnimationFrame(()=>view.classList.add('flow-view-enter'))}});$('switchOrder').hidden=name!=='dashboard'};
     const saveSession=()=>{try{localStorage.setItem(sessionKey,JSON.stringify({token,expiresAt:Date.now()+sessionTtl}))}catch{}};
     const forgetSession=()=>{try{localStorage.removeItem(sessionKey)}catch{}};
     const restoreSession=()=>{try{const saved=JSON.parse(localStorage.getItem(sessionKey)||'null');if(saved?.token&&saved.expiresAt>Date.now())return saved.token;forgetSession()}catch{forgetSession()}return''};
@@ -85,10 +85,70 @@
     const relative=date=>{const sec=Math.max(0,Math.floor((Date.now()-new Date(date))/1000));if(sec<60)return 'الآن';if(sec<3600)return `منذ ${Math.floor(sec/60)} دقيقة`;if(sec<86400)return `منذ ${Math.floor(sec/3600)} ساعة`;return new Date(date).toLocaleDateString('ar-SA')};
     $('pasteButton').onclick=async()=>{try{$('orderNumber').value=await navigator.clipboard.readText();$('orderNumber').focus()}catch{$('accessMessage').textContent='تعذر الوصول للحافظة. الصق الرقم يدويًا.'}};
     $('orderNumber').oninput=e=>{const value=cleanOrder(e.target.value);e.target.value=value?`#${value}`:''};
-    $('accessForm').onsubmit=async e=>{e.preventDefault();const orderNumber=cleanOrder($('orderNumber').value),button=$('accessButton');if(!orderNumber)return;button.disabled=true;button.textContent='جارِ التحقق…';$('accessMessage').textContent='';try{const response=await fetch('/api/public/crunchyroll/access',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({orderNumber})}),result=await response.json().catch(()=>({}));if(!response.ok){$('accessMessage').textContent=result.message||'تعذر فتح البوابة.';if(result.redirectTo){const link=document.createElement('a'),separator=result.redirectTo.includes('?')?'&':'?';link.href=result.redirectTo+separator+'order='+encodeURIComponent(orderNumber);link.textContent='فتح البوابة المناسبة بهذا الطلب';link.style.display='block';link.style.marginTop='8px';$('accessMessage').append(link)}return}history.replaceState({},'',result.redirectTo);token=result.token;saveSession();await openPortal()}catch{$('accessMessage').textContent='تعذر الاتصال بالخدمة. حاول بعد قليل.'}finally{button.disabled=false;button.textContent='فتح بوابة الاشتراك ←'}};
+    $('accessForm').onsubmit = async event => {
+      event.preventDefault();
+      const orderNumber = cleanOrder($('orderNumber').value), button = $('accessButton'), message = $('accessMessage');
+      if (!orderNumber || button.disabled) return;
+      button.disabled = true;
+      message.textContent = '';
+      setOrderProgress('search');
+      try {
+        const response = await fetch('/api/public/crunchyroll/access',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({orderNumber})});
+        const result = await response.json().catch(()=>({}));
+        if (!response.ok) {
+          message.textContent = result.message || 'تعذر فتح البوابة.';
+          if (result.redirectTo) {
+            const link = document.createElement('a');
+            link.href = result.redirectTo + (result.redirectTo.includes('?') ? '&' : '?') + 'order=' + encodeURIComponent(orderNumber);
+            link.textContent = 'فتح البوابة المناسبة بهذا الطلب';
+            link.style.display = 'block';
+            link.style.marginTop = '8px';
+            message.append(link);
+          }
+          return;
+        }
+        history.replaceState({},'',result.redirectTo);
+        token = result.token;
+        saveSession();
+        await openPortal(true);
+      } catch {
+        message.textContent = 'تعذر الاتصال بالخدمة. حاول بعد قليل.';
+      } finally {
+        setOrderProgress();
+        button.disabled = false;
+      }
+    };
     async function deviceVerify(action='verify'){const challengeResponse=await fetch('/api/public/verify-device',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({token,action:'challenge'})}),challengeData=await challengeResponse.json().catch(()=>({}));if(!challengeResponse.ok)throw new Error(challengeData.message||'تعذر بدء التحقق الأمني.');const dna=await collectDeviceDna(),response=await fetch('/api/public/verify-device',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({token,action,challenge:challengeData.challenge,...dna})}),result=await response.json().catch(()=>({}));if(!response.ok){if(result.transferRequired&&result.freeResetsRemaining>0&&confirm(`هذا الطلب مرتبط بـ ${result.oldDeviceName}. هل تريد استخدام فرصة نقل الجهاز المجانية؟`))return deviceVerify('transfer');throw new Error(result.message||'هذا الجهاز غير مصرح له بالوصول.')}return result}
     async function fetchOrder(){const response=await fetch('/api/public/track?token='+encodeURIComponent(token),{headers:{accept:'application/json'},cache:'no-store'}),result=await response.json().catch(()=>({}));if(!response.ok)throw new Error(result.message||'تعذر تحميل بيانات الاشتراك.');return result}
-    async function openPortal(){show('loader');try{await deviceVerify();const payload=await fetchOrder(),order=payload.order||{};if(order.service_type!=='crunchyroll'||!/crunchyroll|كرانشي\s*رول/i.test(String(order.product_name||''))){location.replace('https://advpro.app');return}if(!order.acknowledged_at){orderData=payload;$('ackPoints').innerHTML=String(order.acknowledgment_text||'').split(/\n+/).filter(Boolean).map(point=>`<li>${point.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))}</li>`).join('');show('ack');return}renderDashboard(payload)}catch(error){show('entry');$('accessMessage').textContent=error.message}}
+    async function openPortal(orderConfirmed = false) {
+      setOrderProgress('search');
+      try {
+        if (!orderConfirmed) {
+          const { order } = await fetchOrder();
+          if (order?.service_type !== 'crunchyroll' || !/crunchyroll|كرانشي\s*رول/i.test(String(order.product_name || ''))) {
+            location.replace('https://advpro.app');
+            return;
+          }
+        }
+        await confirmOrderFound();
+        setOrderProgress('verify');
+        await deviceVerify();
+        const payload = await fetchOrder(), order = payload.order;
+        if (!order?.device_verified) throw new Error('تعذر توثيق الجهاز لهذا الطلب.');
+        if (!order.acknowledged_at) {
+          orderData = payload;
+          $('ackPoints').innerHTML = String(order.acknowledgment_text || '').split(/\n+/).filter(Boolean).map(point => `<li>${point.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))}</li>`).join('');
+          show('ack');
+          return;
+        }
+        renderDashboard(payload);
+      } catch (error) {
+        show('entry');
+        $('accessMessage').textContent = error.message;
+      } finally {
+        setOrderProgress();
+      }
+    }
     $('ackCheckbox').onchange=e=>$('ackButton').disabled=!e.target.checked;
     $('ackButton').onclick=async()=>{const button=$('ackButton');button.disabled=true;button.textContent='جارِ التوثيق…';$('ackMessage').textContent='';try{const response=await fetch('/api/public/track?token='+encodeURIComponent(token),{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({token,accepted:true})}),result=await response.json().catch(()=>({}));if(!response.ok)throw new Error(result.message||'تعذر حفظ الإقرار.');renderDashboard(result)}catch(error){$('ackMessage').textContent=error.message;button.disabled=false;button.textContent='تأكيد الإقرار وفتح الاشتراك'}};
     function currentBrowser(){const ua=navigator.userAgent;if(/Edg\//.test(ua))return'Edge';if(/CriOS|Chrome\//.test(ua))return'Chrome';if(/FxiOS|Firefox\//.test(ua))return'Firefox';if(/Safari\//.test(ua))return'Safari';return'Mobile'}

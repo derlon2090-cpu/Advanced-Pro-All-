@@ -1,0 +1,56 @@
+#orderProgress { display: none; }
+html[data-order-progress] body { overflow: hidden; }
+html[data-order-progress] body > :not(#orderProgress) { visibility: hidden; }
+html[data-order-progress] #orderProgress {
+  visibility: visible;
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  padding: 24px;
+  background: radial-gradient(ellipse at 50% 32%, #1b3158, #071a35 72%);
+  color: #f8fafc;
+  text-align: center;
+}
+.order-progress-card { width: min(100%, 30rem); }
+.order-progress-card strong { font-size: clamp(1.5rem, 5vw, 2.6rem); }
+.order-progress-card [data-progress-label], #continueToDevice { display: none; }
+html[data-order-progress="search"] [data-progress-label="search"],
+html[data-order-progress="found"] [data-progress-label="found"],
+html[data-order-progress="verify"] [data-progress-label="verify"] { display: block; }
+.order-progress-indicator {
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  width: 54px;
+  height: 54px;
+  margin: 0 auto 18px;
+  border: 3px solid #fdba7440;
+  border-top-color: #fdba74;
+  border-radius: 50%;
+  animation: orderProgressSpin .8s linear infinite;
+}
+.order-progress-indicator span { display: none; }
+html[data-order-progress="found"] .order-progress-indicator {
+  animation: none;
+  background: #052e2b;
+  border-color: #4ade8073;
+  color: #bbf7d0;
+  font-size: 1.6rem;
+}
+html[data-order-progress="found"] .order-progress-indicator span { display: block; }
+html[data-order-progress="found"] #continueToDevice {
+  display: inline-block;
+  margin-top: 20px;
+  padding: 10px 18px;
+  border: 1px solid #fdba7480;
+  border-radius: 10px;
+  background: #172844;
+  color: #fff;
+  font: inherit;
+  cursor: pointer;
+}
+@keyframes orderProgressSpin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .order-progress-indicator { animation: none; } }

@@ -89,5 +89,5 @@ export default async function handler(request, response) {
   await resetFailures(hash);
   const referralCode=/^[A-Z0-9]{8,32}$/i.test(String(request.body?.referralCode||''))?String(request.body.referralCode).toUpperCase():null;
   if(referralCode&&found.id)await database('rpc/reward_order_referral',{method:'POST',body:JSON.stringify({p_referral_code:referralCode,p_referred_order_id:found.id})}).catch(()=>null);
-  return response.status(200).setHeader('Cache-Control', 'private, no-store').json({ redirectTo: portalForOrder(found, found.tracking_token) });
+  return response.status(200).setHeader('Cache-Control', 'private, no-store').json({ trackingToken: found.tracking_token, redirectTo: portalForOrder(found, found.tracking_token) });
 }
