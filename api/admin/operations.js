@@ -5,6 +5,7 @@ import { sendRenewalEmail } from '../../lib/renewal-email.js';
 import { createHash, randomBytes } from 'node:crypto';
 import { buildCustomerReputations } from '../../lib/customer-reputation.js';
 import { encryptPassword } from '../../lib/account-credentials.js';
+import { generateTotp, normalizeTotpSecret } from '../../lib/totp.js';
 import { htmlEscape, sendOperationalEmail } from '../../lib/operational-email.js';
 
 async function requireAdmin(request) {
@@ -44,21 +45,22 @@ export default async function handler(request, response) {
       db('mail_delivery_logs?select=recipient_address,category,received_at,email_accounts(mailbox_alias)&order=received_at.desc&limit=5'),
       db('stores?select=id&order=created_at.asc&limit=1'),
       db('orders?select=id,order_number,product_name,service_type,customer_phone,customer_email,reminder_email,reminder_subscribed_at,status,created_at,starts_at,expires_at,has_warranty,warranty_days,warranty_expires_at,acknowledgment_text,acknowledged_at,tracking_token,renewal_url,renewal_discount_code,renewal_reminder_3d_sent_at,renewal_reminder_1d_sent_at,renewal_reminder_manual_sent_at,security_strikes,locked_device_name,registered_city_name,registered_country_code,free_resets_remaining,customers(name),account_assignments(email_accounts(id,mailbox_alias,integrity_status,integrity_alerted_at))&order=created_at.desc&limit=100'),
-      db('email_accounts?select=id,mailbox_alias,service_type,max_slots,is_active,archived_at,password_updated_at,integrity_status,integrity_alerted_at&order=created_at.desc&limit=200'),
+      db('email_accounts?select=id,mailbox_alias,service_type,max_slots,is_active,archived_at,password_updated_at,integrity_status,integrity_alerted_at,totp_secret&order=created_at.desc&limit=200'),
       db('mail_security_events?select=id,event_type,received_at,suspected_order_id,attribution_basis,email_accounts(mailbox_alias)&order=received_at.desc&limit=100'),
       db('order_reviews?select=id,order_id,order_number,customer_name,product_name,rating,comment,suggestion_category,suggestion_text,status,is_negative,salla_shared_at,created_at,reviewed_at&order=created_at.desc&limit=500'),
-      db('compensation_requests?select=id,order_id,reason,customer_note,status,review_mode,strikes_at_request,cumulative_strikes,cumulative_orders,cumulative_compensations,reputation_badge,old_email_account_id,replacement_email_account_id,evidence_image_url,evidence_image_hash,device_mismatch_blocked,customer_email,reviewed_at,created_at&order=created_at.desc&limit=500'),
+      db('compensation_requests?select=id,order_id,reason,customer_note,status,review_mode,strikes_at_request,cumulative_strikes,cumulative_orders,cumulative_compensations,reputation_badge,old_email_account_id,replacement_email_account_id,evidence_image_url,evidence_image_hash,device_mismatch_blocked,customer_email,decision_reason,reviewed_at,created_at&order=created_at.desc&limit=500'),
       db('device_access_events?select=order_id,physical_core_hash&order=occurred_at.desc&limit=5000'),
     ]);
     if (!capacity.ok || !rotations.ok || !mappings.ok || !settings.ok || !mailLogs.ok || !stores.ok || !orders.ok || !accounts.ok || !mailSecurityEvents.ok || !deviceEvents.ok) return response.status(502).json({ message: 'تعذر تحميل بيانات التشغيل.' });
     const orderRows = await orders.json(), compensationRows = compensations.ok ? await compensations.json() : [], deviceRows = await deviceEvents.json(), reviewRows = reviews.ok ? await reviews.json() : [];
+    const accountRows = (await accounts.json()).map(({ totp_secret, ...account }) => ({ ...account, totp_configured: Boolean(totp_secret) }));
     const reputations = buildCustomerReputations(orderRows, compensationRows, deviceRows);
     const enrichedOrders = orderRows.map(order => ({ ...order, customer_reputation: reputations[order.id] }));
     const enrichedCompensations = compensationRows.map(item => ({ ...item, customer_reputation: reputations[item.order_id] }));
-    return response.status(200).json({ capacity: await capacity.json(), rotations: await rotations.json(), mappings: await mappings.json(), settings: (await settings.json())[0] || {}, mailLogs: await mailLogs.json(), storeId: (await stores.json())[0]?.id || null, orders: enrichedOrders, accounts: await accounts.json(), mailSecurityEvents: await mailSecurityEvents.json(), reviews: reviewRows, compensations: enrichedCompensations });
+    return response.status(200).json({ capacity: await capacity.json(), rotations: await rotations.json(), mappings: await mappings.json(), settings: (await settings.json())[0] || {}, mailLogs: await mailLogs.json(), storeId: (await stores.json())[0]?.id || null, orders: enrichedOrders, accounts: accountRows, mailSecurityEvents: await mailSecurityEvents.json(), reviews: reviewRows, compensations: enrichedCompensations });
   }
   if (request.method === 'POST') {
-    const { action, emailAccountId, orderId, mapping, settings, bulk, manualOrder, newPassword } = request.body || {};
+    const { action, emailAccountId, orderId, mapping, settings, bulk, manualOrder, newPassword, totpSecret } = request.body || {};
     let result;
     if (action === 'create_manual_order') {
       const clean = {
@@ -160,16 +162,23 @@ export default async function handler(request, response) {
         try { const parsed = new URL(clean); if (parsed.protocol === 'https:') return parsed.toString(); } catch {}
         throw new Error(`${label} يجب أن يكون رابط HTTPS صالحًا.`);
       };
-      let supportWhatsapp, sallaReviewUrl, renewalStoreUrl, crunchyrollPortalUrl, upsellUrl;
+      const portalUrl = (value, label, fallback) => {
+        const clean = String(value || fallback || '').trim();
+        if (/^\/[a-zA-Z0-9/_-]*$/.test(clean)) return clean;
+        return optionalHttps(clean, label);
+      };
+      let supportWhatsapp, sallaReviewUrl, renewalStoreUrl, crunchyrollPortalUrl, chatgptPortalUrl, upsellUrl;
       try {
         supportWhatsapp = String(settings?.support_whatsapp || '').replace(/[^0-9+]/g, '').slice(0, 20) || null;
         sallaReviewUrl = optionalHttps(settings?.salla_review_url, 'رابط تقييم سلة');
         renewalStoreUrl = optionalHttps(settings?.renewal_store_url, 'رابط المتجر');
         crunchyrollPortalUrl = optionalHttps(settings?.crunchyroll_portal_url, 'رابط بوابة كرانشي رول');
+        chatgptPortalUrl = portalUrl(settings?.chatgpt_portal_url, 'رابط بوابة ChatGPT', '/chatgpt');
         upsellUrl = optionalHttps(settings?.upsell_url, 'رابط عرض الترقية');
       } catch (error) { return response.status(400).json({ message: error.message }); }
       const digestEmail=String(settings?.digest_email||'').trim().toLowerCase();if(digestEmail&&!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(digestEmail))return response.status(400).json({message:'بريد التقرير اليومي غير صالح.'});
-      const settingsUpdate = { banner_active: Boolean(settings?.banner_active), banner_message: String(settings?.banner_message || '').trim().slice(0, 500) || null, auto_assignment_paused: Boolean(settings?.auto_assignment_paused), support_whatsapp: supportWhatsapp, salla_review_url: sallaReviewUrl, renewal_store_url: renewalStoreUrl, crunchyroll_portal_url: crunchyrollPortalUrl, maintenance_enabled: Boolean(settings?.maintenance_enabled), maintenance_message: String(settings?.maintenance_message || 'نقوم حاليًا بإجراء تحديثات تقنية لتحسين جودة الخدمة في بوابة أدفانسد برو، سنعود للعمل خلال دقائق معدودة.').trim().slice(0, 1000), upsell_enabled:Boolean(settings?.upsell_enabled),upsell_title:String(settings?.upsell_title||'').trim().slice(0,160)||null,upsell_description:String(settings?.upsell_description||'').trim().slice(0,500)||null,upsell_url:upsellUrl,upsell_duration_minutes:Math.min(Math.max(Number(settings?.upsell_duration_minutes)||30,1),1440),digest_email:digestEmail||null,referral_coupon_enabled:settings?.referral_coupon_enabled!==false,referral_coupon_target:Math.min(Math.max(Number(settings?.referral_coupon_target)||5,1),100),referral_coupon_code:String(settings?.referral_coupon_code||'ADVVIP5').trim().slice(0,80),referral_coupon_discount_label:String(settings?.referral_coupon_discount_label||'خصم خاص 25% لعملائنا السفراء').trim().slice(0,160), updated_at: new Date().toISOString() };
+      const settingsUpdate = { banner_active: Boolean(settings?.banner_active), banner_message: String(settings?.banner_message || '').trim().slice(0, 500) || null, auto_assignment_paused: Boolean(settings?.auto_assignment_paused), support_whatsapp: supportWhatsapp, salla_review_url: sallaReviewUrl, renewal_store_url: renewalStoreUrl, crunchyroll_portal_url: crunchyrollPortalUrl, default_delivery_estimate: String(settings?.default_delivery_estimate || 'فوري خلال 5 – 18 ساعة').trim().slice(0, 160) || 'فوري خلال 5 – 18 ساعة', maintenance_enabled: Boolean(settings?.maintenance_enabled), maintenance_message: String(settings?.maintenance_message || 'نقوم حاليًا بإجراء تحديثات تقنية لتحسين جودة الخدمة في بوابة أدفانسد برو، سنعود للعمل خلال دقائق معدودة.').trim().slice(0, 1000), upsell_enabled:Boolean(settings?.upsell_enabled),upsell_title:String(settings?.upsell_title||'').trim().slice(0,160)||null,upsell_description:String(settings?.upsell_description||'').trim().slice(0,500)||null,upsell_url:upsellUrl,upsell_duration_minutes:Math.min(Math.max(Number(settings?.upsell_duration_minutes)||30,1),1440),digest_email:digestEmail||null,referral_coupon_enabled:settings?.referral_coupon_enabled!==false,referral_coupon_target:Math.min(Math.max(Number(settings?.referral_coupon_target)||5,1),100),referral_coupon_code:String(settings?.referral_coupon_code||'ADVVIP5').trim().slice(0,80),referral_coupon_discount_label:String(settings?.referral_coupon_discount_label||'خصم خاص 25% لعملائنا السفراء').trim().slice(0,160), updated_at: new Date().toISOString() };
+      settingsUpdate.chatgpt_portal_url = chatgptPortalUrl;
       if (typeof settings?.renewal_reminders_enabled === 'boolean') settingsUpdate.renewal_reminders_enabled = settings.renewal_reminders_enabled;
       if (Array.isArray(settings?.renewal_reminder_days)) settingsUpdate.renewal_reminder_days = [...new Set(settings.renewal_reminder_days.map(Number).filter(day => day >= 1 && day <= 30))].sort((a, b) => b - a).slice(0, 5);
       result = await db('system_settings?singleton=eq.true', { method: 'PATCH', body: JSON.stringify(settingsUpdate) });
@@ -177,12 +186,33 @@ export default async function handler(request, response) {
         const failure = await result.clone().json().catch(() => ({}));
         const missingMaintenanceColumns = /maintenance_(enabled|message)/i.test(String(failure.message || failure.details || '')) || failure.code === 'PGRST204';
         if (missingMaintenanceColumns) {
-          const { maintenance_enabled, maintenance_message, ...legacyUpdate } = settingsUpdate;
+          const { maintenance_enabled, maintenance_message, default_delivery_estimate, ...legacyUpdate } = settingsUpdate;
           legacyUpdate.banner_active = maintenance_enabled;
           legacyUpdate.banner_message = maintenance_message;
           result = await db('system_settings?singleton=eq.true', { method: 'PATCH', body: JSON.stringify(legacyUpdate) });
         }
       }
+    } else if (action === 'test_totp_secret') {
+      let candidate = String(totpSecret || '');
+      if (!candidate && emailAccountId) {
+        const found = await db(`email_accounts?select=totp_secret&id=eq.${encodeURIComponent(emailAccountId)}&limit=1`);
+        if (!found.ok) return response.status(502).json({ message: 'تعذر تحميل إعداد 2FA.' });
+        candidate = (await found.json())[0]?.totp_secret || '';
+      }
+      try {
+        const normalized = normalizeTotpSecret(candidate);
+        if (!normalized) return response.status(400).json({ message: 'أدخل مفتاح 2FA أولًا.' });
+        return response.status(200).setHeader('Cache-Control', 'private, no-store').json(generateTotp(normalized));
+      } catch (error) { return response.status(400).json({ message: error.message }); }
+    } else if (action === 'save_totp_secret') {
+      if (!/^[0-9a-f-]{36}$/i.test(String(emailAccountId || ''))) return response.status(400).json({ message: 'معرّف الحساب غير صالح.' });
+      let normalized = null;
+      try { normalized = String(totpSecret || '').trim() ? normalizeTotpSecret(totpSecret) : null; }
+      catch (error) { return response.status(400).json({ message: error.message }); }
+      result = await db(`email_accounts?id=eq.${encodeURIComponent(emailAccountId)}&service_type=eq.chatgpt`, { method: 'PATCH', headers: { Prefer: 'return=representation' }, body: JSON.stringify({ totp_secret: normalized }) });
+      if (!result.ok) return response.status(502).json({ message: 'تعذر حفظ مفتاح 2FA.' });
+      if (!(await result.json()).length) return response.status(404).json({ message: 'حساب ChatGPT غير موجود.' });
+      return response.status(200).json({ ok: true, configured: Boolean(normalized) });
     } else if (action === 'rotate_password_notify') {
       if(!emailAccountId||String(newPassword||'').length<6||String(newPassword).length>200)return response.status(400).json({message:'أدخل كلمة مرور جديدة من 6 أحرف على الأقل.'});
       let encrypted;try{encrypted=encryptPassword(String(newPassword))}catch(error){return response.status(503).json({message:error.message})}
@@ -194,10 +224,36 @@ export default async function handler(request, response) {
       }
       return response.status(200).json({ok:true,notified,excluded:rows.length-notified});
     } else if (action === 'bulk_import') {
-      const aliases = String(bulk?.entries || '').split(/\r?\n/).map(line => line.trim().split(/[,:]/)[0].trim().toLowerCase()).filter(value => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(value));
+      const entries = String(bulk?.entries || '').split(/\r?\n/).map(line => {
+        const [email = '', password = '', secret = ''] = line.split(/[,;|\t]/).map(value => value.trim());
+        return { email: email.toLowerCase(), password, secret };
+      }).filter(item => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(item.email));
+      const aliases = entries.map(item => item.email);
       if (!bulk?.storeId || !aliases.length) return response.status(400).json({ message: 'أدخل بريدًا صالحًا واحدًا على الأقل.' });
+      if (bulk.serviceType !== 'chatgpt' && entries.some(item => item.secret)) return response.status(400).json({ message: 'مفتاح 2FA متاح لحسابات ChatGPT فقط.' });
       result = await db('rpc/bulk_import_email_accounts', { method: 'POST', body: JSON.stringify({ p_store_id: bulk.storeId, p_service_type: bulk.serviceType, p_max_slots: Number(bulk.maxSlots) || 1, p_aliases: aliases }) });
-      if (result.ok) return response.status(200).json({ report: (await result.json())[0], ignoredCredentials: true });
+      if (result.ok) {
+        const report = (await result.json())[0];
+        let credentialsUpdated = 0;
+        for (const entry of entries.filter(item => item.password || item.secret)) {
+          const found = await db(`email_accounts?select=id,encrypted_connection&mailbox_alias=eq.${encodeURIComponent(entry.email)}&service_type=eq.${encodeURIComponent(bulk.serviceType)}&limit=1`);
+          if (!found.ok) continue;
+          const [account] = await found.json();
+          if (!account) continue;
+          const update = {};
+          if (entry.password) {
+            try { update.encrypted_connection = { ...(account.encrypted_connection || {}), password: encryptPassword(entry.password) }; update.password_updated_at = new Date().toISOString(); }
+            catch { continue; }
+          }
+          if (entry.secret) {
+            try { update.totp_secret = normalizeTotpSecret(entry.secret); }
+            catch { continue; }
+          }
+          const saved = await db(`email_accounts?id=eq.${encodeURIComponent(account.id)}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify(update) });
+          if (saved.ok) credentialsUpdated++;
+        }
+        return response.status(200).json({ report, credentialsUpdated });
+      }
     } else if (action === 'archive_expired') {
       result = await db('rpc/archive_expired_email_accounts', { method: 'POST', body: '{}' });
       if (result.ok) return response.status(200).json({ archived: await result.json() });

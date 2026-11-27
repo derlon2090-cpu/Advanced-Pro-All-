@@ -1,5 +1,5 @@
 dist/
-public/
+/public/
 site.tar.gz
 .env.local
 .env

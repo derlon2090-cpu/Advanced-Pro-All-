@@ -33,6 +33,12 @@
       ]
     },
     {
+      "source": "/chatgpt/:path*",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+      ]
+    },
+    {
       "source": "/(.*)",
       "headers": [
         { "key": "X-Content-Type-Options", "value": "nosniff" },
@@ -49,6 +55,8 @@
     { "source": "/api/public/verify-device", "destination": "/api/public/track?_route=verify-device" },
     { "source": "/api/public/crunchyroll/access", "destination": "/api/public/crunchyroll?_route=access" },
     { "source": "/api/public/crunchyroll/messages", "destination": "/api/public/crunchyroll?_route=messages" },
+    { "source": "/api/public/chatgpt/access", "destination": "/api/public/chatgpt?_route=access" },
+    { "source": "/api/public/chatgpt/totp", "destination": "/api/public/chatgpt?_route=totp" },
     { "source": "/api/public/track/:token/reminder-email", "destination": "/api/public/track?_route=reminder-email&token=:token" },
     { "source": "/api/public/track/:token/review", "destination": "/api/public/track?_route=review&token=:token" },
     { "source": "/api/public/track/:token/review-share", "destination": "/api/public/track?_route=review-share&token=:token" },
@@ -63,9 +71,12 @@
     { "source": "/api/admin/orders/:id/reset-device", "destination": "/api/admin/operations?_route=reset-device&orderId=:id" },
     { "source": "/admin/:path*", "destination": "/index.html" },
     { "source": "/track/:path*", "destination": "/track.html" },
-    { "source": "/compensate/:path*", "destination": "/track.html" }
+    { "source": "/compensate", "destination": "/compensate.html" },
+    { "source": "/compensate/:path*", "destination": "/compensate.html" }
     ,{ "source": "/crunchyroll", "destination": "/crunchyroll.html" }
     ,{ "source": "/crunchyroll/:path*", "destination": "/crunchyroll.html" }
+    ,{ "source": "/chatgpt", "destination": "/chatgpt.html" }
+    ,{ "source": "/chatgpt/:path*", "destination": "/chatgpt.html" }
   ],
   "crons": [
     { "path": "/api/cron/renewal-reminders", "schedule": "0 13 * * *" },

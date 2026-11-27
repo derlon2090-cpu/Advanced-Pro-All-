@@ -2,6 +2,7 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
 import { normalizeOrderNumber } from '../../lib/order-number.js';
 import { decryptSensitivePayload } from '../../lib/account-credentials.js';
 import { blockForMaintenance } from '../../lib/maintenance-mode.js';
+import { isCrunchyrollOrder, portalForOrder, wrongProductMessage } from '../../lib/service-product.js';
 
 const buckets = new Map();
 const clientIp = request => String(request.headers['x-forwarded-for'] || request.headers['x-real-ip'] || 'unknown').split(',')[0].trim().slice(0, 128);
@@ -38,7 +39,7 @@ const safeApprovalUrl = value => {
 
 async function findOrderByToken(token) {
   const params = new URLSearchParams({
-    select: 'id,order_number,service_type,payment_status,status,expires_at,acknowledged_at,tracking_token,account_assignments(email_account_id)',
+    select: 'id,order_number,product_name,service_type,payment_status,status,expires_at,acknowledged_at,tracking_token,account_assignments(email_account_id)',
     tracking_token: `eq.${token}`,
     limit: '1',
   });
@@ -52,7 +53,7 @@ async function handleAccess(request, response) {
   const orderNumber = normalizeOrderNumber(request.body?.orderNumber || request.body?.order_number);
   if (!/^\d{1,30}$/.test(orderNumber)) return response.status(400).json({ message: 'أدخل رقم الطلب بالأرقام فقط.' });
   const query = new URLSearchParams({
-    select: 'tracking_token,service_type,payment_status,status,expires_at',
+    select: 'tracking_token,product_name,service_type,payment_status,status,expires_at',
     or: `(order_number.eq.${orderNumber},order_number.eq.#${orderNumber})`,
     limit: '1',
   });
@@ -60,7 +61,7 @@ async function handleAccess(request, response) {
   if (!result.ok) return response.status(502).json({ message: 'تعذر التحقق من الطلب حاليًا.' });
   const [order] = await result.json();
   if (!order) return response.status(404).json({ message: 'لم يتم العثور على هذا الطلب.' });
-  if (order.service_type !== 'crunchyroll') return response.status(409).json({ message: 'هذا الطلب يخص خدمة أخرى. استخدم صفحة الاستعلام العامة.', redirectTo: '/' });
+  if (!isCrunchyrollOrder(order)) return response.status(409).json({ message: wrongProductMessage(order, 'Crunchyroll'), redirectTo: portalForOrder(order) });
   if (String(order.payment_status).toLowerCase() !== 'paid') return response.status(403).json({ message: 'الطلب غير مدفوع أو لم يكتمل بعد.' });
   if (order.status === 'suspended_security') return response.status(403).json({ message: 'الوصول موقوف للمراجعة الأمنية. تواصل مع الدعم.' });
   if (order.expires_at && new Date(order.expires_at) <= new Date()) return response.status(410).json({ message: 'انتهت صلاحية هذا الاشتراك.' });
@@ -74,7 +75,8 @@ async function handleMessages(request, response) {
   const token = cleanToken(request.query?.token);
   if (!token) return response.status(400).json({ message: 'رابط الطلب غير صالح.' });
   const order = await findOrderByToken(token);
-  if (!order || order.service_type !== 'crunchyroll') return response.status(404).json({ message: 'لم يتم العثور على اشتراك كرانشي رول.' });
+  if (!order) return response.status(404).json({ message: 'لم يتم العثور على اشتراك كرانشي رول.' });
+  if (!isCrunchyrollOrder(order)) return response.status(409).json({ message: wrongProductMessage(order, 'Crunchyroll'), redirectTo: portalForOrder(order) });
   if (!order.acknowledged_at) return response.status(403).json({ message: 'يجب الموافقة على إقرار الضمان أولًا.' });
   if (!deviceSession(request, order.id)) return response.status(403).json({ message: 'انتهت جلسة الجهاز. أعد التحقق.' });
   if (order.expires_at && new Date(order.expires_at) <= new Date()) return response.status(410).json({ message: 'انتهت صلاحية الاشتراك.' });

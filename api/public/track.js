@@ -4,6 +4,7 @@ import verifyDeviceHandler from '../../lib/verify-device-api.js';
 import { sendReminderConfirmation } from '../../lib/renewal-email.js';
 import { blockForMaintenance } from '../../lib/maintenance-mode.js';
 import { decryptPassword } from '../../lib/account-credentials.js';
+import { isCrunchyrollOrder } from '../../lib/service-product.js';
 
 const buckets = new Map();
 const clientIp = request => String(request.headers['x-forwarded-for'] || request.headers['x-real-ip'] || 'unknown').split(',')[0].trim().slice(0, 128);
@@ -38,6 +39,7 @@ const publicUrl = value => {
     return url.protocol === 'https:' ? url.toString() : null;
   } catch { return null; }
 };
+const portalUrl = value => /^\/[a-zA-Z0-9/_-]*$/.test(String(value || '')) ? String(value) : publicUrl(value);
 const maskEmail = value => { const [name, domain] = String(value || '').split('@'); return name && domain ? `${name.slice(0, 1)}***@${domain}` : null; };
 
 export default async function handler(request, response) {
@@ -52,7 +54,7 @@ export default async function handler(request, response) {
   const token = cleanToken(request.query?.token || request.body?.token);
   if (!token) return response.status(400).json({ message: 'رابط الطلب غير صالح.' });
 
-  const baseSelect = 'id,order_number,product_name,service_type,status,created_at,duration_days,starts_at,expires_at,has_warranty,warranty_days,warranty_expires_at,acknowledgment_text,acknowledged_at,tracking_token,customer_email,reminder_email,reminder_subscribed_at,renewal_url,renewal_discount_code,security_strikes,customers(name),account_assignments(email_accounts(mailbox_alias,encrypted_connection))';
+  const baseSelect = 'id,order_number,product_name,service_type,status,created_at,duration_days,starts_at,expires_at,has_warranty,warranty_days,warranty_expires_at,acknowledgment_text,acknowledged_at,tracking_token,customer_email,reminder_email,reminder_subscribed_at,renewal_url,renewal_discount_code,security_strikes,locked_device_name,locked_device_fingerprint_hash,customers(name),account_assignments(email_accounts(mailbox_alias,encrypted_connection))';
   const select = baseSelect.replace('tracking_token,','tracking_token,referral_code,referral_coupon_unlocked_at,referral_assigned_coupon,');
   let params = new URLSearchParams({ select, tracking_token: `eq.${token}`, limit: '1' });
   let foundResponse = await database(`orders?${params}`);
@@ -60,7 +62,7 @@ export default async function handler(request, response) {
   if (!foundResponse.ok) return response.status(502).json({ message: 'تعذر تحميل بيانات الطلب.' });
   const [order] = await foundResponse.json();
   if (!order) return response.status(404).json({ message: 'لم يتم العثور على الطلب.' });
-  const settingsSelect = 'renewal_store_url,salla_review_url,support_whatsapp,crunchyroll_portal_url,upsell_enabled,upsell_title,upsell_description,upsell_url,upsell_duration_minutes,referral_coupon_enabled,referral_coupon_target,referral_coupon_code,referral_coupon_discount_label';
+  const settingsSelect = 'renewal_store_url,salla_review_url,support_whatsapp,crunchyroll_portal_url,chatgpt_portal_url,upsell_enabled,upsell_title,upsell_description,upsell_url,upsell_duration_minutes,referral_coupon_enabled,referral_coupon_target,referral_coupon_code,referral_coupon_discount_label';
   let portalSettingsResponse = await database(`system_settings?select=${settingsSelect}&singleton=eq.true&limit=1`);
   if (!portalSettingsResponse.ok) portalSettingsResponse = await database('system_settings?select=renewal_store_url,salla_review_url,support_whatsapp,upsell_enabled,upsell_title,upsell_description,upsell_url,upsell_duration_minutes&singleton=eq.true&limit=1');
   const portalSettings = portalSettingsResponse.ok ? (await portalSettingsResponse.json())[0] || {} : {};
@@ -134,6 +136,12 @@ export default async function handler(request, response) {
   const [existingReview] = reviewResponse?.ok ? await reviewResponse.json() : [];
   const referralCount = referralResponse?.ok ? (await referralResponse.json()).length : 0;
   if (accountEmail) await database('portal_activity_events', { method: 'POST', body: JSON.stringify({ order_id: order.id, activity_type: 'account_details_viewed', physical_core_hash: verifiedSession.physicalHash }) });
+  const trustedDevice = deviceVerified ? {
+    name: String(order.locked_device_name || 'جهازك الحالي').replace(/[<>\r\n]/g, '').slice(0, 100),
+    fingerprintId: `#${String(verifiedSession.physicalHash || order.locked_device_fingerprint_hash || '').slice(0, 4).toUpperCase()}…`,
+    used: 1,
+    limit: 1,
+  } : null;
   delete order.id;
   delete order.account_assignments;
   delete order.customers;
@@ -143,9 +151,12 @@ export default async function handler(request, response) {
   delete order.reminder_email;
   delete order.customer_email;
   delete order.tracking_token;
+  delete order.locked_device_name;
+  delete order.locked_device_fingerprint_hash;
   order.account_email = accountEmail;
   order.account_password = accountPassword;
   order.device_verified = deviceVerified;
+  order.trusted_device = trustedDevice;
   const compensationAvailable = Boolean(deviceVerified && order.acknowledged_at && order.has_warranty && order.warranty_expires_at && new Date(order.warranty_expires_at) > new Date());
   const compensationEligible = compensationAvailable && Number(order.security_strikes || 0) === 0;
   const origin=`https://${String(request.headers.host||'').replace(/[^a-zA-Z0-9.:-]/g,'')}`;
@@ -159,7 +170,8 @@ export default async function handler(request, response) {
   return response.status(200).setHeader('Cache-Control', 'private, no-store').json({
     order,
     actions: {
-      crunchyrollPortalUrl: deviceVerified && order.service_type === 'crunchyroll' ? publicUrl(process.env.PUBLIC_CRUNCHYROLL_PORTAL_URL || portalSettings.crunchyroll_portal_url || 'https://advpro.app/crunchyroll') : null,
+      crunchyrollPortalUrl: deviceVerified && isCrunchyrollOrder(order) ? publicUrl(process.env.PUBLIC_CRUNCHYROLL_PORTAL_URL || portalSettings.crunchyroll_portal_url || 'https://advpro.app/crunchyroll') : null,
+      chatgptPortalUrl: deviceVerified && order.service_type === 'chatgpt' ? portalUrl(process.env.PUBLIC_CHATGPT_PORTAL_URL || portalSettings.chatgpt_portal_url || '/chatgpt') : null,
       supportWhatsapp: deviceVerified ? String(process.env.PUBLIC_SUPPORT_WHATSAPP || '').replace(/\D/g, '').slice(0, 20) || null : null,
       sallaReviewUrl: deviceVerified ? publicUrl(process.env.PUBLIC_SALLA_REVIEW_URL || portalSettings.salla_review_url) : null,
       renewalStoreUrl: deviceVerified ? publicUrl(portalSettings.renewal_store_url) : null,

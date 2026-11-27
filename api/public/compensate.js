@@ -2,6 +2,7 @@ import { createHash, createHmac, randomUUID, timingSafeEqual } from 'node:crypto
 import { reputationForOrder } from '../../lib/customer-reputation.js';
 import { blockForMaintenance } from '../../lib/maintenance-mode.js';
 import { sendOperationalEmail } from '../../lib/operational-email.js';
+import { decryptPassword } from '../../lib/account-credentials.js';
 
 const db = (path, options = {}) => {
   const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -21,23 +22,45 @@ function verifiedDevice(request, orderId) {
 
 export default async function handler(request, response) {
   if (await blockForMaintenance(response)) return;
-  if (request.method !== 'POST') return response.status(405).json({ message: 'الطريقة غير مسموحة.' });
+  if (!['GET', 'POST'].includes(request.method)) return response.status(405).json({ message: 'الطريقة غير مسموحة.' });
   const token = cleanToken(request.query?.token || request.body?.token);
   if (!token || !(process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL) || !process.env.SUPABASE_SERVICE_ROLE_KEY) return response.status(400).json({ message: 'رابط الطلب غير صالح.' });
-  const orderResult = await db(`orders?select=id,store_id,order_number,customer_phone,customer_email,reminder_email,security_strikes,has_warranty,warranty_expires_at,status,customers(name)&tracking_token=eq.${encodeURIComponent(token)}&limit=1`);
+  const orderResult = await db(`orders?select=id,store_id,order_number,product_name,service_type,payment_status,customer_phone,customer_email,reminder_email,security_strikes,has_warranty,warranty_expires_at,status,customers(name)&tracking_token=eq.${encodeURIComponent(token)}&limit=1`);
   if (!orderResult.ok) return response.status(502).json({ message: 'تعذر التحقق من الطلب.' });
   const [order] = await orderResult.json();
   if (!order) return response.status(404).json({ message: 'الطلب غير موجود.' });
   if (!verifiedDevice(request, order.id)) {
-    await Promise.allSettled([
-      db('mail_security_events', { method: 'POST', body: JSON.stringify({ provider_message_id: `compensation-device-${randomUUID()}`, event_type: 'compensation_wrong_device', suspected_order_id: order.id, attribution_basis: 'unverified_device_attempt' }) }),
-      db('compensation_requests', { method: 'POST', body: JSON.stringify({ order_id: order.id, reason: 'other', customer_note: 'محاولة تقديم طلب تعويض من جهاز غير معتمد.', status: 'rejected', review_mode: 'manual_review', strikes_at_request: Number(order.security_strikes || 0), device_mismatch_blocked: true, customer_email: order.reminder_email || order.customer_email || null, reviewed_at: new Date().toISOString() }) }),
-    ]);
-    return response.status(403).json({ message: 'تنبيه أمني: لا يمكن تقديم طلب التعويض من هذا الجهاز. يرجى فتح الرابط من نفس جهازك الأصلي المعتمد في الطلب.' });
+    if (request.method === 'POST') await Promise.allSettled([
+        db('mail_security_events', { method: 'POST', body: JSON.stringify({ provider_message_id: `compensation-device-${randomUUID()}`, event_type: 'compensation_wrong_device', suspected_order_id: order.id, attribution_basis: 'unverified_device_attempt' }) }),
+        db('compensation_requests', { method: 'POST', body: JSON.stringify({ order_id: order.id, reason: 'other', customer_note: 'محاولة تقديم طلب تعويض من جهاز غير معتمد.', status: 'rejected', review_mode: 'manual_review', strikes_at_request: Number(order.security_strikes || 0), device_mismatch_blocked: true, customer_email: order.reminder_email || order.customer_email || null, reviewed_at: new Date().toISOString() }) }),
+      ]);
+    return response.status(403).json({ message: 'عذرًا، طلب التعويض متاح حصريًا من الجهاز الموثّق للطلب.' });
   }
-  if (!order.has_warranty || !order.warranty_expires_at || new Date(order.warranty_expires_at) <= new Date()) return response.status(403).json({ message: 'الضمان غير سارٍ لهذا الطلب.' });
+  const previousResult = await db(`compensation_requests?select=id,status,review_mode,customer_note,decision_reason,created_at,reviewed_at&order_id=eq.${encodeURIComponent(order.id)}&device_mismatch_blocked=eq.false&order=created_at.desc&limit=1`);
+  const [previousRequest] = previousResult.ok ? await previousResult.json() : [];
+  const paid = String(order.payment_status || '').toLowerCase() === 'paid';
+  const warrantyActive = Boolean(order.has_warranty && order.warranty_expires_at && new Date(order.warranty_expires_at) > new Date());
+  const hasViolation = Number(order.security_strikes || 0) > 0 || order.status === 'suspended_security';
+  if (request.method === 'GET') {
+    const eligible = paid && warrantyActive && !hasViolation;
+    const reason = !paid ? 'الطلب غير مدفوع أو لم يكتمل بعد.' : !warrantyActive ? 'انتهت مدة الضمان أو أن المنتج غير مشمول بالضمان.' : hasViolation ? 'الطلب غير مؤهل لوجود مخالفة أمنية مؤكدة مسجّلة عليه.' : null;
+    return response.status(200).setHeader('Cache-Control', 'private, no-store').json({
+      eligible,
+      ineligibleReason: reason,
+      order: {
+        orderNumber: order.order_number,
+        productName: order.product_name || 'اشتراك رقمي',
+        warrantyDaysRemaining: warrantyActive ? Math.max(1, Math.ceil((new Date(order.warranty_expires_at) - Date.now()) / 86400000)) : 0,
+      },
+      previousRequest: previousRequest ? { status: previousRequest.status, reviewMode: previousRequest.review_mode, reason: previousRequest.decision_reason || null, createdAt: previousRequest.created_at, reviewedAt: previousRequest.reviewed_at } : null,
+    });
+  }
+  if (!paid) return response.status(403).json({ message: 'الطلب غير مدفوع أو لم يكتمل بعد.' });
+  if (!warrantyActive) return response.status(403).json({ message: 'انتهت مدة الضمان أو أن المنتج غير مشمول بالضمان.' });
+  if (hasViolation) return response.status(403).json({ message: 'الطلب غير مؤهل لوجود مخالفة أمنية مؤكدة مسجّلة عليه.' });
+  if (previousRequest && ['submitted', 'approved'].includes(previousRequest.status)) return response.status(409).json({ message: previousRequest.status === 'approved' ? 'تم تعويض هذا الطلب سابقًا.' : 'يوجد طلب تعويض قيد المراجعة لهذا الطلب بالفعل.' });
   const reason = String(request.body?.reason || '');
-  if (!['password_changed', 'account_not_working', 'signed_out', 'other'].includes(reason)) return response.status(400).json({ message: 'اختر سبب المشكلة.' });
+  if (!['password_changed', 'account_not_working', 'signed_out', 'verification_code', 'other'].includes(reason)) return response.status(400).json({ message: 'اختر سبب المشكلة.' });
   const note = String(request.body?.note || '').trim().slice(0, 1000) || null;
   const evidence = String(request.body?.evidenceImage || '');
   const match = evidence.match(/^data:(image\/(?:png|jpeg|webp));base64,([A-Za-z0-9+/=]+)$/);
@@ -72,10 +95,25 @@ export default async function handler(request, response) {
   }) });
   if (!createdResult.ok) return response.status(502).json({ message: 'تعذر تسجيل طلب التعويض.' });
   const [created] = await createdResult.json();
-  if (!autoEligible) return response.status(202).json({ ok: true, status: 'manual_review', duplicateEvidence, message: duplicateEvidence ? 'تم استلام الطلب وتحويله للمراجعة البشرية لأن صورة الإثبات استُخدمت سابقًا.' : 'تم استلام الطلب وتحويله للمراجعة البشرية الإلزامية بناءً على سجل النزاهة التراكمي.', reputation });
+  if (!autoEligible) return response.status(202).json({ ok: true, status: 'manual_review', duplicateEvidence, message: duplicateEvidence ? 'تم استلام طلبك وتحويله للمراجعة اليدوية من فريق الجودة، وسيصلك إشعار فور الاعتماد. تم رصد استخدام سابق لبصمة الصورة.' : 'تم استلام طلبك وتحويله للمراجعة اليدوية من فريق الجودة، وسيصلك إشعار فور الاعتماد.', reputation });
   const replacement = await db('rpc/auto_replace_order_account', { method: 'POST', body: JSON.stringify({ p_request_id: created.id }) });
-  if (!replacement.ok) return response.status(202).json({ ok: true, status: 'manual_review', reputation });
+  if (!replacement.ok) return response.status(202).json({ ok: true, status: 'manual_review', message: 'تم تسجيل الطلب، وتعذر إكمال الاستبدال الآلي. حُوّل الطلب للمراجعة اليدوية.', reputation });
   const [decision] = await replacement.json();
   if(decision?.approved){const to=String(request.body?.email||order.reminder_email||order.customer_email||'').trim();if(to){const portal=`${process.env.APP_BASE_URL||process.env.PUBLIC_APP_URL||process.env.NEXT_PUBLIC_APP_URL||'https://advpro.app'}/track/${encodeURIComponent(token)}`;await sendOperationalEmail({to,subject:`تم اعتماد تعويضك وتفعيل الحساب البديل — الطلب #${order.order_number}`,html:`<div dir="rtl"><h2>تم التعويض بنجاح ✓</h2><p>تم تفعيل حساب بديل لطلبك. افتح بطاقة الاشتراك من جهازك المعتمد لعرض البيانات الجديدة.</p><a href="${portal}">فتح بطاقة الاشتراك</a></div>`,text:`تم تفعيل حساب بديل للطلب #${order.order_number}. افتح بطاقتك: ${portal}`}).catch(()=>null)}}
-  return response.status(decision?.approved ? 200 : 202).json({ ok: true, status: decision?.approved ? 'auto_approved' : 'manual_review', reason: decision?.reason, reputation });
+  let credentials = null;
+  if (decision?.approved) {
+    const assignmentResult = await db(`account_assignments?select=email_accounts(mailbox_alias,encrypted_connection)&order_id=eq.${encodeURIComponent(order.id)}&released_at=is.null&limit=1`);
+    const [assignment] = assignmentResult.ok ? await assignmentResult.json() : [];
+    const account = Array.isArray(assignment?.email_accounts) ? assignment.email_accounts[0] : assignment?.email_accounts;
+    credentials = account ? { email: account.mailbox_alias || null, password: decryptPassword(account.encrypted_connection?.password || account.encrypted_connection) } : null;
+  }
+  const queued = !decision?.approved && decision?.reason === 'no_healthy_capacity';
+  return response.status(decision?.approved ? 200 : 202).json({
+    ok: true,
+    status: decision?.approved ? 'auto_approved' : queued ? 'queued' : 'manual_review',
+    reason: decision?.reason,
+    message: queued ? 'لا يتوفر حساب بديل في المخزون الآن. تم حفظ طلبك في طابور التعويض وسيُعالج فور توفر حساب مناسب.' : undefined,
+    credentials,
+    reputation,
+  });
 }
