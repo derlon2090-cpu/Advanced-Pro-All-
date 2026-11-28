@@ -52,7 +52,10 @@ const currentHomeBoot = "<script>if(location.pathname==='/')document.documentEle
 const currentTrackBoot = "<script>if(location.pathname.startsWith('/track/')||location.pathname.startsWith('/compensate/'))document.documentElement.classList.add('current-track')</script>";
 const progressBoot = "document.documentElement.dataset.orderProgress=location.hash.startsWith('#open=')?'details':'search'";
 const trackSearchBoot = `<script>if(/^\\/(track|compensate)\\/[^/]+/.test(location.pathname))${progressBoot}</script>`;
+const portalThemeColor = "#bb410f";
 const withOrderProgress = (html, boot = "") => html
+  .replace(/<meta name="viewport" content="[^"]*">/, `<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="${portalThemeColor}">`)
+  .replace("</head>", `<style>@media (max-width: 760px) { html:root { background-color: ${portalThemeColor}; } }</style></head>`)
   .replace("</head>", () => orderProgressStyle + boot + "</head>")
   .replace("<!--order-progress-->", () => orderProgress)
   .replace("<!--lookup-footer-->", () => lookupFooter);

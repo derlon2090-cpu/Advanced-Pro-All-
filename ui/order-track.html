@@ -13,8 +13,6 @@
   .track-hero:after { content:none; }
   .order-brand,.track-hero-copy { position:relative; z-index:1; width:min(980px,100%); margin-inline:auto; }
   .order-brand { display:flex; justify-content:flex-end; align-items:center; }
-  .order-brand .health { display:inline-flex; align-items:center; gap:9px; padding:9px 14px; border:1px solid #166534; border-radius:999px; color:#86efac; background:#052e20; font-size:.82rem; font-weight:800; }
-  .order-brand .health i { width:9px; height:9px; border-radius:50%; background:#22c55e; box-shadow:0 0 0 5px #22c55e1c,0 0 18px #22c55e; }
   .track-hero-copy { margin-top:42px; text-align:center; }
   .track-hero-copy .order-number { display:inline-flex; justify-content:center; }
   .track-hero-copy h1 { margin:10px 0 13px; color:#fff; font-size:clamp(1.8rem,5vw,3.2rem); letter-spacing:-.035em; }
@@ -162,7 +160,7 @@
   .track-error strong { display: block; margin-bottom: 8px; color: #fda4af; }
   .step-ack { text-align:right; }.step-ack>h1,.step-ack>p{text-align:center}.step-ack .ack-box{margin-top:22px}
   @media (max-width: 700px) {
-    .track-hero { min-height:275px; padding:20px 14px 86px; }
+    .track-hero { min-height:275px; padding:calc(20px + env(safe-area-inset-top, 0px)) 14px 86px; }
     .track-hero-copy { margin-top:34px; }
     .track-night { padding:22px 12px 48px; }
     .track-night .order-wrap { transform:none; }

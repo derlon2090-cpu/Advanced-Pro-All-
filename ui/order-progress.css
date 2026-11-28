@@ -117,6 +117,26 @@ html.current-track[data-order-progress] #portal { display: none; }
   .verification-orbit::before, .verification-reveal, .verification-status .verification-detail { animation: none; }
 }
 
+.service-page .hero-switch-order {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  margin-top: 16px;
+  padding: 8px 16px;
+  border: 1px solid #ffedd577;
+  border-radius: 12px;
+  background: #7c2d12;
+  color: #fff7ed;
+  font-size: .85rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+.service-page .hero-switch-order[hidden] { display: none; }
+.service-page .hero-switch-order:hover { background: #68230f; }
+.service-page .hero-switch-order:focus-visible { outline: 2px solid #fff7ed; outline-offset: 3px; }
+
 .clean-footer { margin-top: 17px; text-align: center; }
 .support-line {
   display: inline-flex;

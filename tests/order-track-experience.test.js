@@ -55,7 +55,7 @@ test('home verifies on the lookup page before opening the details document', asy
   assert.match(source, /form\.querySelector\('\.single-action'\)/);
   assert.match(shell, /id="pasteOrderNumber"/);
   assert.match(shell, /id="clearOrderNumber"/);
-  assert.match(shell, /النظام يعمل بكفاءة/);
+  assert.doesNotMatch(shell, /النظام يعمل بكفاءة/);
   assert.match(shell, /عرض بيانات الاشتراك ←/);
 });
 

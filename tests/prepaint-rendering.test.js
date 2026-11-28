@@ -29,3 +29,15 @@ test('homepage never paints the legacy interface before the current design', asy
 test('order tracking never paints the legacy interface before the secure design', async () => {
   await assertNoLegacyPrepaint(['track.html'], 'current-track', 'html.current-track body { visibility: visible !important; }');
 });
+
+test('customer documents match the mobile browser area to the orange hero', async () => {
+  const documents = await Promise.all(['home', 'track', 'chatgpt', 'crunchyroll', 'compensate']
+    .map(name => readBuiltDocument([name + '.html'])));
+  for (const html of documents) {
+    assert.match(html, /<meta name="viewport" content="[^"]*viewport-fit=cover">/);
+    assert.equal(Array.from(html.matchAll(/<meta name="theme-color" content="([^"]+)">/g), match => match[1]).join(), '#bb410f');
+    assert.match(html, /html:root \{ background-color: #bb410f; \}/);
+    assert.match(html, /env\(safe-area-inset-top, 0px\)/);
+    assert.doesNotMatch(html, /النظام يعمل بكفاءة|class="eyebrow"/);
+  }
+});
